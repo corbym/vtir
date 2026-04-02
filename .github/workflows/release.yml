@@ -1,0 +1,218 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  BINARY_NAME: vortex-tracker
+
+jobs:
+  # ── Tests (all platforms before any release artifact) ─────────────────────
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install ALSA headers (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
+
+      - name: Run library + integration tests
+        run: cargo test -p vti-core -p vti-ay -p vti-audio
+
+  # ── macOS — build release binary and package as .dmg ──────────────────────
+  build-macos:
+    name: Build macOS .dmg
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: macos-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Create .app bundle
+        run: |
+          APP_DIR="dist/Vortex Tracker II.app"
+          mkdir -p "$APP_DIR/Contents/MacOS"
+          mkdir -p "$APP_DIR/Contents/Resources"
+          cp target/release/${{ env.BINARY_NAME }} "$APP_DIR/Contents/MacOS/vortex-tracker"
+          cat > "$APP_DIR/Contents/Info.plist" << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+            "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key>              <string>Vortex Tracker II</string>
+            <key>CFBundleIdentifier</key>        <string>net.untergrund.bulba.vortex-tracker</string>
+            <key>CFBundleVersion</key>           <string>${{ github.ref_name }}</string>
+            <key>CFBundleShortVersionString</key><string>${{ github.ref_name }}</string>
+            <key>CFBundleExecutable</key>        <string>vortex-tracker</string>
+            <key>CFBundlePackageType</key>       <string>APPL</string>
+            <key>NSHighResolutionCapable</key>   <true/>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Package .dmg
+        run: |
+          create-dmg \
+            --volname "Vortex Tracker II" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --app-drop-link 450 185 \
+            "dist/VortexTrackerII-${{ github.ref_name }}-macos.dmg" \
+            "dist/"
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: dist/VortexTrackerII-*.dmg
+
+  # ── Windows — build release .exe ─────────────────────────────────────────
+  build-windows:
+    name: Build Windows .exe
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: windows-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build release binary
+        run: cargo build --release --target x86_64-pc-windows-msvc
+
+      - name: Copy artifact
+        run: |
+          mkdir dist
+          copy target\x86_64-pc-windows-msvc\release\${{ env.BINARY_NAME }}.exe `
+               dist\VortexTrackerII-${{ github.ref_name }}-windows.exe
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: dist\VortexTrackerII-*.exe
+
+  # ── Linux — build release binary ──────────────────────────────────────────
+  build-linux:
+    name: Build Linux binary
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install ALSA headers
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: linux-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Copy artifact
+        run: |
+          mkdir dist
+          cp target/release/${{ env.BINARY_NAME }} \
+             dist/VortexTrackerII-${{ github.ref_name }}-linux-x86_64
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-binary
+          path: dist/VortexTrackerII-*-linux-x86_64
+
+  # ── GitHub Release — attach all artifacts ────────────────────────────────
+  release:
+    name: Create GitHub Release
+    needs: [build-macos, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Vortex Tracker II ${{ github.ref_name }}"
+          body: |
+            ## Vortex Tracker II ${{ github.ref_name }}
+
+            Cross-platform Rust port of Vortex Tracker II by S.V.Bulba.
+
+            ### Downloads
+            | Platform | File |
+            |----------|------|
+            | macOS    | `VortexTrackerII-${{ github.ref_name }}-macos.dmg` |
+            | Windows  | `VortexTrackerII-${{ github.ref_name }}-windows.exe` |
+            | Linux    | `VortexTrackerII-${{ github.ref_name }}-linux-x86_64` |
+
+            See [PLAN.md](PLAN.md) for current status.
+          files: |
+            artifacts/**/*
+          draft: true

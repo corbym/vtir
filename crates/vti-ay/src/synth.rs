@@ -1,0 +1,248 @@
+//! High-level synthesizer: drives N chips, produces stereo-16 PCM samples.
+//!
+//! Ported from `Synthesizer_Stereo16`, `MakeBuffer`, `Get_Registers`,
+//! `Calculate_Level_Tables` etc. in `AY.pas` (c) 2000-2009 S.V.Bulba.
+
+use crate::chip::{ChipType, SoundChip, AMPLITUDES_AY, AMPLITUDES_YM};
+use crate::config::AyConfig;
+use vti_core::AyRegisters;
+
+/// Output sample format produced by the synthesizer.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct StereoSample {
+    pub left: i16,
+    pub right: i16,
+}
+
+/// Per-channel panning / level tables (32 entries each).
+#[derive(Debug, Clone)]
+pub struct LevelTables {
+    pub al: [i32; 32],
+    pub ar: [i32; 32],
+    pub bl: [i32; 32],
+    pub br: [i32; 32],
+    pub cl: [i32; 32],
+    pub cr: [i32; 32],
+}
+
+impl Default for LevelTables {
+    fn default() -> Self {
+        Self {
+            al: [0; 32],
+            ar: [0; 32],
+            bl: [0; 32],
+            br: [0; 32],
+            cl: [0; 32],
+            cr: [0; 32],
+        }
+    }
+}
+
+/// Build amplitude→level tables from panning indices and chip type.
+///
+/// Direct port of `Calculate_Level_Tables` in `AY.pas`.
+pub fn calculate_level_tables(cfg: &AyConfig, chip_type: ChipType) -> LevelTables {
+    let mut t = LevelTables::default();
+
+    let ia = cfg.index_al as i32;
+    let ia_r = cfg.index_ar as i32;
+    let ib = cfg.index_bl as i32;
+    let ib_r = cfg.index_br as i32;
+    let ic = cfg.index_cl as i32;
+    let ic_r = cfg.index_cr as i32;
+
+    let mut l = if cfg.num_channels == 2 {
+        (ia + ib + ic).max(ia_r + ib_r + ic_r)
+    } else {
+        ia + ib + ic + ia_r + ib_r + ic_r
+    };
+    if l == 0 { l = 1; }
+
+    let max_out = if cfg.sample_bit == 8 { 127i32 } else { 32767i32 };
+    let scale = 255 * max_out / l;
+
+    let k = (cfg.global_volume * 2_f64.ln() / cfg.global_volume_max).exp() - 1.0;
+
+    match chip_type {
+        ChipType::AY => {
+            for i in 0..16usize {
+                let amp = AMPLITUDES_AY[i] as f64;
+                let fill = |idx: i32, amp: f64| -> i32 {
+                    let b = (idx as f64 / 255.0 * amp).round() as i32;
+                    (b as f64 / 65535.0 * scale as f64 * k).round() as i32
+                };
+                let v = fill(ia,   amp); t.al[i * 2] = v; t.al[i * 2 + 1] = v;
+                let v = fill(ia_r, amp); t.ar[i * 2] = v; t.ar[i * 2 + 1] = v;
+                let v = fill(ib,   amp); t.bl[i * 2] = v; t.bl[i * 2 + 1] = v;
+                let v = fill(ib_r, amp); t.br[i * 2] = v; t.br[i * 2 + 1] = v;
+                let v = fill(ic,   amp); t.cl[i * 2] = v; t.cl[i * 2 + 1] = v;
+                let v = fill(ic_r, amp); t.cr[i * 2] = v; t.cr[i * 2 + 1] = v;
+            }
+        }
+        ChipType::YM => {
+            for i in 0..32usize {
+                let amp = AMPLITUDES_YM[i] as f64;
+                let fill = |idx: i32, amp: f64| -> i32 {
+                    let b = (idx as f64 / 255.0 * amp).round() as i32;
+                    (b as f64 / 65535.0 * scale as f64 * k).round() as i32
+                };
+                t.al[i] = fill(ia,   amp);
+                t.ar[i] = fill(ia_r, amp);
+                t.bl[i] = fill(ib,   amp);
+                t.br[i] = fill(ib_r, amp);
+                t.cl[i] = fill(ic,   amp);
+                t.cr[i] = fill(ic_r, amp);
+            }
+        }
+        ChipType::None => {}
+    }
+
+    t
+}
+
+/// Drives up to [`MAX_CHIPS`] AY chips and renders PCM audio.
+pub const MAX_CHIPS: usize = 2;
+
+pub struct Synthesizer {
+    pub chips: [SoundChip; MAX_CHIPS],
+    pub num_chips: usize,
+    pub levels: LevelTables,
+    pub cfg: AyConfig,
+
+    // Current AY register snapshots per chip (set by the tracker engine each interrupt)
+    pub pending_regs: [Option<AyRegisters>; MAX_CHIPS],
+
+    /// Buffered audio samples not yet handed to cpal.
+    pub output_buf: Vec<StereoSample>,
+
+    // FIR filter state (quality mode)
+    filt_x_l: Vec<i32>,
+    filt_x_r: Vec<i32>,
+    filt_k:   Vec<i32>,
+    filt_i:   usize,
+}
+
+impl Synthesizer {
+    pub fn new(cfg: AyConfig, num_chips: usize, chip_type: ChipType) -> Self {
+        let levels = calculate_level_tables(&cfg, chip_type);
+        let filt_m = cfg.filt_m;
+        let mut s = Self {
+            chips: std::array::from_fn(|_| SoundChip::default()),
+            num_chips: num_chips.min(MAX_CHIPS),
+            levels,
+            cfg: cfg.clone(),
+            pending_regs: std::array::from_fn(|_| None),
+            output_buf: Vec::new(),
+            filt_x_l: vec![0; filt_m + 1],
+            filt_x_r: vec![0; filt_m + 1],
+            filt_k: vec![0; filt_m + 1],
+            filt_i: 0,
+        };
+        let delay = s.cfg.delay_in_tiks();
+        for chip in &mut s.chips {
+            chip.delay_in_tiks = delay;
+            chip.ay_tiks_in_interrupt = s.cfg.ay_tiks_in_interrupt();
+            chip.sample_tiks_in_interrupt = s.cfg.sample_tiks_in_interrupt();
+        }
+        s.calc_fir_coefficients();
+        s
+    }
+
+    /// Apply pending register writes to a chip.
+    pub fn apply_registers(&mut self, chip_idx: usize, regs: &AyRegisters) {
+        let chip = &mut self.chips[chip_idx];
+        chip.set_mixer_register(regs.mixer);
+        chip.registers.ton_a = regs.ton_a;
+        chip.registers.ton_b = regs.ton_b;
+        chip.registers.ton_c = regs.ton_c;
+        chip.set_ampl_a(regs.amplitude_a);
+        chip.set_ampl_b(regs.amplitude_b);
+        chip.set_ampl_c(regs.amplitude_c);
+        chip.registers.noise = regs.noise;
+        chip.registers.envelope = regs.envelope;
+        if regs.env_type != chip.registers.env_type {
+            chip.set_envelope_register(regs.env_type);
+        }
+    }
+
+    /// Render one interrupt frame (~1/50 s) of stereo-16 PCM into `output_buf`.
+    ///
+    /// `n_samples` = how many samples to generate (= `ay_tiks_in_interrupt` in
+    /// quality mode, or `sample_tiks_in_interrupt` in performance mode).
+    pub fn render_frame(&mut self, n_samples: u32) {
+        // Copy level tables locally so the borrow checker allows &mut self
+        // calls to apply_filter within the same loop body.
+        let al = self.levels.al;
+        let ar = self.levels.ar;
+        let bl = self.levels.bl;
+        let br = self.levels.br;
+        let cl = self.levels.cl;
+        let cr = self.levels.cr;
+
+        for _ in 0..n_samples {
+            let mut lev_l = 0i32;
+            let mut lev_r = 0i32;
+
+            for c in 0..self.num_chips {
+                self.chips[c].synthesizer_logic_q();
+                self.chips[c].synthesizer_mixer_q(
+                    &al, &ar, &bl, &br, &cl, &cr,
+                    &mut lev_l, &mut lev_r,
+                );
+            }
+
+            // FIR low-pass filter (quality mode)
+            if self.cfg.is_filt {
+                lev_l = self.apply_filter(lev_l, true);
+                lev_r = self.apply_filter(lev_r, false);
+            }
+
+            self.output_buf.push(StereoSample {
+                left:  lev_l.clamp(-32768, 32767) as i16,
+                right: lev_r.clamp(-32768, 32767) as i16,
+            });
+        }
+    }
+
+    /// Drain up to `max` samples from the output buffer.
+    #[inline]
+    pub fn drain(&mut self, max: usize) -> Vec<StereoSample> {
+        let n = max.min(self.output_buf.len());
+        self.output_buf.drain(..n).collect()
+    }
+
+    // ─── FIR filter ──────────────────────────────────────────────────────────
+
+    /// Compute windowed-sinc FIR coefficients (Hanning window, cutoff ~0.45 Nyquist).
+    fn calc_fir_coefficients(&mut self) {
+        let m = self.cfg.filt_m;
+        self.filt_k.resize(m + 1, 0);
+        let fc = 0.45_f64;
+        for i in 0..=m {
+            let x = std::f64::consts::PI * (i as f64 - m as f64 / 2.0);
+            let sinc = if x == 0.0 { 1.0 } else { (2.0 * fc * x).sin() / x };
+            let window = 0.5 * (1.0 - (2.0 * std::f64::consts::PI * i as f64 / m as f64).cos());
+            self.filt_k[i] = (sinc * window * (1 << 24) as f64).round() as i32;
+        }
+    }
+
+    /// Apply the FIR filter to one sample value.
+    fn apply_filter(&mut self, lev: i32, is_left: bool) -> i32 {
+        let m = self.cfg.filt_m;
+        let x_buf = if is_left { &mut self.filt_x_l } else { &mut self.filt_x_r };
+        x_buf[self.filt_i] = lev;
+
+        let mut acc = 0i64;
+        let mut ki = self.filt_i;
+        for j in 0..=m {
+            acc += self.filt_k[j] as i64 * x_buf[ki] as i64;
+            if ki == 0 { ki = m } else { ki -= 1; }
+        }
+        if is_left {
+            self.filt_i = if self.filt_i == m { 0 } else { self.filt_i + 1 };
+        }
+        // Round and shift by 24
+        let rounded = if acc < 0 { acc + 0x00FF_FFFF } else { acc };
+        (rounded >> 24) as i32
+    }
+}

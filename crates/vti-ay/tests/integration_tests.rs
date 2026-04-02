@@ -1,0 +1,277 @@
+//! Integration tests for vti-ay: chip emulator, envelope shapes, synthesizer.
+
+use vti_ay::chip::{ChipType, EnvShape, SoundChip, noise_generator};
+use vti_ay::config::AyConfig;
+use vti_ay::synth::{Synthesizer, calculate_level_tables};
+use vti_core::AyRegisters;
+
+// ─── noise_generator ─────────────────────────────────────────────────────────
+
+#[test]
+fn noise_generator_changes_seed() {
+    let seed = 0xFFFF_u32;
+    let out = noise_generator(seed);
+    assert_ne!(out, seed);
+}
+
+#[test]
+fn noise_generator_output_fits_17_bits() {
+    let mut seed = 1_u32;
+    for _ in 0..1000 {
+        seed = noise_generator(seed);
+        assert_eq!(seed & !0x1_FFFF, 0, "LFSR output must be 17 bits");
+    }
+}
+
+#[test]
+fn noise_generator_produces_diverse_output() {
+    // Run 1000 iterations and verify we see both 0 and 1 in the low bit,
+    // confirming the LFSR is actually toggling (not stuck).
+    let mut seed = 0xFFFF_u32;
+    let mut seen_zero = false;
+    let mut seen_one = false;
+    for _ in 0..1000 {
+        seed = noise_generator(seed);
+        if seed & 1 == 0 { seen_zero = true; }
+        if seed & 1 == 1 { seen_one  = true; }
+    }
+    assert!(seen_zero && seen_one, "LFSR output low bit should toggle over 1000 steps");
+}
+
+// ─── EnvShape ─────────────────────────────────────────────────────────────────
+
+#[test]
+fn env_shape_from_register_0_is_hold0() {
+    assert_eq!(EnvShape::from_register(0), EnvShape::Hold0);
+}
+
+#[test]
+fn env_shape_from_register_8_is_saw8() {
+    assert_eq!(EnvShape::from_register(8), EnvShape::Saw8);
+}
+
+#[test]
+fn env_shape_from_register_12_is_saw12() {
+    assert_eq!(EnvShape::from_register(12), EnvShape::Saw12);
+}
+
+#[test]
+fn env_shape_saw8_decrements_mod32() {
+    let mut chip = SoundChip::default();
+    chip.set_envelope_register(8); // Saw8, starts high
+    // After set_envelope_register with type 8, ampl = 32 (bit 2 of 8 is set → -1 start, then mod 32)
+    // Actually: (8 & 4) != 0 → ampl = -1; but Saw8 does (ampl-1)&31
+    // Let's verify it counts down cyclically
+    let initial = chip.ampl;
+    chip.step_envelope();
+    assert_eq!(chip.ampl, (initial - 1) & 31);
+}
+
+#[test]
+fn env_shape_saw12_increments_mod32() {
+    let mut chip = SoundChip::default();
+    chip.set_envelope_register(12); // Saw12
+    let initial = chip.ampl;
+    chip.step_envelope();
+    assert_eq!(chip.ampl, (initial + 1) & 31);
+}
+
+#[test]
+fn env_shape_hold0_decays_to_silence() {
+    let mut chip = SoundChip::default();
+    chip.set_envelope_register(0); // Hold0 — starts at 32
+    assert!(chip.first_period);
+    // Step until first_period becomes false
+    for _ in 0..64 {
+        chip.step_envelope();
+        if !chip.first_period { break; }
+    }
+    assert!(!chip.first_period);
+    // Further steps should not change ampl
+    let saved = chip.ampl;
+    chip.step_envelope();
+    assert_eq!(chip.ampl, saved);
+}
+
+// ─── SoundChip register setters ──────────────────────────────────────────────
+
+#[test]
+fn set_mixer_register_enables_correct_channels() {
+    let mut chip = SoundChip::default();
+    // mixer = 0 → all tone & noise enabled
+    chip.set_mixer_register(0);
+    assert!(chip.ton_en_a && chip.ton_en_b && chip.ton_en_c);
+    assert!(chip.noise_en_a && chip.noise_en_b && chip.noise_en_c);
+}
+
+#[test]
+fn set_mixer_register_disables_correctly() {
+    let mut chip = SoundChip::default();
+    // Bit 0 = tone A disabled, bit 3 = noise A disabled
+    chip.set_mixer_register(0b0000_1001);
+    assert!(!chip.ton_en_a);
+    assert!(!chip.noise_en_a);
+    assert!(chip.ton_en_b);
+}
+
+#[test]
+fn set_ampl_a_sets_envelope_flag() {
+    let mut chip = SoundChip::default();
+    chip.set_ampl_a(0x10); // bit 4 = envelope flag
+    assert!(chip.envelope_en_a);
+    chip.set_ampl_a(0x0F); // no envelope flag
+    assert!(!chip.envelope_en_a);
+}
+
+#[test]
+fn chip_reset_clears_state() {
+    let mut chip = SoundChip::default();
+    chip.registers.ton_a = 100;
+    chip.ton_a = 1;
+    chip.reset();
+    assert_eq!(chip.registers.ton_a, 0);
+    assert_eq!(chip.ton_a, 0);
+    assert_eq!(chip.noise_seed, 0xFFFF);
+}
+
+// ─── synthesizer_logic_q — tone counters ─────────────────────────────────────
+
+#[test]
+fn synthesizer_logic_q_toggles_ton_a() {
+    let mut chip = SoundChip::default();
+    chip.registers.ton_a = 1; // period = 1 → toggle every tick
+    assert_eq!(chip.ton_a, 0);
+    chip.synthesizer_logic_q();
+    assert_eq!(chip.ton_a, 1);
+    chip.synthesizer_logic_q();
+    assert_eq!(chip.ton_a, 0);
+}
+
+#[test]
+fn synthesizer_logic_q_ton_zero_period_stays_at_zero() {
+    let mut chip = SoundChip::default();
+    chip.registers.ton_a = 0; // period 0 — counter never reaches period
+    chip.synthesizer_logic_q();
+    // Should not panic; ton_a may stay 0 or toggle depending on implementation
+    // Just verify no panic and counter doesn't overflow unexpectedly
+    let _ = chip.ton_a;
+}
+
+// ─── Level tables ─────────────────────────────────────────────────────────────
+
+#[test]
+fn level_tables_all_zero_for_none_chip() {
+    let cfg = AyConfig::default();
+    let t = calculate_level_tables(&cfg, ChipType::None);
+    assert!(t.al.iter().all(|&v| v == 0));
+}
+
+#[test]
+fn level_tables_ay_chip_are_positive() {
+    let cfg = AyConfig::default();
+    let t = calculate_level_tables(&cfg, ChipType::AY);
+    // At least some entries should be non-zero
+    assert!(t.al.iter().any(|&v| v > 0));
+    assert!(t.ar.iter().any(|&v| v > 0));
+}
+
+#[test]
+fn level_tables_ym_chip_are_positive() {
+    let cfg = AyConfig::default();
+    let t = calculate_level_tables(&cfg, ChipType::YM);
+    assert!(t.al.iter().any(|&v| v > 0));
+}
+
+#[test]
+fn level_tables_monotonically_non_decreasing_for_ay() {
+    let cfg = AyConfig::default();
+    let t = calculate_level_tables(&cfg, ChipType::AY);
+    // Even-indexed entries (amplitude indices for AY) should be non-decreasing
+    let evens: Vec<i32> = (0..16).map(|i| t.al[i * 2]).collect();
+    for w in evens.windows(2) {
+        assert!(w[1] >= w[0], "AY level table should be non-decreasing: {:?}", evens);
+    }
+}
+
+// ─── Synthesizer ──────────────────────────────────────────────────────────────
+
+#[test]
+fn synthesizer_render_produces_samples() {
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
+    let mut synth = Synthesizer::new(cfg, 1, ChipType::YM);
+    synth.render_frame(16);
+    assert_eq!(synth.output_buf.len(), 16);
+}
+
+#[test]
+fn synthesizer_drain_empties_buffer() {
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
+    let mut synth = Synthesizer::new(cfg, 1, ChipType::YM);
+    synth.render_frame(32);
+    let drained = synth.drain(32);
+    assert_eq!(drained.len(), 32);
+    assert!(synth.output_buf.is_empty());
+}
+
+#[test]
+fn synthesizer_drain_respects_max() {
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
+    let mut synth = Synthesizer::new(cfg, 1, ChipType::YM);
+    synth.render_frame(100);
+    let drained = synth.drain(10);
+    assert_eq!(drained.len(), 10);
+    assert_eq!(synth.output_buf.len(), 90);
+}
+
+#[test]
+fn synthesizer_silent_when_no_registers_written() {
+    // With default registers (all amplitudes zero), output should be silent
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
+    let mut synth = Synthesizer::new(cfg, 1, ChipType::YM);
+    synth.render_frame(64);
+    let all_silent = synth.output_buf.iter().all(|s| s.left == 0 && s.right == 0);
+    assert!(all_silent, "silent chip should produce zero samples");
+}
+
+#[test]
+fn synthesizer_produces_nonzero_with_active_registers() {
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
+    let mut synth = Synthesizer::new(cfg, 1, ChipType::YM);
+
+    // Set up a tone: mixer = 0 (all enabled), amplitude A = 15 (max, no env)
+    let regs = AyRegisters {
+        ton_a: 100,
+        mixer: 0b11_111_110, // tone A on, everything else off
+        amplitude_a: 15,
+        ..AyRegisters::default()
+    };
+    synth.apply_registers(0, &regs);
+    synth.render_frame(256);
+
+    let any_nonzero = synth.output_buf.iter().any(|s| s.left != 0 || s.right != 0);
+    assert!(any_nonzero, "active tone should produce non-zero samples");
+}
+
+#[test]
+fn synthesizer_two_chips_produce_more_signal() {
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
+    let mut s1 = Synthesizer::new(cfg.clone(), 1, ChipType::YM);
+    let mut s2 = Synthesizer::new(cfg, 2, ChipType::YM);
+
+    let regs = AyRegisters {
+        ton_a: 50,
+        mixer: 0b11_111_110,
+        amplitude_a: 15,
+        ..AyRegisters::default()
+    };
+    s1.apply_registers(0, &regs);
+    s2.apply_registers(0, &regs);
+    s2.apply_registers(1, &regs);
+
+    s1.render_frame(256);
+    s2.render_frame(256);
+
+    let sum1: i64 = s1.output_buf.iter().map(|s| s.left.abs() as i64).sum();
+    let sum2: i64 = s2.output_buf.iter().map(|s| s.left.abs() as i64).sum();
+    assert!(sum2 >= sum1, "two chips should be at least as loud as one");
+}

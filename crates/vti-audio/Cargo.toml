@@ -1,0 +1,12 @@
+[package]
+name = "vti-audio"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+log.workspace = true
+vti-core.workspace = true
+vti-ay.workspace = true
+cpal = "0.15"
