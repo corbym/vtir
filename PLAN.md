@@ -499,6 +499,7 @@ truth as committed JSON fixtures and asserts that the Rust code matches them.
 | `crates/vti-core/tests/fixtures/pascal-baselines/note_tables.json` | `vti-core` | All 5 note tables, 96 entries each |
 | `crates/vti-core/tests/fixtures/pascal-baselines/pattern_play_basic.json` | `vti-core` | 20 ticks of pure-tone 4-row pattern |
 | `crates/vti-core/tests/fixtures/pascal-baselines/pattern_play_envelope.json` | `vti-core` | Same pattern + AY envelope type 8 |
+| `crates/vti-core/tests/fixtures/pascal-baselines/pattern_play_arpeggio.json` | `vti-core` | 54 ticks: 3-ch arpeggio + noise drum (ornament stepping, noise mixer path) |
 
 ### 9.3 Rust tests (`tests/pascal_baseline_tests.rs` in each crate)
 
@@ -509,6 +510,7 @@ truth as committed JSON fixtures and asserts that the Rust code matches them.
 - [x] `vti-core::note_tables_match_pascal_baseline` — passing
 - [x] `vti-core::pattern_play_basic_matches_pascal_baseline` — passing
 - [x] `vti-core::pattern_play_envelope_matches_pascal_baseline` — **currently FAILING** (exposes missing `env_base` write from pattern row: Rust gives `envelope=0`, Pascal gives `2048`)
+- [x] `vti-core::pattern_play_arpeggio_matches_pascal_baseline` — passing (covers ornament stepping and noise mixer path)
 
 ### 9.4 Known bugs exposed by baselines
 

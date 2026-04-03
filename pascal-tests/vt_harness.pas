@@ -1039,6 +1039,164 @@ begin
   VTM := nil;
 end;
 
+procedure FreeArpeggioModule;
+var i: Integer;
+begin
+  if VTM = nil then Exit;
+  for i := 1 to 3 do
+    if VTM^.Samples[i] <> nil then Dispose(VTM^.Samples[i]);
+  for i := 0 to 2 do
+    if VTM^.Ornaments[i] <> nil then Dispose(VTM^.Ornaments[i]);
+  if VTM^.Patterns[0] <> nil then Dispose(VTM^.Patterns[0]);
+  Dispose(VTM);
+  VTM := nil;
+end;
+
+{ ─── Module builder: 3-channel arpeggio + noise drum ─────────────────────────
+  Mirrors make_arpeggio_module() in the Rust test suite.
+
+  Samples:
+    1 – lead tone  (mixer_ton=True, mixer_noise=False, amplitude=14, loop on tick 0)
+    2 – bass tone  (mixer_ton=True, mixer_noise=False, amplitude=10, loop on tick 0)
+    3 – noise drum (mixer_ton=False, mixer_noise=True, amplitude decays 15→0,
+                    add_to_envelope_or_noise=12 sets noise period, loops on tick 7)
+  Ornaments:
+    0 – default (zero offset, length=1)
+    1 – major arpeggio: [0, +4, +7], length=3, loop=0
+    2 – minor arpeggio: [0, +3, +7], length=3, loop=0
+  Pattern 0 (16 rows):
+    Row  0: Ch A C-5 s1 o1 v15, Ch B C-3 s2 o1 v12, Ch C note-0 s3 o0 v15 (drum)
+    Row  4: Ch A G-4 s1 o1 v15, Ch B G-3 s2 o1 v12
+    Row  8: Ch A A-4 s1 o2 v15, Ch B A-3 s2 o2 v12, Ch C note-0 s3 o0 v15 (drum)
+    Row 12: Ch A F-4 s1 o1 v15, Ch B F-3 s2 o1 v12
+}
+procedure BuildArpeggioModule;
+var
+  i, ch: Integer;
+  DrumAmps: array[0..7] of Byte = (15,13,11,9,7,5,2,0);
+begin
+  New(VTM);
+  FillChar(VTM^, SizeOf(TModule), 0);
+
+  VTM^.Ton_Table           := 0;
+  VTM^.Initial_Delay       := 3;
+  VTM^.FeaturesLevel       := 1;
+  VTM^.VortexModule_Header := True;
+
+  VTM^.Positions.Length    := 1;
+  VTM^.Positions.Loop      := 0;
+  VTM^.Positions.Value[0]  := 0;
+
+  for ch := 0 to 2 do
+  begin
+    VTM^.IsChans[ch].Global_Ton      := True;
+    VTM^.IsChans[ch].Global_Noise    := True;
+    VTM^.IsChans[ch].Global_Envelope := True;
+    VTM^.IsChans[ch].EnvelopeEnabled := False;
+    VTM^.IsChans[ch].Ornament        := 0;
+    VTM^.IsChans[ch].Sample          := 1;
+    VTM^.IsChans[ch].Volume          := 15;
+  end;
+
+  { ── Ornament 0: single step, zero offset ── }
+  New(VTM^.Ornaments[0]);
+  FillChar(VTM^.Ornaments[0]^, SizeOf(TOrnament), 0);
+  VTM^.Ornaments[0]^.Length := 1;
+  VTM^.Ornaments[0]^.Loop   := 0;
+
+  { ── Ornament 1: major arpeggio [0, +4, +7] ── }
+  New(VTM^.Ornaments[1]);
+  FillChar(VTM^.Ornaments[1]^, SizeOf(TOrnament), 0);
+  VTM^.Ornaments[1]^.Length   := 3;
+  VTM^.Ornaments[1]^.Loop     := 0;
+  VTM^.Ornaments[1]^.Items[0] := 0;
+  VTM^.Ornaments[1]^.Items[1] := 4;
+  VTM^.Ornaments[1]^.Items[2] := 7;
+
+  { ── Ornament 2: minor arpeggio [0, +3, +7] ── }
+  New(VTM^.Ornaments[2]);
+  FillChar(VTM^.Ornaments[2]^, SizeOf(TOrnament), 0);
+  VTM^.Ornaments[2]^.Length   := 3;
+  VTM^.Ornaments[2]^.Loop     := 0;
+  VTM^.Ornaments[2]^.Items[0] := 0;
+  VTM^.Ornaments[2]^.Items[1] := 3;
+  VTM^.Ornaments[2]^.Items[2] := 7;
+
+  { ── Sample 1: lead tone (length=1, loop=0, amplitude=14, tone on) ── }
+  New(VTM^.Samples[1]);
+  FillChar(VTM^.Samples[1]^, SizeOf(TSample), 0);
+  VTM^.Samples[1]^.Length  := 1;
+  VTM^.Samples[1]^.Loop    := 0;
+  VTM^.Samples[1]^.Enabled := True;
+  VTM^.Samples[1]^.Items[0].Amplitude  := 14;
+  VTM^.Samples[1]^.Items[0].Mixer_Ton  := True;   { tone NOT muted }
+  VTM^.Samples[1]^.Items[0].Mixer_Noise := False; { noise muted }
+
+  { ── Sample 2: bass tone (length=1, loop=0, amplitude=10, tone on) ── }
+  New(VTM^.Samples[2]);
+  FillChar(VTM^.Samples[2]^, SizeOf(TSample), 0);
+  VTM^.Samples[2]^.Length  := 1;
+  VTM^.Samples[2]^.Loop    := 0;
+  VTM^.Samples[2]^.Enabled := True;
+  VTM^.Samples[2]^.Items[0].Amplitude  := 10;
+  VTM^.Samples[2]^.Items[0].Mixer_Ton  := True;
+  VTM^.Samples[2]^.Items[0].Mixer_Noise := False;
+
+  { ── Sample 3: noise drum (length=8, loop=7, decaying amplitude) ── }
+  New(VTM^.Samples[3]);
+  FillChar(VTM^.Samples[3]^, SizeOf(TSample), 0);
+  VTM^.Samples[3]^.Length  := 8;
+  VTM^.Samples[3]^.Loop    := 7;
+  VTM^.Samples[3]^.Enabled := True;
+  for i := 0 to 7 do
+  begin
+    VTM^.Samples[3]^.Items[i].Amplitude               := DrumAmps[i];
+    VTM^.Samples[3]^.Items[i].Mixer_Ton               := False; { tone muted }
+    VTM^.Samples[3]^.Items[i].Mixer_Noise             := True;  { noise NOT muted }
+    VTM^.Samples[3]^.Items[i].Add_to_Envelope_or_Noise := 12;  { noise period }
+  end;
+
+  { ── Pattern 0: 16 rows ── }
+  New(VTM^.Patterns[0]);
+  FillChar(VTM^.Patterns[0]^, SizeOf(TPattern), 0);
+  VTM^.Patterns[0]^.Length := 16;
+
+  { Rows default to note=-1 (no note) }
+  for i := 0 to 15 do
+    for ch := 0 to 2 do
+      VTM^.Patterns[0]^.Items[i].Channel[ch].Note := -1;
+
+  { Row 0: C major (I) — C-5 / C-3 + drum }
+  with VTM^.Patterns[0]^.Items[0] do
+  begin
+    Channel[0].Note := 48; Channel[0].Sample := 1; Channel[0].Ornament := 1; Channel[0].Volume := 15;
+    Channel[1].Note := 24; Channel[1].Sample := 2; Channel[1].Ornament := 1; Channel[1].Volume := 12;
+    Channel[2].Note :=  0; Channel[2].Sample := 3; Channel[2].Ornament := 0; Channel[2].Volume := 15;
+  end;
+
+  { Row 4: G major (V) — G-4 / G-3 }
+  with VTM^.Patterns[0]^.Items[4] do
+  begin
+    Channel[0].Note := 43; Channel[0].Sample := 1; Channel[0].Ornament := 1; Channel[0].Volume := 15;
+    Channel[1].Note := 31; Channel[1].Sample := 2; Channel[1].Ornament := 1; Channel[1].Volume := 12;
+  end;
+
+  { Row 8: A minor (vi) — A-4 / A-3 + drum }
+  with VTM^.Patterns[0]^.Items[8] do
+  begin
+    Channel[0].Note := 45; Channel[0].Sample := 1; Channel[0].Ornament := 2; Channel[0].Volume := 15;
+    Channel[1].Note := 33; Channel[1].Sample := 2; Channel[1].Ornament := 2; Channel[1].Volume := 12;
+    Channel[2].Note :=  0; Channel[2].Sample := 3; Channel[2].Ornament := 0; Channel[2].Volume := 15;
+  end;
+
+  { Row 12: F major (IV) — F-4 / F-3 }
+  with VTM^.Patterns[0]^.Items[12] do
+  begin
+    Channel[0].Note := 41; Channel[0].Sample := 1; Channel[0].Ornament := 1; Channel[0].Volume := 15;
+    Channel[1].Note := 29; Channel[1].Sample := 2; Channel[1].Ornament := 1; Channel[1].Volume := 12;
+  end;
+end;
+
 { ═══════════════════════════════════════════════════════════════════════════
   Test: LFSR 200 steps
   ═══════════════════════════════════════════════════════════════════════════ }
@@ -1207,6 +1365,52 @@ begin
 end;
 
 { ═══════════════════════════════════════════════════════════════════════════
+  Test: Pattern_PlayCurrentLine — 16-row arpeggio+drum, delay=3, 54 ticks
+  (covers 1 complete 16-row pass: 16 rows × 3 ticks + 6 extra = 54)
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+procedure RunPatternArpeggio;
+const
+  NumTicks = 54;
+var
+  tick, res: Integer;
+begin
+  BuildArpeggioModule;
+
+  CurChip := 1;
+  PlVars[CurChip] := Default(TPlVars);
+  PlVars[CurChip].Delay          := VTM^.Initial_Delay;
+  PlVars[CurChip].CurrentPattern := VTM^.Positions.Value[0];
+  PlVars[CurChip].CurrentLine    := 0;
+
+  InitTrackerParameters(True);
+
+  WriteLn('{');
+  WriteLn('  "generator": "vt_pascal_harness",');
+  WriteLn('  "test": "pattern_arpeggio",');
+  WriteLn('  "delay": ', VTM^.Initial_Delay, ',');
+  WriteLn('  "ticks": [');
+
+  for tick := 0 to NumTicks - 1 do
+  begin
+    res := Pattern_PlayCurrentLine;
+    Write('    {"tick":', tick,
+          ',"result":', res,
+          ',"current_line":', PlVars[CurChip].CurrentLine,
+          ',"delay_counter":', PlVars[CurChip].DelayCounter,
+          ',"regs":');
+    WriteRegs;
+    Write('}');
+    if tick < NumTicks - 1 then WriteLn(',') else WriteLn;
+  end;
+
+  WriteLn('  ]');
+  WriteLn('}');
+
+  FreeArpeggioModule;
+end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
   Main
   ═══════════════════════════════════════════════════════════════════════════ }
 
@@ -1217,7 +1421,7 @@ begin
   begin
     WriteLn(StdErr, 'Usage: vt_harness <test>');
     WriteLn(StdErr, 'Tests: noise_lfsr | envelopes | pt3_vol | note_tables |');
-    WriteLn(StdErr, '       pattern_basic | pattern_envelope');
+    WriteLn(StdErr, '       pattern_basic | pattern_envelope | pattern_arpeggio');
     Halt(1);
   end;
 
@@ -1229,6 +1433,7 @@ begin
   else if Cmd = 'note_tables'       then RunNoteTables
   else if Cmd = 'pattern_basic'     then RunPatternPlay(False, 'pattern_basic')
   else if Cmd = 'pattern_envelope'  then RunPatternPlay(True,  'pattern_envelope')
+  else if Cmd = 'pattern_arpeggio'  then RunPatternArpeggio
   else
   begin
     WriteLn(StdErr, 'Unknown test: ', Cmd);
