@@ -97,10 +97,11 @@ impl VortexTrackerApp {
         play_vars.delay = modules[0].initial_delay as i8;
         play_vars.current_pattern = modules[0].positions.value[0] as i32;
 
-        let audio = match AudioPlayer::start(44100) {
-            Ok(p)  => { log::info!("audio player started"); Some(p) }
-            Err(e) => { log::warn!("audio unavailable: {e}"); None }
-        };
+        // The AudioPlayer is opened lazily — when the user first presses Play.
+        // On WASM this is required by the browser autoplay policy (AudioContext
+        // must be created inside a user-gesture handler).  On native platforms
+        // there is no such restriction, but lazy init works equally well there.
+        let audio = None;
 
         Self {
             modules,
@@ -127,6 +128,15 @@ impl VortexTrackerApp {
 
     fn active_module_mut(&mut self) -> &mut Module {
         &mut self.modules[self.active_module]
+    }
+
+    /// Try to open the audio output device and return an `AudioPlayer`.
+    /// Logs a warning and returns `None` if the device is unavailable.
+    fn try_open_audio() -> Option<AudioPlayer> {
+        match AudioPlayer::start(44100) {
+            Ok(p)  => { log::info!("audio player started"); Some(p) }
+            Err(e) => { log::warn!("audio unavailable: {e}"); None }
+        }
     }
 
     /// Re-initialise playback state so the next Play starts from the beginning.
@@ -236,6 +246,11 @@ impl eframe::App for VortexTrackerApp {
             if !was_playing && self.is_playing {
                 self.reset_playback();
                 self.last_tick_time = 0.0;
+                // Open the audio device on first Play press (satisfies the browser
+                // autoplay policy on WASM; harmless no-op on subsequent presses).
+                if self.audio.is_none() {
+                    self.audio = Self::try_open_audio();
+                }
                 let audio_status = if self.audio.is_some() { "Playing" } else { "Playing (no audio device)" };
                 self.status = audio_status.to_string();
             }
