@@ -1,0 +1,14 @@
+# Rust build output
+/target/
+/dist/
+
+# Editor artefacts
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS metadata
+.DS_Store
+Thumbs.db

@@ -3,6 +3,8 @@
 > **A music editor and player for the AY-3-8910 / YM2149F sound chips,**  
 > originally used in the ZX Spectrum home computer.
 
+🌐 **[Live web demo →](https://corbym.github.io/vtir/)**
+
 ---
 
 ## 🙏 Original Author
@@ -114,6 +116,27 @@ cargo test -p vti-core -p vti-ay -p vti-audio
 # Device-dependent audio tests (requires a real output device)
 cargo test -p vti-audio -- --ignored
 ```
+
+### Running in the browser (WASM)
+
+A live build is automatically deployed to **[https://corbym.github.io/vtir/](https://corbym.github.io/vtir/)** on every push to `main`.
+
+To build and serve the web version locally, install [trunk](https://trunkrs.dev/) and the WASM target:
+
+```sh
+rustup target add wasm32-unknown-unknown
+cargo install trunk
+
+# Serve with hot-reload at http://localhost:8080
+trunk serve
+
+# Or produce a release build in dist/
+trunk build --release
+```
+
+> **Note:** Audio uses the browser's Web Audio API via `cpal`'s webaudio backend.
+> A short test tone is pre-loaded on row 0 of pattern 0 — click **▶ Play** to verify
+> audio is working. You can then add your own notes in the pattern editor and play them back.
 
 ---
 

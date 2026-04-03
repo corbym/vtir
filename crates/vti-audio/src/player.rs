@@ -97,12 +97,12 @@ impl AudioPlayer {
         let stream = device
             .build_output_stream(
                 &config,
-                move |output: &mut [i16], _| {
+                move |output: &mut [f32], _| {
                     let mut ring = buf_cb.lock().unwrap();
                     for frame in output.chunks_exact_mut(2) {
                         let s = ring.pop().unwrap_or(StereoSample::default());
-                        frame[0] = s.left;
-                        frame[1] = s.right;
+                        frame[0] = s.left  as f32 / 32768.0;
+                        frame[1] = s.right as f32 / 32768.0;
                     }
                 },
                 |err| log::error!("audio stream error: {err}"),
