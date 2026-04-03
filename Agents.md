@@ -27,7 +27,7 @@ Keep this separation of concerns. New behaviour belongs in the most appropriate 
 This project is a **port**, not a rewrite. The goal is to replicate the behaviour of the original Delphi/Pascal code as closely as possible, not to redesign it.
 
 - **Timing is critical.** The original tracker advances state on a per-frame basis tied to the AY chip's interrupt rate (typically 50 Hz on ZX Spectrum hardware). Any logic that counts frames, advances delay counters, or sequences sample/ornament ticks must replicate the original cadence exactly. Off-by-one errors in timing will cause audibly wrong playback.
-- **Refer to the original source.** The Pascal files (`trfuncs.pas`, `AY.pas`, etc.) are preserved in the repository root. When porting a routine, read the original implementation first and translate it statement-by-statement before refactoring. Do not guess at intended behaviour.
+- **Refer to the original source.** The Pascal files (`trfuncs.pas`, `AY.pas`, etc.) are preserved in the `legacy/` directory at the project root. When porting a routine, read the original implementation first and translate it statement-by-statement before refactoring. Do not guess at intended behaviour.
 - **Preserve numeric precision.** The original code uses specific integer widths and wrapping arithmetic. Match these precisely — do not silently widen types or change arithmetic order unless you have verified equivalence with tests.
 - **Do not "improve" algorithms during porting.** Port faithfully first; optimise or clean up only after tests confirm the output is bit-identical to the original.
 - **Use the original as the specification.** If the Rust behaviour diverges from the Pascal behaviour in any observable way (register values, timing, envelope shape, noise pattern), treat the Pascal as correct.
@@ -109,7 +109,7 @@ The Pascal source is the ground truth. The only way to confirm a Rust port is co
 
 Add a Pascal baseline fixture whenever you:
 
-- Port a **new** function from `trfuncs.pas` or `AY.pas` to Rust, **or**
+- Port a **new** function from `legacy/trfuncs.pas` or `legacy/AY.pas` to Rust, **or**
 - Change an **existing** Rust function whose behaviour is derived from Pascal, **or**
 - Fix a bug in a ported function and need to verify the fix matches Pascal exactly.
 
@@ -119,12 +119,12 @@ The following categories of Pascal code require baselines (highest priority firs
 
 | Category | Pascal source | Why |
 |----------|--------------|-----|
-| **Playback engine** | `Pattern_PlayCurrentLine`, `Pattern_PlayOnlyCurrentLine` | AY register values per tick; any off-by-one is audible |
-| **Chip clock / synthesiser logic** | `TSoundChip.Synthesizer_Logic_Q`, `Synthesizer_Logic_P` | Tone/noise/envelope counter progression drives PCM output |
-| **Level table calculation** | `Calculate_Level_Tables` (AY.pas) | Two-step rounding (scale then volume) produces different integers if collapsed; wrong tables → wrong PCM amplitude |
-| **Song timing** | `GetModuleTime`, `GetPositionTime`, `GetPositionTimeEx`, `GetTimeParams` | Used for seek/scrub; off-by-one causes wrong seek target |
-| **Reverse note lookup** | `GetNoteByEnvelope2`, `GetNoteByEnvelope` | Floating-point rounding; used in envelope editor |
-| **Format parsers** (when ported) | `PT32VTM`, `STC2VTM`, `SQT2VTM`, … | Binary → Module round-trip; wrong field decode is silent |
+| **Playback engine** | `legacy/trfuncs.pas` → `Pattern_PlayCurrentLine`, `Pattern_PlayOnlyCurrentLine` | AY register values per tick; any off-by-one is audible |
+| **Chip clock / synthesiser logic** | `legacy/AY.pas` → `TSoundChip.Synthesizer_Logic_Q`, `Synthesizer_Logic_P` | Tone/noise/envelope counter progression drives PCM output |
+| **Level table calculation** | `legacy/AY.pas` → `Calculate_Level_Tables` | Two-step rounding (scale then volume) produces different integers if collapsed; wrong tables → wrong PCM amplitude |
+| **Song timing** | `legacy/trfuncs.pas` → `GetModuleTime`, `GetPositionTime`, `GetPositionTimeEx`, `GetTimeParams` | Used for seek/scrub; off-by-one causes wrong seek target |
+| **Reverse note lookup** | `legacy/trfuncs.pas` → `GetNoteByEnvelope2`, `GetNoteByEnvelope` | Floating-point rounding; used in envelope editor |
+| **Format parsers** (when ported) | `legacy/trfuncs.pas` → `PT32VTM`, `STC2VTM`, `SQT2VTM`, … | Binary → Module round-trip; wrong field decode is silent |
 
 > Functions already covered: `NoiseGenerator`, all 8 envelope shapes, `PT3_Vol` table, all 5 note tables, `Pattern_PlayCurrentLine` (basic and envelope variants). See `PLAN.md §9` for the full status table.
 
