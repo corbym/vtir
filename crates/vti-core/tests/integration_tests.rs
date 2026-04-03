@@ -609,3 +609,182 @@ fn arpeggio_channels_a_and_b_are_active_after_row0() {
     assert_eq!(regs.mixer & 0x01, 0, "tone must be ON for channel A (bit 0 = 0)");
     assert_eq!(regs.mixer & 0x02, 0, "tone must be ON for channel B (bit 1 = 0)");
 }
+
+// ─── playback cursor tracking ────────────────────────────────────────────────
+// These tests verify that PlayVars.{current_line, current_pattern, current_position}
+// track the playhead faithfully.  `app.rs` reads those fields to build the
+// `play_pos: Option<(i32, usize)>` that is passed to PatternEditor::show(), so
+// if the engine updates them correctly the UI will follow.
+
+/// After N ticks at delay=1, `current_line` must equal N (pattern is advancing
+/// one row per tick until pattern end).
+#[test]
+fn current_line_advances_one_per_tick_at_delay_1() {
+    let mut m = make_module_with_pattern();   // 4-row pattern
+    let mut vars = PlayVars {
+        current_pattern: 0,
+        current_line: 0,
+        delay: 1,
+        delay_counter: 1,
+        ..PlayVars::default()
+    };
+    init_tracker_parameters(&mut m, &mut vars, true);
+    vars.delay = 1;
+    vars.delay_counter = 1;
+
+    let mut regs = vti_core::AyRegisters::default();
+
+    for expected_line in 1..=3 {
+        {
+            let mut engine = Engine { module: &mut m, vars: &mut vars };
+            engine.pattern_play_current_line(&mut regs);
+        }
+        assert_eq!(vars.current_line, expected_line,
+            "current_line should be {expected_line} after {expected_line} ticks");
+    }
+}
+
+/// `current_line` must reset to 0 when a new position is started in a
+/// multi-position module, so the pattern editor always shows the correct row.
+#[test]
+fn current_line_resets_to_zero_on_pattern_change() {
+    // Build a two-position module (pos 0 → pattern 0, pos 1 → pattern 1).
+    let mut m = Module::default();
+    m.initial_delay = 1;
+
+    // Pattern 0 – 2-row pattern
+    let mut pat0 = Pattern::default();
+    pat0.length = 2;
+    pat0.items[0].channel[0] = ChannelLine { note: 48, sample: 1, ornament: 0, volume: 15, ..ChannelLine::default() };
+    m.patterns[0] = Some(Box::new(pat0));
+
+    // Pattern 1 – 2-row pattern
+    let mut pat1 = Pattern::default();
+    pat1.length = 2;
+    pat1.items[0].channel[0] = ChannelLine { note: 36, sample: 1, ornament: 0, volume: 15, ..ChannelLine::default() };
+    m.patterns[1] = Some(Box::new(pat1));
+
+    // A one-note sample so the engine produces something
+    let mut s = Sample::default();
+    s.length = 1;
+    s.loop_pos = 0;
+    s.items[0] = SampleTick { amplitude: 10, mixer_ton: true, ..SampleTick::default() };
+    m.samples[1] = Some(Box::new(s));
+
+    m.positions.length = 2;
+    m.positions.value[0] = 0;
+    m.positions.value[1] = 1;
+    m.positions.loop_pos = 0;
+
+    let mut vars = PlayVars {
+        current_pattern: 0,
+        current_line: 0,
+        delay: 1,
+        delay_counter: 1,
+        ..PlayVars::default()
+    };
+    init_tracker_parameters(&mut m, &mut vars, true);
+    vars.delay = 1;
+    vars.delay_counter = 1;
+
+    let mut regs = vti_core::AyRegisters::default();
+
+    // Drain pattern 0 (2 rows + 1 extra to trigger PatternEnd → advance position)
+    let mut changed_pattern = false;
+    for _ in 0..10 {
+        let old_pat = vars.current_pattern;
+        {
+            let mut engine = Engine { module: &mut m, vars: &mut vars };
+            engine.module_play_current_line(&mut regs);
+        }
+        if vars.current_pattern != old_pat {
+            // Pattern changed — line must be 0 (we are at the first row of the new pattern)
+            assert_eq!(vars.current_line, 0,
+                "current_line must reset to 0 when pattern changes; got {}", vars.current_line);
+            changed_pattern = true;
+            break;
+        }
+    }
+    assert!(changed_pattern, "engine should have advanced to pattern 1 within 10 ticks");
+}
+
+/// `current_position` must increment as the module advances through positions.
+#[test]
+fn current_position_advances_through_positions() {
+    // Two-position module (same as above).
+    let mut m = Module::default();
+    m.initial_delay = 1;
+
+    let mut pat = Pattern::default();
+    pat.length = 2;
+    m.patterns[0] = Some(Box::new(pat.clone()));
+    m.patterns[1] = Some(Box::new(pat));
+
+    m.positions.length = 2;
+    m.positions.value[0] = 0;
+    m.positions.value[1] = 1;
+    m.positions.loop_pos = 0;
+
+    let mut vars = PlayVars {
+        current_pattern: 0,
+        current_line: 0,
+        delay: 1,
+        delay_counter: 1,
+        ..PlayVars::default()
+    };
+    init_tracker_parameters(&mut m, &mut vars, true);
+    vars.delay = 1;
+    vars.delay_counter = 1;
+
+    let mut regs = vti_core::AyRegisters::default();
+
+    // Keep ticking until position advances to 1
+    let mut saw_position_1 = false;
+    for _ in 0..15 {
+        {
+            let mut engine = Engine { module: &mut m, vars: &mut vars };
+            engine.module_play_current_line(&mut regs);
+        }
+        if vars.current_position == 1 {
+            saw_position_1 = true;
+            break;
+        }
+    }
+    assert!(saw_position_1, "current_position should advance to 1 after the first pattern ends");
+}
+
+/// After a full module loop the pattern and line pointers must return to the
+/// loop start — exactly what the UI needs to show when the module wraps.
+#[test]
+fn current_line_and_pattern_reset_on_module_loop() {
+    let mut m = make_arpeggio_module(); // 1 position, 16-row pattern, loop_pos=0
+    let mut vars = PlayVars {
+        current_pattern: 0,
+        current_line: 0,
+        delay: 1,
+        delay_counter: 1,
+        ..PlayVars::default()
+    };
+    init_tracker_parameters(&mut m, &mut vars, true);
+    vars.delay = 1;
+    vars.delay_counter = 1;
+
+    let mut regs = vti_core::AyRegisters::default();
+    let mut looped = false;
+
+    for _ in 0..40 {
+        let result = {
+            let mut engine = Engine { module: &mut m, vars: &mut vars };
+            engine.module_play_current_line(&mut regs)
+        };
+        if result == PlayResult::ModuleLoop {
+            looped = true;
+            break;
+        }
+    }
+
+    assert!(looped, "module must loop");
+    // After looping, position is at loop_pos (0) and line is at the first row
+    assert_eq!(vars.current_position, 0, "position must be at loop_pos=0 after module loop");
+    assert_eq!(vars.current_pattern, 0, "pattern must be 0 after module loop");
+}
