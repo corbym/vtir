@@ -9,6 +9,9 @@ use vti_core::playback::{Engine, PlayVars, init_tracker_parameters, PlayResult};
 use vti_audio::AudioPlayer;
 use vti_core::formats;
 
+#[cfg(target_arch = "wasm32")]
+use crate::wasm_file;
+
 use crate::ui::{PatternEditor, SampleEditor, OrnamentEditor, Toolbar};
 
 /// Top-level application state.
@@ -289,7 +292,13 @@ impl VortexTrackerApp {
 
     #[cfg(target_arch = "wasm32")]
     fn open_file_dialog(&mut self) {
-        self.status = "File open not yet supported on WASM — see PLAN.md §8".to_string();
+        if !wasm_file::open_picker_supported() {
+            self.status =
+                "File open: File System Access API not supported in this browser".to_string();
+            return;
+        }
+        self.status = "Opening file…".to_string();
+        wasm_file::spawn_open_file();
     }
 
     /// Open a save-file dialog and write the current module as a VTM text file.
@@ -321,7 +330,14 @@ impl VortexTrackerApp {
 
     #[cfg(target_arch = "wasm32")]
     fn save_vtm_dialog(&mut self) {
-        self.status = "File save not yet supported on WASM — see PLAN.md §8".to_string();
+        if !wasm_file::save_picker_supported() {
+            self.status =
+                "File save: File System Access API not supported in this browser".to_string();
+            return;
+        }
+        let text = formats::save_vtm(&self.modules[self.active_module]);
+        self.status = "Saving…".to_string();
+        wasm_file::spawn_save_file("module.vtm".to_string(), text.into_bytes());
     }
 
     /// Re-initialise playback state so the next Play starts from the beginning.
@@ -334,6 +350,36 @@ impl VortexTrackerApp {
             } else {
                 0
             };
+    }
+
+    /// Drain any pending WASM file-operation results and apply them to app state.
+    ///
+    /// Called once per frame (at the top of `update`) on WASM targets.
+    /// Results are produced by [`wasm_file::spawn_open_file`] /
+    /// [`wasm_file::spawn_save_file`] running asynchronously in the background.
+    #[cfg(target_arch = "wasm32")]
+    fn poll_wasm_file_ops(&mut self) {
+        if let Some(pf) = wasm_file::take_pending_open() {
+            match formats::load(&pf.bytes, &pf.name) {
+                Ok(module) => {
+                    self.is_playing = false;
+                    self.modules = vec![module];
+                    self.active_module = 0;
+                    self.reset_playback();
+                    self.status = format!("Loaded: {}", pf.name);
+                }
+                Err(e) => {
+                    self.status = format!("Parse error: {e}");
+                }
+            }
+        }
+
+        if let Some(result) = wasm_file::take_pending_save_status() {
+            self.status = match result {
+                Ok(msg) => msg,
+                Err(msg) => msg,
+            };
+        }
     }
 
     /// Render one 50 Hz tracker tick: advance the engine, synthesise samples, push to audio.
@@ -370,6 +416,10 @@ impl VortexTrackerApp {
 
 impl eframe::App for VortexTrackerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // ── Drain pending WASM file operations ────────────────────────────
+        #[cfg(target_arch = "wasm32")]
+        self.poll_wasm_file_ops();
+
         // ── Audio tick driver ──────────────────────────────────────────────
         // Tick the tracker engine at ~50 Hz whenever playback is active.
         const TICK_INTERVAL: f64 = 1.0 / 50.0;

@@ -3926,6 +3926,7 @@ dependencies = [
  "egui",
  "egui_extras",
  "env_logger",
+ "js-sys",
  "log",
  "rfd",
  "serde",
@@ -3933,6 +3934,7 @@ dependencies = [
  "vti-audio",
  "vti-ay",
  "vti-core",
+ "wasm-bindgen",
  "wasm-bindgen-futures",
 ]
 
