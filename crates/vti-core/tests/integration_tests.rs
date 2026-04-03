@@ -330,3 +330,282 @@ fn sound_off_note_disables_channel() {
     // After sound-off, channel 0 should not be sounding
     assert!(!vars.params_of_chan[0].sound_enabled);
 }
+
+// ─── arpeggio and noise drum ─────────────────────────────────────────────────
+
+/// Build a module with arpeggios on channels A/B and a noise drum on C.
+/// This mirrors the startup demo module in `app.rs` so the same logical path
+/// is exercised from the test suite.
+fn make_arpeggio_module() -> Module {
+    let mut m = Module::default();
+    m.initial_delay = 3;
+
+    // Sample 1 – lead tone (sustaining)
+    let mut lead = Sample::default();
+    lead.length = 1;
+    lead.loop_pos = 0;
+    lead.items[0] = SampleTick {
+        amplitude: 14,
+        mixer_ton: true,
+        mixer_noise: false,
+        ..SampleTick::default()
+    };
+    m.samples[1] = Some(Box::new(lead));
+
+    // Sample 2 – bass tone
+    let mut bass_samp = Sample::default();
+    bass_samp.length = 1;
+    bass_samp.loop_pos = 0;
+    bass_samp.items[0] = SampleTick {
+        amplitude: 10,
+        mixer_ton: true,
+        mixer_noise: false,
+        ..SampleTick::default()
+    };
+    m.samples[2] = Some(Box::new(bass_samp));
+
+    // Sample 3 – noise drum (decaying, loops on silent tick 7)
+    let mut drum = Sample::default();
+    drum.length = 8;
+    drum.loop_pos = 7;
+    let drum_amps: [u8; 8] = [15, 13, 11, 9, 7, 5, 2, 0];
+    for (i, &amp) in drum_amps.iter().enumerate() {
+        drum.items[i] = SampleTick {
+            amplitude: amp,
+            mixer_ton: false,
+            mixer_noise: true,
+            add_to_envelope_or_noise: 12,
+            ..SampleTick::default()
+        };
+    }
+    m.samples[3] = Some(Box::new(drum));
+
+    // Ornament 0 – zero offset (already installed by Module::default())
+
+    // Ornament 1 – major arpeggio [0, +4, +7]
+    let mut orn_major = Ornament::default();
+    orn_major.length = 3;
+    orn_major.loop_pos = 0;
+    orn_major.items[0] = 0;
+    orn_major.items[1] = 4;
+    orn_major.items[2] = 7;
+    m.ornaments[1] = Some(Box::new(orn_major));
+
+    // Ornament 2 – minor arpeggio [0, +3, +7]
+    let mut orn_minor = Ornament::default();
+    orn_minor.length = 3;
+    orn_minor.loop_pos = 0;
+    orn_minor.items[0] = 0;
+    orn_minor.items[1] = 3;
+    orn_minor.items[2] = 7;
+    m.ornaments[2] = Some(Box::new(orn_minor));
+
+    // 16-row pattern: I–V–vi–IV chord progression
+    let mut pat = Pattern::default();
+    pat.length = 16;
+
+    let make_chan = |note: i8, sample: u8, ornament: u8, volume: u8| ChannelLine {
+        note, sample, ornament, volume,
+        envelope: 0,
+        additional_command: AdditionalCommand::default(),
+    };
+
+    // Row 0 – C major (I): Ch A C-5, Ch B C-3, Ch C noise drum
+    pat.items[0].channel[0] = make_chan(48, 1, 1, 15);
+    pat.items[0].channel[1] = make_chan(24, 2, 1, 12);
+    pat.items[0].channel[2] = make_chan(0,  3, 0, 15);
+
+    // Row 4 – G major (V): Ch A G-4, Ch B G-3
+    pat.items[4].channel[0] = make_chan(43, 1, 1, 15);
+    pat.items[4].channel[1] = make_chan(31, 2, 1, 12);
+
+    // Row 8 – A minor (vi): Ch A A-4, Ch B A-3, Ch C noise drum
+    pat.items[8].channel[0] = make_chan(45, 1, 2, 15);
+    pat.items[8].channel[1] = make_chan(33, 2, 2, 12);
+    pat.items[8].channel[2] = make_chan(0,  3, 0, 15);
+
+    // Row 12 – F major (IV): Ch A F-4, Ch B F-3
+    pat.items[12].channel[0] = make_chan(41, 1, 1, 15);
+    pat.items[12].channel[1] = make_chan(29, 2, 1, 12);
+
+    m.patterns[0] = Some(Box::new(pat));
+
+    m.positions.length = 1;
+    m.positions.value[0] = 0;
+    m.positions.loop_pos = 0;
+
+    m
+}
+
+/// The arpeggio ornament must produce a different AY tone period on each of
+/// the three consecutive ticks within a delay=3 row.
+///
+/// With ornament [0, +4, +7] on note C-5 (note 48, PT table):
+///   tick 0: ornament offset 0  → note 48 → freq = PT3_NOTE_TABLE_PT[48]
+///   tick 1: ornament offset +4 → note 52 → freq = PT3_NOTE_TABLE_PT[52]
+///   tick 2: ornament offset +7 → note 55 → freq = PT3_NOTE_TABLE_PT[55]
+///
+/// The three tone values must be distinct (each arpeggio step is a different
+/// frequency) and the first must be the root note period.
+#[test]
+fn arpeggio_ornament_produces_distinct_tone_periods() {
+    use vti_core::note_tables::PT3_NOTE_TABLE_PT;
+
+    let mut m = make_arpeggio_module();
+    let mut vars = PlayVars {
+        current_pattern: 0,
+        current_line: 0,
+        delay: 3,
+        delay_counter: 1,
+        ..PlayVars::default()
+    };
+    init_tracker_parameters(&mut m, &mut vars, true);
+
+    let mut tones = Vec::new();
+    let mut regs = vti_core::AyRegisters::default();
+
+    // Three consecutive ticks cover one full delay=3 row (row 0 is processed
+    // on tick 1 and then re-rendered twice while delay_counter counts down).
+    for _ in 0..3 {
+        regs = vti_core::AyRegisters::default();
+        let mut engine = Engine { module: &mut m, vars: &mut vars };
+        engine.pattern_play_current_line(&mut regs);
+        tones.push(regs.ton_a);
+    }
+
+    // All three should be non-zero (tone is sounding)
+    assert!(tones.iter().all(|&t| t > 0), "tone_a must be non-zero on each tick: {tones:?}");
+
+    // All three should be distinct (arpeggio steps produce different periods)
+    let unique: std::collections::HashSet<_> = tones.iter().copied().collect();
+    assert_eq!(unique.len(), 3, "arpeggio should produce 3 distinct tone periods: {tones:?}");
+
+    // The first tick period must match the root note (C-5 = note 48, PT table 0)
+    let root_period = PT3_NOTE_TABLE_PT[48];
+    assert_eq!(tones[0], root_period,
+        "first tick must be the root note period (C-5 = {root_period})");
+}
+
+/// The noise drum sample (sample 3) must produce non-zero amplitude on channel
+/// C when triggered, and the noise channel must be enabled in the mixer.
+#[test]
+fn noise_drum_produces_amplitude_on_channel_c() {
+    let mut m = make_arpeggio_module();
+    let mut vars = PlayVars {
+        current_pattern: 0,
+        current_line: 0,
+        delay: 1,
+        delay_counter: 1,
+        ..PlayVars::default()
+    };
+    init_tracker_parameters(&mut m, &mut vars, true);
+    vars.delay = 1;
+    vars.delay_counter = 1;
+
+    let mut regs = vti_core::AyRegisters::default();
+    let mut engine = Engine { module: &mut m, vars: &mut vars };
+    engine.pattern_play_current_line(&mut regs);
+
+    // Channel C must have non-zero amplitude (the drum hit)
+    assert!(regs.amplitude_c > 0, "channel C amplitude must be non-zero when drum hits");
+
+    // Noise must be enabled for channel C in the mixer.
+    // AY mixer bit 5 (value 32) = noise-C disable; must be 0 for noise to be on.
+    assert_eq!(regs.mixer & 0x20, 0,
+        "noise must be enabled for channel C (mixer bit 5 must be 0)");
+
+    // Tone must be disabled for channel C (drum has no tone component).
+    // AY mixer bit 2 (value 4) = tone-C disable; must be 1 for tone to be off.
+    assert_ne!(regs.mixer & 0x04, 0,
+        "tone must be disabled for channel C when drum plays (mixer bit 2 must be 1)");
+}
+
+/// After a noise drum hit, the drum sample decays and the channel falls silent
+/// once the decaying sample loops on tick 7 (amplitude 0).
+#[test]
+fn noise_drum_decays_to_silence() {
+    let mut m = make_arpeggio_module();
+    let mut vars = PlayVars {
+        current_pattern: 0,
+        current_line: 0,
+        delay: 1,
+        delay_counter: 1,
+        ..PlayVars::default()
+    };
+    init_tracker_parameters(&mut m, &mut vars, true);
+    vars.delay = 1;
+    vars.delay_counter = 1;
+
+    let mut regs = vti_core::AyRegisters::default();
+
+    // Advance 8 rows (= 8 ticks at delay=1): the drum sample has 8 ticks
+    // (indices 0–7) and loops on tick 7 which has amplitude 0.
+    for _ in 0..8 {
+        regs = vti_core::AyRegisters::default();
+        let mut engine = Engine { module: &mut m, vars: &mut vars };
+        engine.pattern_play_current_line(&mut regs);
+    }
+
+    // After 8 ticks the sample is held at loop_pos=7 (amplitude 0).
+    assert_eq!(regs.amplitude_c, 0, "drum channel must be silent after decay");
+}
+
+/// The arpeggio module must advance through all 16 rows of the pattern and
+/// then signal PatternEnd, which causes module_play_current_line to loop.
+#[test]
+fn arpeggio_module_loops_after_full_pattern() {
+    let mut m = make_arpeggio_module();
+    m.positions.loop_pos = 0;
+    let mut vars = PlayVars {
+        current_pattern: 0,
+        current_line: 0,
+        delay: 1,
+        delay_counter: 1,
+        ..PlayVars::default()
+    };
+    init_tracker_parameters(&mut m, &mut vars, true);
+    vars.delay = 1;
+    vars.delay_counter = 1;
+
+    let mut regs = vti_core::AyRegisters::default();
+    let mut saw_loop = false;
+
+    // 16 rows at delay=1 → 16 ticks to exhaust the pattern, then one more
+    // to trigger the loop.  Give it a generous budget.
+    for _ in 0..40 {
+        let mut engine = Engine { module: &mut m, vars: &mut vars };
+        if engine.module_play_current_line(&mut regs) == PlayResult::ModuleLoop {
+            saw_loop = true;
+            break;
+        }
+    }
+    assert!(saw_loop, "arpeggio module should loop after 16 rows");
+}
+
+/// Channels A and B must both be sounding (non-zero amplitude) after
+/// the first row is processed.
+#[test]
+fn arpeggio_channels_a_and_b_are_active_after_row0() {
+    let mut m = make_arpeggio_module();
+    let mut vars = PlayVars {
+        current_pattern: 0,
+        current_line: 0,
+        delay: 1,
+        delay_counter: 1,
+        ..PlayVars::default()
+    };
+    init_tracker_parameters(&mut m, &mut vars, true);
+    vars.delay = 1;
+    vars.delay_counter = 1;
+
+    let mut regs = vti_core::AyRegisters::default();
+    let mut engine = Engine { module: &mut m, vars: &mut vars };
+    engine.pattern_play_current_line(&mut regs);
+
+    assert!(regs.amplitude_a > 0, "channel A must have non-zero amplitude");
+    assert!(regs.amplitude_b > 0, "channel B must have non-zero amplitude");
+
+    // Tone must be enabled on both channels A and B
+    assert_eq!(regs.mixer & 0x01, 0, "tone must be ON for channel A (bit 0 = 0)");
+    assert_eq!(regs.mixer & 0x02, 0, "tone must be ON for channel B (bit 1 = 0)");
+}

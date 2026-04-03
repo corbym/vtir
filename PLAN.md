@@ -33,6 +33,7 @@
 - [x] `PositionList` struct
 - [x] `ChannelState` struct (IsChans)
 - [x] `Module` struct (title, author, ton_table, delay, positions, samples, ornaments, patterns)
+- [x] `Module::default()` initialises `global_ton/noise/envelope = true` (matches Pascal `VTMP` init, trfuncs.pas:8555–8557)
 - [x] `AyRegisters` snapshot struct
 - [x] `serde` derive on all types (`serde-big-array` for large fixed arrays)
 - [x] `NOTE_NONE` / `NOTE_SOUND_OFF` sentinels
@@ -138,6 +139,11 @@
 - [x] Pattern-end detection
 - [x] Module loop detection
 - [x] Sound-off note disables channel
+- [x] Arpeggio ornament produces 3 distinct tone periods per row
+- [x] Noise drum sample produces non-zero amplitude on channel C with noise enabled in mixer
+- [x] Noise drum decays to silence after 8 ticks (loop on silent tick)
+- [x] Arpeggio module loops after full 16-row pattern
+- [x] Channels A and B both active (non-zero amplitude, tone enabled) after first row
 - [ ] Glide-up / glide-down effect commands
 - [ ] Tone-slide (command 3) target arrival
 - [ ] On/off toggle (command 6)
@@ -235,6 +241,7 @@
 - [x] `PlayMode` enum (Module / Pattern / Line)
 - [x] `BottomPanel` enum (Sample / Ornament)
 - [x] `eframe::App::update` skeleton with menu bar / toolbar / status / panels
+- [x] `make_demo_module()` — 3-channel arpeggio (I–V–vi–IV) + noise drum, loops forever
 - [ ] `File → Open` — rfd file dialog → format detection → Module load
 - [ ] `File → Save` — PT3 writer → rfd save dialog
 - [ ] `File → Export ZX` — PT3 to .tap/.tzx (ported from `ExportZX.pas`)

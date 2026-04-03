@@ -302,9 +302,16 @@ impl Default for Module {
             patterns: vec![None; MAX_NUM_OF_PATS + 1],
             features_level: FeaturesLevel::default(),
             vortex_module_header: true,
+            // global_ton / global_noise / global_envelope default to true to
+            // match Pascal's VTM initialisation (trfuncs.pas lines 8555–8557).
+            // When false they would unconditionally silence the channel, which is
+            // the opposite of the "all channels enabled" start-up state.
             is_chans: [ChannelState {
                 sample: 1,
                 volume: 15,
+                global_ton: true,
+                global_noise: true,
+                global_envelope: true,
                 ..Default::default()
             }; 3],
         };
