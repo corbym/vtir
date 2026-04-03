@@ -193,18 +193,21 @@ async fn do_save_file(filename: &str, bytes: &[u8]) -> Result<(), JsValue> {
 }
 
 fn build_save_options(filename: &str) -> JsValue {
-    // { suggestedName: filename, types: [{ description: "VTM text", accept: { "text/plain": [".vtm"] } }] }
+    // { suggestedName: filename, types: [{ description: "VTM file", accept: { "application/octet-stream": [".vtm"] } }] }
+    // Using "application/octet-stream" rather than "text/plain" prevents mobile browsers
+    // (e.g. Safari on iOS) from appending ".txt" to the filename, which would produce
+    // "module.vtm.txt" and make the file unloadable by the open picker.
     let exts = Array::new();
     exts.push(&JsValue::from_str(".vtm"));
 
     let accept = Object::new();
-    let _ = Reflect::set(&accept, &JsValue::from_str("text/plain"), &exts);
+    let _ = Reflect::set(&accept, &JsValue::from_str("application/octet-stream"), &exts);
 
     let type_entry = Object::new();
     let _ = Reflect::set(
         &type_entry,
         &JsValue::from_str("description"),
-        &JsValue::from_str("VTM text"),
+        &JsValue::from_str("VTM file"),
     );
     let _ = Reflect::set(&type_entry, &JsValue::from_str("accept"), &accept);
 
