@@ -332,14 +332,30 @@ impl VortexTrackerApp {
 
     #[cfg(target_arch = "wasm32")]
     fn save_vtm_dialog(&mut self) {
-        if !wasm_file::save_picker_supported() {
-            self.status =
-                "File save: File System Access API not supported in this browser".to_string();
-            return;
-        }
         let text = formats::save_vtm(&self.modules[self.active_module]);
-        self.status = "Saving…".to_string();
-        wasm_file::spawn_save_file("module.vtm".to_string(), text.into_bytes());
+        let bytes = text.into_bytes();
+        let filename = "module.vtm".to_string();
+
+        if wasm_file::save_picker_supported() {
+            self.status = "Saving…".to_string();
+            wasm_file::spawn_save_file(filename, bytes);
+        } else {
+            // Fallback for browsers without the File System Access API
+            // (e.g. Firefox).  Download via a temporary object URL with
+            // Content-Type: application/octet-stream so the browser does not
+            // sniff the VTM text and misidentify it.
+            // Unlike spawn_save_file (async), download_blob is synchronous, so
+            // we update status directly here rather than via pending_save_status.
+            match wasm_file::download_blob(&filename, &bytes) {
+                Ok(()) => self.status = format!("Saved: {filename}"),
+                Err(e) => {
+                    self.status = format!(
+                        "Save failed: {}",
+                        e.as_string().unwrap_or_else(|| format!("{e:?}"))
+                    );
+                }
+            }
+        }
     }
 
     /// Re-initialise playback state so the next Play starts from the beginning.

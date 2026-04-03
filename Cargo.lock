@@ -3936,6 +3936,7 @@ dependencies = [
  "vti-core",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

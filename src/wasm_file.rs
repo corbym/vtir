@@ -15,6 +15,7 @@ use js_sys::{Array, ArrayBuffer, Object, Promise, Reflect, Uint8Array};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
+use web_sys::{Blob, BlobPropertyBag, HtmlAnchorElement, Url};
 
 use crate::pending_file::{PendingFile, put_pending_open, put_pending_save_status};
 
@@ -218,6 +219,62 @@ fn build_save_options(filename: &str) -> JsValue {
     let _ = Reflect::set(&opts, &JsValue::from_str("suggestedName"), &JsValue::from_str(filename));
     let _ = Reflect::set(&opts, &JsValue::from_str("types"), &types_arr);
     opts.into()
+}
+
+// ── Blob-URL download fallback ────────────────────────────────────────────────
+
+/// Trigger a browser download of `bytes` as `filename` using a temporary
+/// object URL.  This is the fallback path for browsers where
+/// `showSaveFilePicker` is unavailable (e.g. Firefox).
+///
+/// Equivalent to responding with:
+/// ```text
+/// Content-Disposition: attachment; filename="<filename>"
+/// Content-Type: application/octet-stream
+/// ```
+/// Using `application/octet-stream` prevents Chrome and Safari from
+/// sniffing the VTM text content and renaming or misidentifying the file.
+pub fn download_blob(filename: &str, bytes: &[u8]) -> Result<(), JsValue> {
+    // Build a JS Uint8Array from the raw bytes.
+    let data = Uint8Array::from(bytes);
+    let parts = Array::of1(&data);
+
+    // Create a Blob with type "application/octet-stream" so browsers treat it
+    // as binary rather than sniffing it as text/plain.
+    let mut opts = BlobPropertyBag::new();
+    opts.set_type("application/octet-stream");
+    let blob = Blob::new_with_u8_array_sequence_and_options(&parts.into(), &opts)?;
+
+    // Create a temporary object URL for the blob.
+    let url = Url::create_object_url_with_blob(&blob)?;
+
+    // Create an <a download="filename"> element, click it, then clean up.
+    // The `download` attribute is the DOM equivalent of the HTTP
+    // `Content-Disposition: attachment; filename="..."` header.
+    let window = web_sys::window().ok_or_else(|| JsValue::from_str("no window"))?;
+    let document = window
+        .document()
+        .ok_or_else(|| JsValue::from_str("no document"))?;
+    let anchor: HtmlAnchorElement = document
+        .create_element("a")?
+        .unchecked_into();
+    anchor.set_href(&url);
+    anchor.set_download(filename);
+
+    // Anchor must be in the DOM for Firefox to honor the download attribute.
+    let body = document
+        .body()
+        .ok_or_else(|| JsValue::from_str("no body"))?;
+    let body_node = body.unchecked_ref::<web_sys::Node>();
+    let anchor_node = anchor.unchecked_ref::<web_sys::Node>();
+    body_node.append_child(anchor_node)?;
+    anchor.click();
+    body_node.remove_child(anchor_node)?;
+
+    // Release the object URL so the browser can reclaim memory.
+    Url::revoke_object_url(&url)?;
+
+    Ok(())
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
