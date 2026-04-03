@@ -367,12 +367,12 @@ A thin FFI / binding layer that wraps the core playback API and is the only crat
 
 eframe already compiles to WASM via [`trunk`](https://trunkrs.dev/). This gives a working web UI with near-zero extra code.
 
-- [ ] Add `trunk` to the build toolchain (config in `Trunk.toml`)
-- [ ] Add `index.html` template (canvas mount point)
+- [x] Add `trunk` to the build toolchain (config in `Trunk.toml`)
+- [x] Add `index.html` template (canvas mount point)
 - [ ] Gate `rfd` (file dialog) behind `not(target_arch = "wasm32")` and provide a browser `<input type="file">` fallback via `web-sys`
-- [ ] Gate `vti-audio`'s `cpal` render thread behind `not(target_arch = "wasm32")`; on WASM, drive audio from a `web_sys::AudioWorkletNode` or a JavaScript `ScriptProcessorNode` callback instead
-- [ ] Add `wasm32-unknown-unknown` target to CI build matrix
-- [ ] Publish the WASM build to GitHub Pages on every release tag
+- [x] Enable `cpal`'s `wasm-bindgen` feature so the WebAudio backend is compiled in for WASM targets; lazy-init `AudioPlayer` on first Play press to satisfy browser autoplay policy (AudioContext must be created inside a user-gesture handler)
+- [x] Add `wasm32-unknown-unknown` target to CI build matrix
+- [x] Publish the WASM build to GitHub Pages on every release tag
 
 #### 8.3.2 Option B — KMP / Compose for Web (longer term)
 
@@ -478,6 +478,6 @@ For a shared Kotlin UI across Android and web:
 | Build pipeline | 0% | GitHub Actions release workflow |
 | README | 0% | full write-up |
 | **Integration tests** | ✅ 59 passing | effect-command edge cases, PT3 round-trip |
-| **Web target (eframe WASM)** | 0% | `trunk` build, WASM audio backend, GitHub Pages deploy |
+| **Web target (eframe WASM)** | ~80% | ~~`trunk` build~~, ~~WASM audio backend~~, ~~GitHub Pages deploy~~; `rfd` file-dialog fallback remaining |
 | **Web target (KMP/Compose)** | 0% | `vti-ffi` WASM bindings, Kotlin/Wasm UI (long-term) |
 | **Android target (KMP/Compose)** | 0% | `vti-ffi` cdylib, UniFFI bindings, Compose UI, `cargo-ndk` pipeline |

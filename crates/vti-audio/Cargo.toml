@@ -9,4 +9,4 @@ anyhow.workspace = true
 log.workspace = true
 vti-core.workspace = true
 vti-ay.workspace = true
-cpal = "0.15"
+cpal = { version = "0.15", features = ["wasm-bindgen"] }

@@ -97,10 +97,14 @@ impl VortexTrackerApp {
         play_vars.delay = modules[0].initial_delay as i8;
         play_vars.current_pattern = modules[0].positions.value[0] as i32;
 
-        let audio = match AudioPlayer::start(44100) {
-            Ok(p)  => { log::info!("audio player started"); Some(p) }
-            Err(e) => { log::warn!("audio unavailable: {e}"); None }
-        };
+        // On WASM the AudioContext must be created inside a user-gesture handler
+        // (browser autoplay policy), so we defer AudioPlayer creation until the
+        // user first presses Play.  On native targets we initialise eagerly so
+        // audio is ready immediately.
+        #[cfg(not(target_arch = "wasm32"))]
+        let audio = Self::try_open_audio();
+        #[cfg(target_arch = "wasm32")]
+        let audio = None;
 
         Self {
             modules,
@@ -127,6 +131,15 @@ impl VortexTrackerApp {
 
     fn active_module_mut(&mut self) -> &mut Module {
         &mut self.modules[self.active_module]
+    }
+
+    /// Try to open the audio output device and return an `AudioPlayer`.
+    /// Logs a warning and returns `None` if the device is unavailable.
+    fn try_open_audio() -> Option<AudioPlayer> {
+        match AudioPlayer::start(44100) {
+            Ok(p)  => { log::info!("audio player started"); Some(p) }
+            Err(e) => { log::warn!("audio unavailable: {e}"); None }
+        }
     }
 
     /// Re-initialise playback state so the next Play starts from the beginning.
@@ -236,6 +249,13 @@ impl eframe::App for VortexTrackerApp {
             if !was_playing && self.is_playing {
                 self.reset_playback();
                 self.last_tick_time = 0.0;
+                // On WASM, create the AudioPlayer here — inside the user-gesture
+                // event chain — so the browser's AudioContext autoplay policy is
+                // satisfied.  On native the player was already opened at startup.
+                #[cfg(target_arch = "wasm32")]
+                if self.audio.is_none() {
+                    self.audio = Self::try_open_audio();
+                }
                 let audio_status = if self.audio.is_some() { "Playing" } else { "Playing (no audio device)" };
                 self.status = audio_status.to_string();
             }
