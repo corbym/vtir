@@ -25,7 +25,7 @@ use vti_core::note_tables::{
 use vti_core::note_tables::PT3_VOL;
 use vti_core::playback::{Engine, PlayVars, init_tracker_parameters};
 use vti_core::{
-    AdditionalCommand, AyRegisters, ChannelLine, Module, Pattern,
+    AdditionalCommand, AyRegisters, ChannelLine, Module, Ornament, Pattern,
     Sample, SampleTick,
 };
 
@@ -318,4 +318,204 @@ fn pattern_play_basic_matches_pascal_baseline() {
 #[test]
 fn pattern_play_envelope_matches_pascal_baseline() {
     run_pattern_play_baseline("pattern_play_envelope", true);
+}
+
+// ─── Arpeggio + noise drum baseline ──────────────────────────────────────────
+
+/// Build the same 3-channel arpeggio + noise-drum module that the Pascal
+/// harness uses for `pattern_arpeggio`.
+///
+/// Must be kept in exact correspondence with `BuildArpeggioModule` in
+/// `pascal-tests/vt_harness.pas`.
+fn make_harness_arpeggio_module() -> Module {
+    let mut m = Module::default();
+    m.initial_delay = 3;
+    m.ton_table = 0; // PT table
+
+    m.positions.length = 1;
+    m.positions.value[0] = 0;
+    m.positions.loop_pos = 0;
+
+    // IsChans: all globals true, default sample/volume
+    for ch in 0..3 {
+        m.is_chans[ch].global_ton      = true;
+        m.is_chans[ch].global_noise    = true;
+        m.is_chans[ch].global_envelope = true;
+        m.is_chans[ch].envelope_enabled = false;
+        m.is_chans[ch].ornament        = 0;
+        m.is_chans[ch].sample          = 1;
+        m.is_chans[ch].volume          = 15;
+    }
+
+    // Ornament 0: single step, zero offset  (already in Module::default())
+
+    // Ornament 1: major arpeggio [0, +4, +7]
+    let mut orn_major = vti_core::Ornament::default();
+    orn_major.length = 3;
+    orn_major.loop_pos = 0;
+    orn_major.items[0] = 0;
+    orn_major.items[1] = 4;
+    orn_major.items[2] = 7;
+    m.ornaments[1] = Some(Box::new(orn_major));
+
+    // Ornament 2: minor arpeggio [0, +3, +7]
+    let mut orn_minor = vti_core::Ornament::default();
+    orn_minor.length = 3;
+    orn_minor.loop_pos = 0;
+    orn_minor.items[0] = 0;
+    orn_minor.items[1] = 3;
+    orn_minor.items[2] = 7;
+    m.ornaments[2] = Some(Box::new(orn_minor));
+
+    // Sample 1: lead tone (length=1, loop=0, amplitude=14, tone on)
+    let mut lead = Sample::default();
+    lead.length = 1;
+    lead.loop_pos = 0;
+    lead.enabled = true;
+    lead.items[0] = SampleTick {
+        amplitude: 14,
+        mixer_ton: true,    // tone NOT muted
+        mixer_noise: false, // noise muted
+        ..SampleTick::default()
+    };
+    m.samples[1] = Some(Box::new(lead));
+
+    // Sample 2: bass tone (length=1, loop=0, amplitude=10, tone on)
+    let mut bass = Sample::default();
+    bass.length = 1;
+    bass.loop_pos = 0;
+    bass.enabled = true;
+    bass.items[0] = SampleTick {
+        amplitude: 10,
+        mixer_ton: true,
+        mixer_noise: false,
+        ..SampleTick::default()
+    };
+    m.samples[2] = Some(Box::new(bass));
+
+    // Sample 3: noise drum (length=8, loop=7, decaying amplitude, noise on)
+    let mut drum = Sample::default();
+    drum.length = 8;
+    drum.loop_pos = 7;
+    drum.enabled = true;
+    let drum_amps: [u8; 8] = [15, 13, 11, 9, 7, 5, 2, 0];
+    for (i, &amp) in drum_amps.iter().enumerate() {
+        drum.items[i] = SampleTick {
+            amplitude: amp,
+            mixer_ton: false,  // tone muted
+            mixer_noise: true, // noise NOT muted
+            add_to_envelope_or_noise: 12,
+            ..SampleTick::default()
+        };
+    }
+    m.samples[3] = Some(Box::new(drum));
+
+    // Pattern 0: 16 rows
+    let mut pat = Pattern::default();
+    pat.length = 16;
+
+    // All rows default to NOTE_NONE (-1)
+    for row in 0..16usize {
+        for ch in 0..3 {
+            pat.items[row].channel[ch].note = -1;
+        }
+    }
+
+    let make_chan = |note: i8, sample: u8, ornament: u8, volume: u8| ChannelLine {
+        note, sample, ornament, volume,
+        envelope: 0,
+        additional_command: AdditionalCommand::default(),
+    };
+
+    // Row 0: C major (I)
+    pat.items[0].channel[0] = make_chan(48, 1, 1, 15);
+    pat.items[0].channel[1] = make_chan(24, 2, 1, 12);
+    pat.items[0].channel[2] = make_chan( 0, 3, 0, 15);
+
+    // Row 4: G major (V)
+    pat.items[4].channel[0] = make_chan(43, 1, 1, 15);
+    pat.items[4].channel[1] = make_chan(31, 2, 1, 12);
+
+    // Row 8: A minor (vi)
+    pat.items[8].channel[0] = make_chan(45, 1, 2, 15);
+    pat.items[8].channel[1] = make_chan(33, 2, 2, 12);
+    pat.items[8].channel[2] = make_chan( 0, 3, 0, 15);
+
+    // Row 12: F major (IV)
+    pat.items[12].channel[0] = make_chan(41, 1, 1, 15);
+    pat.items[12].channel[1] = make_chan(29, 2, 1, 12);
+
+    m.patterns[0] = Some(Box::new(pat));
+    m
+}
+
+/// 3-channel arpeggio (I–V–vi–IV) + noise drum on channel C.
+///
+/// Exercises:
+///   - Non-trivial ornaments ([0,+4,+7] and [0,+3,+7]) cycling per tick
+///   - `Mixer_Noise=True` path in `GetRegisters` (sets PT3Noise, leaves noise
+///     channel enabled in the AY mixer)
+///   - `Mixer_Ton=False` path (sets tone-disable bit for drum channel)
+///   - Drum sample decay and loop-on-silence behaviour
+///   - Chord changes at rows 4, 8, 12 (new note triggers ornament reset)
+#[test]
+fn pattern_play_arpeggio_matches_pascal_baseline() {
+    let raw = load_core_fixture("pattern_play_arpeggio");
+    let fixture: PatternPlayFixture =
+        serde_json::from_str(&raw).expect("parse pattern_play_arpeggio.json");
+
+    let mut m = make_harness_arpeggio_module();
+    let mut vars = PlayVars {
+        current_pattern: 0,
+        current_line: 0,
+        delay: fixture.delay,
+        delay_counter: 1,
+        ..PlayVars::default()
+    };
+    init_tracker_parameters(&mut m, &mut vars, true);
+
+    for expected_tick in &fixture.ticks {
+        let line_before = vars.current_line;
+        let mut regs = AyRegisters::default();
+        let mut engine = Engine { module: &mut m, vars: &mut vars };
+        let result = engine.pattern_play_current_line(&mut regs);
+
+        let got_result = match result {
+            vti_core::playback::PlayResult::PatternEnd => 2,
+            vti_core::playback::PlayResult::ModuleLoop  => 3,
+            vti_core::playback::PlayResult::Updated     => {
+                if vars.current_line > line_before { 1 } else { 0 }
+            }
+        };
+
+        assert_eq!(
+            got_result, expected_tick.result,
+            "tick {}: result mismatch (got {}, want {})",
+            expected_tick.tick, got_result, expected_tick.result
+        );
+
+        if pascal_result_is_pattern_end(expected_tick.result) {
+            assert_eq!(vars.current_line, expected_tick.current_line,
+                "tick {}: current_line on PatternEnd", expected_tick.tick);
+            assert_eq!(vars.delay_counter, expected_tick.delay_counter,
+                "tick {}: delay_counter on PatternEnd", expected_tick.tick);
+            continue;
+        }
+
+        let e = &expected_tick.regs;
+        assert_eq!(regs.ton_a,       e.ton_a,  "tick {}: ton_a",       expected_tick.tick);
+        assert_eq!(regs.ton_b,       e.ton_b,  "tick {}: ton_b",       expected_tick.tick);
+        assert_eq!(regs.ton_c,       e.ton_c,  "tick {}: ton_c",       expected_tick.tick);
+        assert_eq!(regs.noise,       e.noise,  "tick {}: noise",       expected_tick.tick);
+        assert_eq!(regs.mixer,       e.mixer,  "tick {}: mixer",       expected_tick.tick);
+        assert_eq!(regs.amplitude_a, e.ampl_a, "tick {}: amplitude_a", expected_tick.tick);
+        assert_eq!(regs.amplitude_b, e.ampl_b, "tick {}: amplitude_b", expected_tick.tick);
+        assert_eq!(regs.amplitude_c, e.ampl_c, "tick {}: amplitude_c", expected_tick.tick);
+        assert_eq!(regs.envelope,    e.envelope, "tick {}: envelope",  expected_tick.tick);
+
+        assert_eq!(vars.current_line, expected_tick.current_line,
+            "tick {}: current_line", expected_tick.tick);
+        assert_eq!(vars.delay_counter, expected_tick.delay_counter,
+            "tick {}: delay_counter", expected_tick.tick);
+    }
 }

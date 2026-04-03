@@ -1,7 +1,7 @@
 //! Root application state and eframe `App` implementation.
 
 use eframe::egui;
-use vti_core::Module;
+use vti_core::{Module, Pattern, Sample, SampleTick, Ornament, ChannelLine, AdditionalCommand};
 use vti_ay::chip::ChipType;
 use vti_ay::config::AyConfig;
 use vti_ay::synth::Synthesizer;
@@ -58,34 +58,138 @@ pub enum PlayMode {
     Line,
 }
 
+// ─── Demo module ─────────────────────────────────────────────────────────────
+
+/// Build the demo module that plays on start-up.
+///
+/// Three-channel arpeggio (I–V–vi–IV chord progression) with a decaying noise
+/// drum on channel C at beats 1 and 3.  The pattern is 16 rows long and loops
+/// forever so the user hears something interesting the moment they press Play.
+///
+/// Note encoding: octave N starts at note `(N-1)*12`; C-1 = 0, C-4 = 36, etc.
+fn make_demo_module() -> Module {
+    let mut module = Module::default();
+    module.initial_delay = 3; // 3 interrupt ticks per row (50 Hz → ~17 ms per row)
+
+    // ─── Sample 1 – lead arpeggio tone ───────────────────────────────────────
+    // Sustains at full amplitude; loops on the single tick.
+    let mut lead = Sample::default();
+    lead.length = 1;
+    lead.loop_pos = 0;
+    lead.items[0] = SampleTick {
+        amplitude: 14,
+        mixer_ton: true,    // tone ON
+        mixer_noise: false, // noise OFF
+        ..SampleTick::default()
+    };
+    module.samples[1] = Some(Box::new(lead));
+
+    // ─── Sample 2 – bass arpeggio tone ───────────────────────────────────────
+    // Same as sample 1 but quieter for the lower register.
+    let mut bass_samp = Sample::default();
+    bass_samp.length = 1;
+    bass_samp.loop_pos = 0;
+    bass_samp.items[0] = SampleTick {
+        amplitude: 10,
+        mixer_ton: true,
+        mixer_noise: false,
+        ..SampleTick::default()
+    };
+    module.samples[2] = Some(Box::new(bass_samp));
+
+    // ─── Sample 3 – noise drum ────────────────────────────────────────────────
+    // Eight ticks of decaying noise; loops on the final silent tick so that
+    // the drum stops naturally without a sound-off note.
+    let mut drum = Sample::default();
+    drum.length = 8;
+    drum.loop_pos = 7; // stay on tick 7 (amplitude 0) once the decay finishes
+    let drum_amps: [u8; 8] = [15, 13, 11, 9, 7, 5, 2, 0];
+    for (i, &amp) in drum_amps.iter().enumerate() {
+        drum.items[i] = SampleTick {
+            amplitude: amp,
+            mixer_ton: false,  // no tone – pure noise hit
+            mixer_noise: true, // noise ON
+            // add_to_envelope_or_noise sets the noise period when mixer_noise=true
+            add_to_envelope_or_noise: 12, // noise period → snappy drum timbre
+            ..SampleTick::default()
+        };
+    }
+    module.samples[3] = Some(Box::new(drum));
+
+    // ─── Ornament 0 – already installed as zero-offset default ───────────────
+
+    // ─── Ornament 1 – major arpeggio [0, +4, +7] ─────────────────────────────
+    // Steps through the root, major third and perfect fifth of any chord.
+    let mut orn_major = Ornament::default();
+    orn_major.length = 3;
+    orn_major.loop_pos = 0;
+    orn_major.items[0] = 0;
+    orn_major.items[1] = 4;
+    orn_major.items[2] = 7;
+    module.ornaments[1] = Some(Box::new(orn_major));
+
+    // ─── Ornament 2 – minor arpeggio [0, +3, +7] ─────────────────────────────
+    let mut orn_minor = Ornament::default();
+    orn_minor.length = 3;
+    orn_minor.loop_pos = 0;
+    orn_minor.items[0] = 0;
+    orn_minor.items[1] = 3;
+    orn_minor.items[2] = 7;
+    module.ornaments[2] = Some(Box::new(orn_minor));
+
+    // ─── Pattern 0 – 16-row I–V–vi–IV progression ────────────────────────────
+    // With initial_delay=3 and a 3-step looping ornament the arpeggio cycles
+    // C→E→G (or the chord variant) once per row, producing a classic chiptune
+    // arpeggio effect.
+    //
+    // Row  0: C major (C-5 / C-3) + noise drum on Ch C
+    // Row  4: G major (G-4 / G-3)
+    // Row  8: A minor (A-4 / A-3) + noise drum on Ch C
+    // Row 12: F major (F-4 / F-3)
+    let make_chan = |note: i8, sample: u8, ornament: u8, volume: u8| ChannelLine {
+        note,
+        sample,
+        ornament,
+        volume,
+        envelope: 0,
+        additional_command: AdditionalCommand::default(),
+    };
+
+    let pat_idx = Module::pat_idx(0);
+    let mut pat = Pattern::default();
+    pat.length = 16;
+
+    // Row 0: C major (I)
+    pat.items[0].channel[0] = make_chan(48, 1, 1, 15); // C-5 lead
+    pat.items[0].channel[1] = make_chan(24, 2, 1, 12); // C-3 bass
+    pat.items[0].channel[2] = make_chan(0,  3, 0, 15); // noise drum
+
+    // Row 4: G major (V)
+    pat.items[4].channel[0] = make_chan(43, 1, 1, 15); // G-4 lead
+    pat.items[4].channel[1] = make_chan(31, 2, 1, 12); // G-3 bass
+
+    // Row 8: A minor (vi)
+    pat.items[8].channel[0] = make_chan(45, 1, 2, 15); // A-4 lead (minor arpeggio)
+    pat.items[8].channel[1] = make_chan(33, 2, 2, 12); // A-3 bass
+    pat.items[8].channel[2] = make_chan(0,  3, 0, 15); // noise drum
+
+    // Row 12: F major (IV)
+    pat.items[12].channel[0] = make_chan(41, 1, 1, 15); // F-4 lead
+    pat.items[12].channel[1] = make_chan(29, 2, 1, 12); // F-3 bass
+
+    module.patterns[pat_idx] = Some(Box::new(pat));
+
+    // ─── Position list (single looping position) ──────────────────────────────
+    module.positions.length = 1;
+    module.positions.value[0] = 0;
+    module.positions.loop_pos = 0;
+
+    module
+}
+
 impl VortexTrackerApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        let mut modules = vec![Module::default()];
-
-        // Ensure there is at least one pattern to edit
-        let pat_idx = vti_core::Module::pat_idx(0);
-        modules[0].patterns[pat_idx] = Some(Box::new(vti_core::Pattern::default()));
-
-        // Set up a minimal playable song: one position → pattern 0
-        modules[0].positions.value[0] = 0;
-        modules[0].positions.length = 1;
-        modules[0].positions.loop_pos = 0;
-        modules[0].initial_delay = 3;
-
-        // Sample 1: sustained tone (amplitude 13, tone enabled, noise off, looping)
-        let mut sample = vti_core::Sample::default();
-        sample.length = 1;
-        sample.loop_pos = 0;
-        sample.items[0].amplitude = 13;
-        sample.items[0].mixer_ton = true;   // true → tone bit NOT set → tone channel ON
-        sample.items[0].mixer_noise = false; // false → noise bit set → noise channel OFF
-        modules[0].samples[1] = Some(Box::new(sample));
-
-        // Pattern 0, row 0: play A-4 (note 45) on channel A with sample 1, volume 15
-        let pat = modules[0].patterns[pat_idx].as_mut().unwrap();
-        pat.items[0].channel[0].note   = 45;
-        pat.items[0].channel[0].sample = 1;
-        pat.items[0].channel[0].volume = 15;
+        let mut modules = vec![make_demo_module()];
 
         // Audio / synthesis setup
         let cfg = AyConfig::default();
