@@ -240,26 +240,21 @@ fn run_pattern_play_baseline(fixture_name: &str, with_envelope: bool) {
     init_tracker_parameters(&mut m, &mut vars, true);
 
     for expected_tick in &fixture.ticks {
+        let line_before = vars.current_line;
         let mut regs = AyRegisters::default();
         let mut engine = Engine { module: &mut m, vars: &mut vars };
         let result = engine.pattern_play_current_line(&mut regs);
 
         // Map PlayResult to Pascal integer:
-        //   Updated (no line advance) = 0
-        //   Updated (line advanced)   = 1
-        //   PatternEnd                = 2
+        //   PatternEnd = 2 (Pascal returns 2 when pattern length exceeded)
+        //   Updated with line advance = 1 (delay_counter hit 0 and line processed)
+        //   Updated without advance  = 0 (delay_counter still counting down)
         let got_result = match result {
             vti_core::playback::PlayResult::PatternEnd => 2,
             vti_core::playback::PlayResult::ModuleLoop  => 3,
             vti_core::playback::PlayResult::Updated     => {
-                // Pascal returns 1 when a line was just advanced, 0 otherwise.
-                // We approximate by comparing delay_counter to delay: if
-                // delay_counter == delay, a line was just processed.
-                // More precisely the Pascal result=1 when DelayCounter hit 0
-                // that tick; result=0 when it didn't.
-                // Mirror: result=1 when current_line advanced this tick,
-                // which matches expected_tick.result == 1.
-                if expected_tick.result == 1 { 1 } else { 0 }
+                // A line was advanced this tick when current_line increased.
+                if vars.current_line > line_before { 1 } else { 0 }
             }
         };
 

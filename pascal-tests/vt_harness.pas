@@ -411,10 +411,12 @@ end;
   Pure-Pascal NoiseGenerator
   Replaces the x86 asm in AY.pas.
 
-  The original SHLD-based asm extracts feedback = bit13(Seed) XOR bit16(Seed).
-    shld edx,eax,16  → bit0(edx) = bit16(eax)
-    shld ecx,eax,19  → bit0(ecx) = bit13(eax)   [shift left 19 fills low 19 from high 19]
-    xor ecx,edx; and ecx,1  → feedback = bit13 XOR bit16
+  The original asm in AY.pas uses two SHLD instructions to extract bits:
+    shld edx,eax,16  — shifts edx left 16, the vacated low 16 bits come from
+                       the high 16 bits of eax, so bit0(edx) = bit16(eax).
+    shld ecx,eax,19  — shifts ecx left 19, the vacated low 19 bits come from
+                       the high 19 bits of eax, so bit0(ecx) = bit13(eax).
+    xor ecx,edx; and ecx,1  → feedback = bit13(seed) XOR bit16(seed)
 
   new_seed = ((seed shl 1) AND $1FFFF) OR 1 XOR feedback
 

@@ -296,6 +296,11 @@
 
 ## 6. Build Pipeline (`.github/workflows/`)
 
+- [x] `build.yml` — tests + WASM check on all branches/PRs
+- [x] `pages.yml` — web deploy to GitHub Pages on push to master or manually
+- [x] `pascal-baselines.yml` — **manual-only** (`workflow_dispatch`): install `fpc`,
+      run `pascal-tests/run_harness.sh`, open a PR with updated fixture files if changed.
+      Run this when adding new Pascal test cases or investigating parity regressions.
 - [ ] `release.yml` — triggered on `v*` tags:
   - [ ] macOS job: `cargo build --release`, create `.app` bundle, package as `.dmg` (using `create-dmg`)
   - [ ] Windows job: `cargo build --release --target x86_64-pc-windows-msvc`, upload `.exe` as artifact
@@ -460,6 +465,66 @@ For a shared Kotlin UI across Android and web:
 
 ---
 
+## 9. Pascal Parity Testing
+
+The only ground truth for correct behaviour is the original Delphi/Pascal source
+(`trfuncs.pas`, `AY.pas`). The parity testing infrastructure captures that ground
+truth as committed JSON fixtures and asserts that the Rust code matches them.
+
+### 9.1 Harness (`pascal-tests/`)
+
+- [x] `vt_harness.pas` — FPC-compilable standalone program; no GUI/audio/Windows
+  dependencies. Implements:
+  - [x] `NoiseGenerator` in pure Pascal (bit13⊕16 taps, `noise_val = bit16 of seed`)
+  - [x] All 8 AY envelope shapes (`Case_EnvType_*`)
+  - [x] `Pattern_PlayOnlyCurrentLine` (full `GetRegisters` inner procedure)
+  - [x] `Pattern_PlayCurrentLine` (full `PatternInterpreter`, correct `exit` on pattern end)
+  - [x] Note tables and `PT3_Vol` constant outputs
+- [x] `run_harness.sh` — compile + generate all fixtures; validate JSON with python3
+
+### 9.2 Fixture files (committed, never auto-generated in CI)
+
+| File | Crate | What it verifies |
+|------|-------|-----------------|
+| `crates/vti-ay/tests/fixtures/pascal-baselines/noise_lfsr.json` | `vti-ay` | 200-step LFSR sequence, seed + noise_val |
+| `crates/vti-ay/tests/fixtures/pascal-baselines/envelope_shapes.json` | `vti-ay` | All 8 envelope shapes, 64 steps each |
+| `crates/vti-core/tests/fixtures/pascal-baselines/pt3_vol.json` | `vti-core` | 16×16 PT3_Vol table |
+| `crates/vti-core/tests/fixtures/pascal-baselines/note_tables.json` | `vti-core` | All 5 note tables, 96 entries each |
+| `crates/vti-core/tests/fixtures/pascal-baselines/pattern_play_basic.json` | `vti-core` | 20 ticks of pure-tone 4-row pattern |
+| `crates/vti-core/tests/fixtures/pascal-baselines/pattern_play_envelope.json` | `vti-core` | Same pattern + AY envelope type 8 |
+
+### 9.3 Rust tests (`tests/pascal_baseline_tests.rs` in each crate)
+
+- [x] `vti-ay::noise_lfsr_matches_pascal_baseline` — **currently FAILING** (exposes wrong LFSR taps: Rust bit16⊕19 vs Pascal bit13⊕16, and wrong `noise_val` extraction)
+- [x] `vti-ay::envelope_shapes_match_pascal_baseline` — passing
+- [x] `vti-ay::envelope_shape_from_register_matches_baseline` — passing
+- [x] `vti-core::pt3_vol_matches_pascal_baseline` — passing
+- [x] `vti-core::note_tables_match_pascal_baseline` — passing
+- [x] `vti-core::pattern_play_basic_matches_pascal_baseline` — passing
+- [x] `vti-core::pattern_play_envelope_matches_pascal_baseline` — **currently FAILING** (exposes missing `env_base` write from pattern row: Rust gives `envelope=0`, Pascal gives `2048`)
+
+### 9.4 Known bugs exposed by baselines
+
+| Bug | Test that fails | Rust behaviour | Pascal (correct) behaviour |
+|-----|----------------|----------------|---------------------------|
+| Wrong LFSR taps | `noise_lfsr_matches_pascal_baseline` | Uses bit16⊕19 | Uses bit13⊕16 |
+| Wrong `noise_val` extraction | `noise_lfsr_matches_pascal_baseline` | `seed & 1` (bit0) | `(seed >> 16) & 1` (bit16, union layout) |
+| `env_base` not written from pattern row | `pattern_play_envelope_matches_pascal_baseline` | `envelope = 0` | `envelope = pattern_row.envelope` |
+| `PatternEnd` renders extra frame | (observable with non-stable registers) | Calls `PlayOnly` before return | Exits without calling `PlayOnly` |
+
+### 9.5 Workflow for updating baselines (`pascal-baselines.yml`)
+
+Run manually (`workflow_dispatch`) when:
+- Adding new test scenarios to `vt_harness.pas`
+- Confirming a Pascal behaviour after investigating a bug
+
+The workflow installs `fpc`, runs `run_harness.sh`, and opens a PR if fixtures
+changed. Fixture changes that are NOT caused by a deliberate Pascal source change
+should be treated as regressions and investigated before merging.
+
+
+---
+
 ## Summary
 
 | Area | Done | Remaining |
@@ -475,9 +540,10 @@ For a shared Kotlin UI across Android and web:
 | `vti-ay` synthesizer | ~75% | channel allocation presets, Turbo Sound |
 | `vti-audio` player | ~60% | render thread, command channel, WAV export |
 | `vti-app` GUI skeleton | ~30% | all editing interaction, dialogs |
-| Build pipeline | 0% | GitHub Actions release workflow |
+| Build pipeline | ~50% | GitHub Actions release workflow |
 | README | 0% | full write-up |
 | **Integration tests** | ✅ 59 passing | effect-command edge cases, PT3 round-trip |
-| **Web target (eframe WASM)** | ~80% | ~~`trunk` build~~, ~~WASM audio backend~~, ~~GitHub Pages deploy~~; `rfd` file-dialog fallback remaining |
+| **Pascal parity baselines** | ✅ infrastructure done | Fix 4 known bugs (see §9.4) |
+| **Web target (eframe WASM)** | ~80% | `rfd` file-dialog fallback remaining |
 | **Web target (KMP/Compose)** | 0% | `vti-ffi` WASM bindings, Kotlin/Wasm UI (long-term) |
 | **Android target (KMP/Compose)** | 0% | `vti-ffi` cdylib, UniFFI bindings, Compose UI, `cargo-ndk` pipeline |
