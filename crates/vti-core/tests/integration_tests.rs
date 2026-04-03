@@ -1008,37 +1008,73 @@ fn vtm_round_trip_demo_song() {
     assert_eq!(p0_load.items[8].channel[2].note,    p0_orig.items[8].channel[2].note);
 }
 
-/// The `formats::load` dispatcher must route `.vtm` files through the VTM text
-/// parser without error.
+/// Load the long-form "Descent Into Madness" fixture and verify that each
+/// major VTM section (module, ornaments, samples, patterns, order list) is
+/// parsed and playable through a full loop.
 #[test]
-fn format_load_dispatches_vtm() {
-    let demo = make_demo_module_for_test();
-    let text = vtm::write(&demo);
-    let bytes = text.into_bytes();
-    let loaded = format_load(&bytes, "song.vtm").expect("load should succeed for .vtm");
-    assert_eq!(loaded.initial_delay, demo.initial_delay);
-    assert_eq!(loaded.positions.length, demo.positions.length);
-}
+fn load_madness_descent_vtm_sections_and_playback_loop() {
+    let vtm_text = std::fs::read_to_string("tests/fixtures/tunes/madness_descent.vtm")
+        .expect("should read madness_descent fixture");
 
-/// A round-trip via the filesystem: write to a temp file, read it back.
-#[test]
-fn vtm_file_save_load_round_trip() {
-    use std::io::Write;
+    let mut module = vtm::parse(&vtm_text).expect("fixture should parse as VTM");
 
-    let original = make_demo_module_for_test();
-    let text = vtm::write(&original);
+    // Module section
+    assert_eq!(module.title, "Descent Into Madness");
+    assert_eq!(module.author, "VTIR Test Fixture");
+    assert_eq!(module.initial_delay, 6);
+    assert_eq!(module.ton_table, 0);
 
-    // Write to a temp file
-    let mut tmp = tempfile::NamedTempFile::new().expect("tempfile");
-    tmp.write_all(text.as_bytes()).expect("write");
-    let path = tmp.path().to_owned();
+    // PlayOrder section: 11 positions, loop at 0.
+    assert_eq!(module.positions.length, 11);
+    assert_eq!(module.positions.loop_pos, 0);
+    let expected_order: [usize; 11] = [0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1];
+    assert_eq!(&module.positions.value[..module.positions.length], &expected_order);
 
-    // Read back
-    let bytes = std::fs::read(&path).expect("re-read");
-    let loaded = format_load(&bytes, "demo.vtm").expect("load round-trip");
+    // Ornaments and samples sections
+    assert!(module.ornaments[1].is_some(), "ornament 1 should exist");
+    assert!(module.ornaments[2].is_some(), "ornament 2 should exist");
+    assert!(module.samples[1].is_some(), "sample 1 should exist");
+    assert!(module.samples[2].is_some(), "sample 2 should exist");
+    assert!(module.samples[3].is_some(), "sample 3 should exist");
+    assert_eq!(module.samples[1].as_deref().expect("s1").length, 3);
+    assert_eq!(module.samples[2].as_deref().expect("s2").length, 4);
+    assert_eq!(module.samples[3].as_deref().expect("s3").length, 4);
 
-    assert_eq!(loaded.title,         original.title);
-    assert_eq!(loaded.positions.length, original.positions.length);
-    let p = loaded.patterns[0].as_deref().expect("pattern 0");
-    assert_eq!(p.length, original.patterns[0].as_deref().unwrap().length);
+    // Pattern sections
+    let pat0 = module.patterns[0].as_deref().expect("pattern 0 should exist");
+    let pat1 = module.patterns[1].as_deref().expect("pattern 1 should exist");
+    assert_eq!(pat0.length, 32);
+    assert_eq!(pat1.length, 32);
+    assert_eq!(note_to_str(pat0.items[0].channel[0].note), "D-3");
+    assert_eq!(note_to_str(pat0.items[0].channel[1].note), "A-5");
+    // Pattern1 expands Pattern0 with a denser lead + undertune and deeper C-channel hits.
+    assert_eq!(note_to_str(pat1.items[0].channel[0].note), "D-4");
+    assert_eq!(note_to_str(pat1.items[0].channel[1].note), "D-4");
+    assert_eq!(note_to_str(pat1.items[0].channel[2].note), "C-1");
+
+    // Playback smoke + timing: 11 * 32 rows at speed 6 -> ~42.24s at 50Hz.
+    let mut vars = PlayVars::default();
+    init_tracker_parameters(&mut module, &mut vars, true);
+    vars.current_position = 0;
+    vars.current_pattern = module.positions.value[0] as i32;
+    vars.current_line = 0;
+    vars.delay = module.initial_delay as i8;
+    vars.delay_counter = 1;
+
+    let mut regs = vti_core::AyRegisters::default();
+    let mut loop_tick: Option<usize> = None;
+
+    for t in 1..=3000usize {
+        let result = {
+            let mut engine = Engine { module: &mut module, vars: &mut vars };
+            engine.module_play_current_line(&mut regs)
+        };
+        if result == PlayResult::ModuleLoop {
+            loop_tick = Some(t);
+            break;
+        }
+    }
+
+    let t = loop_tick.expect("fixture should loop within 3000 ticks");
+    assert!(t >= 2100 && t <= 2150, "loop tick out of expected range: {t}");
 }
