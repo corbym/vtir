@@ -47,6 +47,8 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -57,16 +59,27 @@ jobs:
             target
           key: macos-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Build release binary
-        run: cargo build --release
+      - name: Build release binaries (arm64 + x86_64)
+        run: |
+          cargo build --release --target aarch64-apple-darwin
+          cargo build --release --target x86_64-apple-darwin
+
+      - name: Create universal binary with lipo
+        run: |
+          mkdir -p dist-bin
+          lipo -create \
+            target/aarch64-apple-darwin/release/${{ env.BINARY_NAME }} \
+            target/x86_64-apple-darwin/release/${{ env.BINARY_NAME }} \
+            -output dist-bin/${{ env.BINARY_NAME }}
 
       - name: Create .app bundle
         run: |
           APP_DIR="dist/Vortex Tracker II.app"
           mkdir -p "$APP_DIR/Contents/MacOS"
           mkdir -p "$APP_DIR/Contents/Resources"
-          cp target/release/${{ env.BINARY_NAME }} "$APP_DIR/Contents/MacOS/vortex-tracker"
-          cat > "$APP_DIR/Contents/Info.plist" << 'EOF'
+          cp dist-bin/${{ env.BINARY_NAME }} "$APP_DIR/Contents/MacOS/vortex-tracker"
+          VERSION="${GITHUB_REF_NAME#v}"
+          cat > "$APP_DIR/Contents/Info.plist" << EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
             "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -74,14 +87,17 @@ jobs:
           <dict>
             <key>CFBundleName</key>              <string>Vortex Tracker II</string>
             <key>CFBundleIdentifier</key>        <string>net.untergrund.bulba.vortex-tracker</string>
-            <key>CFBundleVersion</key>           <string>${{ github.ref_name }}</string>
-            <key>CFBundleShortVersionString</key><string>${{ github.ref_name }}</string>
+            <key>CFBundleVersion</key>           <string>${VERSION}</string>
+            <key>CFBundleShortVersionString</key><string>${VERSION}</string>
             <key>CFBundleExecutable</key>        <string>vortex-tracker</string>
             <key>CFBundlePackageType</key>       <string>APPL</string>
             <key>NSHighResolutionCapable</key>   <true/>
           </dict>
           </plist>
           EOF
+
+      - name: Ad-hoc code sign .app bundle
+        run: codesign --force --deep --sign - "dist/Vortex Tracker II.app"
 
       - name: Install create-dmg
         run: brew install create-dmg
