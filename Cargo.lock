@@ -3954,6 +3954,7 @@ dependencies = [
  "anyhow",
  "log",
  "serde",
+ "serde_json",
  "vti-core",
 ]
 
@@ -3965,6 +3966,7 @@ dependencies = [
  "log",
  "serde",
  "serde-big-array",
+ "serde_json",
  "thiserror 1.0.69",
 ]
 

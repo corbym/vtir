@@ -9,3 +9,6 @@ anyhow.workspace = true
 serde.workspace = true
 log.workspace = true
 vti-core.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
