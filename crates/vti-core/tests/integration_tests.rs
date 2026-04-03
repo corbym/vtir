@@ -615,6 +615,14 @@ fn arpeggio_channels_a_and_b_are_active_after_row0() {
 // track the playhead faithfully.  `app.rs` reads those fields to build the
 // `play_pos: Option<(i32, usize)>` that is passed to PatternEditor::show(), so
 // if the engine updates them correctly the UI will follow.
+//
+// Important engine contract (mirrors the Pascal original):
+//   `current_line` always points to the NEXT row to be processed, not the row
+//   whose audio is currently being rendered.  `pattern_play_current_line`
+//   interprets a row, then increments the pointer before returning — so after
+//   row N is processed, `current_line == N + 1`.  The UI must subtract 1 to
+//   obtain the display row (`current_line.saturating_sub(1)`), exactly as the
+//   original Delphi `umredrawtracks` handler does with `line - 1`.
 
 /// After N ticks at delay=1, `current_line` must equal N (pattern is advancing
 /// one row per tick until pattern end).
@@ -644,10 +652,43 @@ fn current_line_advances_one_per_tick_at_delay_1() {
     }
 }
 
-/// `current_line` must reset to 0 when a new position is started in a
-/// multi-position module, so the pattern editor always shows the correct row.
+/// The UI display row is `current_line.saturating_sub(1)` — one behind the
+/// engine's internal pointer.  This test verifies that the display row is 0
+/// (the first row) after the very first tick, and advances from there.
 #[test]
-fn current_line_resets_to_zero_on_pattern_change() {
+fn display_row_is_current_line_minus_one() {
+    let mut m = make_module_with_pattern(); // 4-row pattern
+    let mut vars = PlayVars {
+        current_pattern: 0,
+        current_line: 0,
+        delay: 1,
+        delay_counter: 1,
+        ..PlayVars::default()
+    };
+    init_tracker_parameters(&mut m, &mut vars, true);
+    vars.delay = 1;
+    vars.delay_counter = 1;
+
+    let mut regs = vti_core::AyRegisters::default();
+
+    for expected_display in 0..=2 {
+        {
+            let mut engine = Engine { module: &mut m, vars: &mut vars };
+            engine.pattern_play_current_line(&mut regs);
+        }
+        let display = vars.current_line.saturating_sub(1);
+        assert_eq!(display, expected_display,
+            "display row should be {expected_display} after {} ticks", expected_display + 1);
+    }
+}
+
+/// When the module advances to a new pattern, the engine eagerly processes
+/// the first row of that new pattern.  After the transition tick,
+/// `current_line = 1` (row 0 was processed, pointer moved to row 1) and
+/// the display row (`current_line - 1 = 0`) correctly shows the start of
+/// the new pattern — matching the Pascal `RedrawPlWindow` behaviour.
+#[test]
+fn current_line_after_pattern_transition_is_one() {
     // Build a two-position module (pos 0 → pattern 0, pos 1 → pattern 1).
     let mut m = Module::default();
     m.initial_delay = 1;
@@ -689,7 +730,7 @@ fn current_line_resets_to_zero_on_pattern_change() {
 
     let mut regs = vti_core::AyRegisters::default();
 
-    // Drain pattern 0 (2 rows + 1 extra to trigger PatternEnd → advance position)
+    // Drain pattern 0 until the pattern changes.
     let mut changed_pattern = false;
     for _ in 0..10 {
         let old_pat = vars.current_pattern;
@@ -698,9 +739,13 @@ fn current_line_resets_to_zero_on_pattern_change() {
             engine.module_play_current_line(&mut regs);
         }
         if vars.current_pattern != old_pat {
-            // Pattern changed — line must be 0 (we are at the first row of the new pattern)
-            assert_eq!(vars.current_line, 0,
-                "current_line must reset to 0 when pattern changes; got {}", vars.current_line);
+            // The engine eagerly processed row 0 of the new pattern, so the
+            // pointer is at 1.  The display row (`current_line - 1`) is 0,
+            // correctly showing the top of the new pattern to the user.
+            assert_eq!(vars.current_line, 1,
+                "after transition, current_line should be 1 (row 0 processed eagerly)");
+            assert_eq!(vars.current_line.saturating_sub(1), 0,
+                "display row should be 0 (first row of the new pattern)");
             changed_pattern = true;
             break;
         }
