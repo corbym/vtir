@@ -2,6 +2,11 @@
 
 use eframe::egui;
 use vti_core::Module;
+use vti_ay::chip::ChipType;
+use vti_ay::config::AyConfig;
+use vti_ay::synth::Synthesizer;
+use vti_core::playback::{Engine, PlayVars, init_tracker_parameters, PlayResult};
+use vti_audio::AudioPlayer;
 
 use crate::ui::{PatternEditor, SampleEditor, OrnamentEditor, Toolbar};
 
@@ -25,6 +30,15 @@ pub struct VortexTrackerApp {
     pub is_playing: bool,
     pub play_mode: PlayMode,
 
+    // Audio engine
+    audio: Option<AudioPlayer>,
+    synth: Synthesizer,
+    play_vars: PlayVars,
+    /// Samples to render per 50 Hz interrupt tick.
+    samples_per_tick: u32,
+    /// `ctx.input(|i| i.time)` at the last engine tick.
+    last_tick_time: f64,
+
     // Status bar text
     pub status: String,
 }
@@ -47,9 +61,46 @@ pub enum PlayMode {
 impl VortexTrackerApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         let mut modules = vec![Module::default()];
+
         // Ensure there is at least one pattern to edit
         let pat_idx = vti_core::Module::pat_idx(0);
         modules[0].patterns[pat_idx] = Some(Box::new(vti_core::Pattern::default()));
+
+        // Set up a minimal playable song: one position → pattern 0
+        modules[0].positions.value[0] = 0;
+        modules[0].positions.length = 1;
+        modules[0].positions.loop_pos = 0;
+        modules[0].initial_delay = 3;
+
+        // Sample 1: sustained tone (amplitude 13, tone enabled, noise off, looping)
+        let mut sample = vti_core::Sample::default();
+        sample.length = 1;
+        sample.loop_pos = 0;
+        sample.items[0].amplitude = 13;
+        sample.items[0].mixer_ton = true;   // true → tone bit NOT set → tone channel ON
+        sample.items[0].mixer_noise = false; // false → noise bit set → noise channel OFF
+        modules[0].samples[1] = Some(Box::new(sample));
+
+        // Pattern 0, row 0: play A-4 (note 45) on channel A with sample 1, volume 15
+        let pat = modules[0].patterns[pat_idx].as_mut().unwrap();
+        pat.items[0].channel[0].note   = 45;
+        pat.items[0].channel[0].sample = 1;
+        pat.items[0].channel[0].volume = 15;
+
+        // Audio / synthesis setup
+        let cfg = AyConfig::default();
+        let samples_per_tick = cfg.sample_tiks_in_interrupt();
+        let synth = Synthesizer::new(cfg, 1, ChipType::AY);
+
+        let mut play_vars = PlayVars::default();
+        init_tracker_parameters(&mut modules[0], &mut play_vars, true);
+        play_vars.delay = modules[0].initial_delay as i8;
+        play_vars.current_pattern = modules[0].positions.value[0] as i32;
+
+        let audio = match AudioPlayer::start(44100) {
+            Ok(p)  => { log::info!("audio player started"); Some(p) }
+            Err(e) => { log::warn!("audio unavailable: {e}"); None }
+        };
 
         Self {
             modules,
@@ -61,6 +112,11 @@ impl VortexTrackerApp {
             bottom_panel: BottomPanel::default(),
             is_playing: false,
             play_mode: PlayMode::default(),
+            audio,
+            synth,
+            play_vars,
+            samples_per_tick,
+            last_tick_time: 0.0,
             status: "Ready".to_string(),
         }
     }
@@ -72,10 +128,69 @@ impl VortexTrackerApp {
     fn active_module_mut(&mut self) -> &mut Module {
         &mut self.modules[self.active_module]
     }
+
+    /// Re-initialise playback state so the next Play starts from the beginning.
+    fn reset_playback(&mut self) {
+        init_tracker_parameters(&mut self.modules[self.active_module], &mut self.play_vars, true);
+        self.play_vars.delay = self.modules[self.active_module].initial_delay as i8;
+        self.play_vars.current_pattern =
+            if self.modules[self.active_module].positions.length > 0 {
+                self.modules[self.active_module].positions.value[0] as i32
+            } else {
+                0
+            };
+    }
+
+    /// Render one 50 Hz tracker tick: advance the engine, synthesise samples, push to audio.
+    fn tick_audio(&mut self) {
+        let mut ay_regs = vti_core::AyRegisters::default();
+
+        let result = {
+            let module = &mut self.modules[self.active_module];
+            let vars   = &mut self.play_vars;
+            let mut engine = Engine { module, vars };
+            match self.play_mode {
+                PlayMode::Module  => engine.module_play_current_line(&mut ay_regs),
+                PlayMode::Pattern => engine.pattern_play_current_line(&mut ay_regs),
+                PlayMode::Line    => {
+                    engine.pattern_play_only_current_line(&mut ay_regs);
+                    PlayResult::Updated
+                }
+            }
+        };
+
+        if result == PlayResult::ModuleLoop && self.play_mode == PlayMode::Module {
+            // Module looped — keep playing (normal loop behaviour)
+        }
+
+        self.synth.apply_registers(0, &ay_regs);
+        self.synth.render_frame(self.samples_per_tick);
+        let samples = self.synth.drain(self.samples_per_tick as usize);
+
+        if let Some(ref player) = self.audio {
+            player.push_samples(&samples);
+        }
+    }
 }
 
 impl eframe::App for VortexTrackerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // ── Audio tick driver ──────────────────────────────────────────────
+        // Tick the tracker engine at ~50 Hz whenever playback is active.
+        const TICK_INTERVAL: f64 = 1.0 / 50.0;
+        if self.is_playing {
+            let now = ctx.input(|i| i.time);
+            if self.last_tick_time == 0.0 {
+                self.last_tick_time = now;
+            }
+            while self.last_tick_time + TICK_INTERVAL <= now {
+                self.last_tick_time += TICK_INTERVAL;
+                self.tick_audio();
+            }
+            // Schedule a repaint in ~10 ms so the audio loop stays smooth.
+            ctx.request_repaint_after(std::time::Duration::from_millis(10));
+        }
+
         // ── Menu bar ───────────────────────────────────────────────────────
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
@@ -83,6 +198,8 @@ impl eframe::App for VortexTrackerApp {
                     if ui.button("New").clicked() {
                         self.modules = vec![Module::default()];
                         self.active_module = 0;
+                        self.is_playing = false;
+                        self.reset_playback();
                         self.status = "New module created".to_string();
                         ui.close_menu();
                     }
@@ -113,7 +230,20 @@ impl eframe::App for VortexTrackerApp {
 
         // ── Toolbar ────────────────────────────────────────────────────────
         egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
+            let was_playing = self.is_playing;
             self.toolbar.show(ui, &mut self.is_playing, &mut self.play_mode, &mut self.status);
+            // When play transitions false→true, reset the playback cursor.
+            if !was_playing && self.is_playing {
+                self.reset_playback();
+                self.last_tick_time = 0.0;
+                let audio_status = if self.audio.is_some() { "Playing" } else { "Playing (no audio device)" };
+                self.status = audio_status.to_string();
+            }
+            // When stopped, reset so next Play starts from the beginning.
+            if was_playing && !self.is_playing {
+                self.reset_playback();
+                self.last_tick_time = 0.0;
+            }
         });
 
         // ── Status bar ─────────────────────────────────────────────────────

@@ -134,8 +134,9 @@ trunk serve
 trunk build --release
 ```
 
-> **Note:** Audio is not yet wired up in the web build. The UI and pattern editor
-> are fully functional; playback will be connected in a future milestone.
+> **Note:** Audio uses the browser's Web Audio API via `cpal`'s webaudio backend.
+> A short test tone is pre-loaded on row 0 of pattern 0 — click **▶ Play** to verify
+> audio is working. You can then add your own notes in the pattern editor and play them back.
 
 ---
 
