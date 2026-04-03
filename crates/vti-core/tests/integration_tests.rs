@@ -5,9 +5,13 @@ use vti_core::{
     PatternRow, PositionList, Sample, SampleTick, NOTE_NONE, NOTE_SOUND_OFF,
     MAX_PAT_LEN, MAX_PAT_NUM, MAX_SAM_LEN, MAX_ORN_LEN,
 };
-use vti_core::note_tables::{get_note_freq, get_note_by_envelope, PT3_NOTE_TABLE_PT};
+use vti_core::note_tables::{
+    get_note_freq, get_note_by_envelope,
+    PT3_NOTE_TABLE_PT, PT3_NOTE_TABLE_ST, PT3_NOTE_TABLE_ASM,
+    PT3_NOTE_TABLE_REAL, PT3_NOTE_TABLE_NATURAL,
+};
 use vti_core::playback::{Engine, PlayResult, PlayVars, init_tracker_parameters};
-use vti_core::util::{note_to_str, samp_to_str, int2_to_str, ints_to_time};
+use vti_core::util::{note_to_str, samp_to_str, int1d_to_str, int2_to_str, int4d_to_str, int2d_to_str, ints_to_time};
 
 // ─── note_tables ────────────────────────────────────────────────────────────
 
@@ -1256,4 +1260,413 @@ fn vtm_to_pt3_to_vtm_round_trip() {
             "p0 row0 ch{} note", ch
         );
     }
+}
+
+// ─── Additional util tests ───────────────────────────────────────────────────
+
+#[test]
+fn int1d_to_str_formats_with_decimal() {
+    assert_eq!(int1d_to_str(32), "3.2");
+    assert_eq!(int1d_to_str(10), "1.0");
+    assert_eq!(int1d_to_str(0),  "0.0");
+    assert_eq!(int1d_to_str(-15), "-1.5");
+}
+
+#[test]
+fn int4d_to_str_pads_to_four_hex_digits() {
+    assert_eq!(int4d_to_str(0x0C22), "0C22");
+    assert_eq!(int4d_to_str(0x0000), "0000");
+    assert_eq!(int4d_to_str(0xFFFF), "FFFF");
+    assert_eq!(int4d_to_str(0x0001), "0001");
+}
+
+#[test]
+fn int2d_to_str_pads_to_two_hex_digits() {
+    assert_eq!(int2d_to_str(0),    "00");
+    assert_eq!(int2d_to_str(0xFF), "FF");
+    assert_eq!(int2d_to_str(0x0A), "0A");
+    assert_eq!(int2d_to_str(1),    "01");
+}
+
+#[test]
+fn note_to_str_all_12_in_octave_1() {
+    let expected = ["C-1","C#1","D-1","D#1","E-1","F-1","F#1","G-1","G#1","A-1","A#1","B-1"];
+    for (i, name) in expected.iter().enumerate() {
+        assert_eq!(note_to_str(i as i8), *name, "note {} should be {}", i, name);
+    }
+}
+
+#[test]
+fn note_to_str_octave_5_c() {
+    // Note 48 = C-5 (4 full octaves × 12 = 48, octave = 48/12 + 1 = 5)
+    assert_eq!(note_to_str(48), "C-5");
+}
+
+// ─── Note table tests for all 5 tables ──────────────────────────────────────
+
+#[test]
+fn get_note_freq_table_1_st_is_different_from_pt() {
+    let pt = get_note_freq(0, 0);
+    let st = get_note_freq(1, 0);
+    assert_ne!(pt, st, "ST table should differ from PT table at note 0");
+    assert_eq!(st, PT3_NOTE_TABLE_ST[0]);
+}
+
+#[test]
+fn get_note_freq_table_2_asm() {
+    assert_eq!(get_note_freq(2, 0), PT3_NOTE_TABLE_ASM[0]);
+}
+
+#[test]
+fn get_note_freq_table_3_real() {
+    assert_eq!(get_note_freq(3, 0), PT3_NOTE_TABLE_REAL[0]);
+}
+
+#[test]
+fn get_note_freq_table_4_natural() {
+    assert_eq!(get_note_freq(4, 0), PT3_NOTE_TABLE_NATURAL[0]);
+}
+
+#[test]
+fn get_note_freq_all_tables_non_zero_at_note_0() {
+    for table in 0u8..=4 {
+        assert!(get_note_freq(table, 0) > 0, "table {} note 0 frequency should be non-zero", table);
+    }
+}
+
+#[test]
+fn get_note_freq_decreasing_within_table() {
+    // Within the PT table higher note index = higher pitch = lower period value.
+    for i in 0..95u8 {
+        let lo = get_note_freq(0, i);
+        let hi = get_note_freq(0, i + 1);
+        assert!(hi <= lo, "PT table[{}] ({}) should be >= table[{}] ({})", i+1, hi, i, lo);
+    }
+}
+
+#[test]
+fn get_note_by_envelope_returns_zero_for_no_match() {
+    // An arbitrary env_period very unlikely to match any note.
+    assert_eq!(get_note_by_envelope(0, 99999), 0, "no match should return 0");
+}
+
+#[test]
+fn get_note_by_envelope_works_for_all_tables() {
+    for table in 0u8..=4 {
+        let _ = get_note_by_envelope(table, 100); // must not panic
+    }
+}
+
+// ─── Effect command tests ─────────────────────────────────────────────────────
+
+/// Build a minimal one-position, one-pattern module with a single note on
+/// channel 0 plus an effect command on row 0.  The pattern has 4 rows.
+fn make_effect_module(cmd: AdditionalCommand) -> Module {
+    let mut m = Module::default();
+    m.initial_delay = 1;
+    m.positions.length = 1;
+    m.positions.value[0] = 0;
+
+    let mut s = Sample::default();
+    s.length = 1;
+    s.loop_pos = 0;
+    s.items[0] = SampleTick { amplitude: 15, mixer_ton: true, mixer_noise: false, ..SampleTick::default() };
+    m.samples[1] = Some(Box::new(s));
+
+    let mut pat = Pattern::default();
+    pat.length = 4;
+    pat.items[0].channel[0] = ChannelLine {
+        note: 36, // C-4
+        sample: 1,
+        ornament: 0,
+        volume: 15,
+        envelope: 0,
+        additional_command: cmd,
+    };
+    m.patterns[0] = Some(Box::new(pat));
+    m
+}
+
+/// Process one tick of `module` and return the resulting `PlayVars`.
+fn run_one_tick(module: &mut Module) -> PlayVars {
+    let mut vars = PlayVars {
+        current_pattern: 0,
+        current_line: 0,
+        delay: 1,
+        delay_counter: 1,
+        ..PlayVars::default()
+    };
+    init_tracker_parameters(module, &mut vars, true);
+    vars.delay = 1;
+    vars.delay_counter = 1;
+    let mut regs = vti_core::AyRegisters::default();
+    let mut engine = Engine { module, vars: &mut vars };
+    engine.pattern_play_current_line(&mut regs);
+    vars
+}
+
+#[test]
+fn effect_cmd1_glide_up_sets_positive_slide_step() {
+    let cmd = AdditionalCommand { number: 1, delay: 2, parameter: 5 };
+    let mut m = make_effect_module(cmd);
+    let vars = run_one_tick(&mut m);
+    let p = &vars.params_of_chan[0];
+    assert!(p.ton_slide_step > 0, "cmd1 (glide up) must set a positive ton_slide_step");
+    assert_eq!(p.ton_slide_step, 5);
+    assert_eq!(p.ton_slide_type, 0, "glide-up is type 0 (free glide)");
+}
+
+#[test]
+fn effect_cmd2_glide_down_sets_negative_slide_step() {
+    let cmd = AdditionalCommand { number: 2, delay: 2, parameter: 3 };
+    let mut m = make_effect_module(cmd);
+    let vars = run_one_tick(&mut m);
+    let p = &vars.params_of_chan[0];
+    assert!(p.ton_slide_step < 0, "cmd2 (glide down) must set a negative ton_slide_step");
+    assert_eq!(p.ton_slide_step, -3);
+    assert_eq!(p.ton_slide_type, 0, "glide-down is type 0 (free glide)");
+}
+
+#[test]
+fn effect_cmd3_tone_slide_sets_type_1() {
+    // Row 0 establishes the FROM note (C-4 = 36); row 1 has the TO note (C-5 = 48) + cmd3.
+    let mut m = Module::default();
+    m.initial_delay = 1;
+    m.positions.length = 1;
+    m.positions.value[0] = 0;
+
+    let mut s = Sample::default();
+    s.length = 1; s.loop_pos = 0;
+    s.items[0] = SampleTick { amplitude: 15, mixer_ton: true, ..SampleTick::default() };
+    m.samples[1] = Some(Box::new(s));
+
+    let mut pat = Pattern::default();
+    pat.length = 4;
+    pat.items[0].channel[0] = ChannelLine {
+        note: 36, sample: 1, ornament: 0, volume: 15, envelope: 0,
+        additional_command: AdditionalCommand::default(),
+    };
+    pat.items[1].channel[0] = ChannelLine {
+        note: 48, sample: 1, ornament: 0, volume: 15, envelope: 0,
+        additional_command: AdditionalCommand { number: 3, delay: 1, parameter: 8 },
+    };
+    m.patterns[0] = Some(Box::new(pat));
+
+    let mut vars = PlayVars { current_pattern: 0, current_line: 0, delay: 1, delay_counter: 1, ..PlayVars::default() };
+    init_tracker_parameters(&mut m, &mut vars, true);
+    vars.delay = 1; vars.delay_counter = 1;
+    let mut regs = vti_core::AyRegisters::default();
+    // Tick 1: process row 0 (C-4 establishes prev note).
+    { let mut e = Engine { module: &mut m, vars: &mut vars }; e.pattern_play_current_line(&mut regs); }
+    // Tick 2: process row 1 (C-5 + cmd3).
+    { let mut e = Engine { module: &mut m, vars: &mut vars }; e.pattern_play_current_line(&mut regs); }
+
+    let p = &vars.params_of_chan[0];
+    assert_eq!(p.ton_slide_type, 1, "cmd3 sets ton_slide_type = 1 (targeted slide)");
+    assert_eq!(p.slide_to_note, 48, "slide_to_note must be the target note (C-5 = 48)");
+    assert_eq!(p.note, 36, "note is restored to prev_note (C-4) during the tone slide");
+}
+
+#[test]
+fn effect_cmd4_sample_pos_jump() {
+    // Use an 8-tick sample so position 3 won't immediately loop.
+    let mut m = Module::default();
+    m.initial_delay = 1;
+    m.positions.length = 1;
+    m.positions.value[0] = 0;
+
+    let mut s = Sample::default();
+    s.length = 8; s.loop_pos = 0;
+    for i in 0..8 {
+        s.items[i] = SampleTick { amplitude: i as u8 + 1, mixer_ton: true, ..SampleTick::default() };
+    }
+    m.samples[1] = Some(Box::new(s));
+
+    let mut pat = Pattern::default();
+    pat.length = 4;
+    pat.items[0].channel[0] = ChannelLine {
+        note: 36, sample: 1, ornament: 0, volume: 15, envelope: 0,
+        additional_command: AdditionalCommand { number: 4, delay: 0, parameter: 3 },
+    };
+    m.patterns[0] = Some(Box::new(pat));
+
+    let vars = run_one_tick(&mut m);
+    // cmd4 sets sample_position to 3; get_channel_registers then advances by 1 → 4.
+    assert_eq!(vars.params_of_chan[0].sample_position, 4,
+        "cmd4 jumps to position 3 then the engine advances by 1 → expect 4");
+}
+
+#[test]
+fn effect_cmd5_ornament_pos_jump() {
+    let mut m = Module::default();
+    m.initial_delay = 1;
+    m.positions.length = 1;
+    m.positions.value[0] = 0;
+
+    let mut s = Sample::default();
+    s.length = 1; s.loop_pos = 0;
+    s.items[0] = SampleTick { amplitude: 15, mixer_ton: true, ..SampleTick::default() };
+    m.samples[1] = Some(Box::new(s));
+
+    let mut orn = Ornament::default();
+    orn.length = 4; orn.loop_pos = 0;
+    orn.items[0] = 0; orn.items[1] = 2; orn.items[2] = 4; orn.items[3] = 7;
+    m.ornaments[1] = Some(Box::new(orn));
+
+    let mut pat = Pattern::default();
+    pat.length = 4;
+    pat.items[0].channel[0] = ChannelLine {
+        note: 36, sample: 1, ornament: 1, volume: 15, envelope: 0,
+        additional_command: AdditionalCommand { number: 5, delay: 0, parameter: 2 },
+    };
+    m.patterns[0] = Some(Box::new(pat));
+
+    let vars = run_one_tick(&mut m);
+    // cmd5 sets ornament_position to 2; engine advances by 1 → 3.
+    assert_eq!(vars.params_of_chan[0].ornament_position, 3,
+        "cmd5 jumps ornament to pos 2 then engine advances by 1 → expect 3");
+}
+
+#[test]
+fn effect_cmd6_on_off_sets_delays() {
+    // parameter = (on_off_delay<<4) | off_on_delay  →  0x32 = on_off=3, off_on=2
+    let cmd = AdditionalCommand { number: 6, delay: 0, parameter: 0x32 };
+    let mut m = make_effect_module(cmd);
+    let vars = run_one_tick(&mut m);
+    let p = &vars.params_of_chan[0];
+    assert_eq!(p.on_off_delay, 3, "cmd6 sets on_off_delay from high nibble");
+    assert_eq!(p.off_on_delay, 2, "cmd6 sets off_on_delay from low nibble");
+    // get_channel_registers decrements current_on_off once in the same tick that
+    // pattern_interpreter sets it (Pascal original behaviour), so after one full
+    // tick the observable value is on_off_delay - 1.
+    assert_eq!(p.current_on_off, 2,
+        "current_on_off is on_off_delay decremented once by get_channel_registers");
+}
+
+#[test]
+fn effect_cmd6_channel_toggles_after_on_off_delay() {
+    // on_off_delay=2, off_on_delay=1: channel goes off after 2 ticks of sounding.
+    let cmd = AdditionalCommand { number: 6, delay: 0, parameter: 0x21 };
+    let mut m = make_effect_module(cmd);
+    if let Some(Some(pat)) = m.patterns.get_mut(0) { pat.length = 8; }
+
+    let mut vars = PlayVars { current_pattern: 0, current_line: 0, delay: 1, delay_counter: 1, ..PlayVars::default() };
+    init_tracker_parameters(&mut m, &mut vars, true);
+    vars.delay = 1; vars.delay_counter = 1;
+    let mut regs = vti_core::AyRegisters::default();
+
+    // Tick 1: row 0 processed, cmd6 applied, current_on_off=2 (then decremented→1 by get_channel_regs)
+    { let mut e = Engine { module: &mut m, vars: &mut vars }; e.pattern_play_current_line(&mut regs); }
+    assert!(vars.params_of_chan[0].sound_enabled, "channel should still be enabled after tick 1");
+
+    // Tick 2: current_on_off 1→0 → toggle; sound_enabled flips to false
+    { let mut e = Engine { module: &mut m, vars: &mut vars }; e.pattern_play_current_line(&mut regs); }
+    assert!(!vars.params_of_chan[0].sound_enabled, "channel should be disabled after on_off_delay ticks");
+}
+
+#[test]
+fn effect_cmd9_env_slide_up_sets_positive_add() {
+    let cmd = AdditionalCommand { number: 9, delay: 2, parameter: 4 };
+    let mut m = make_effect_module(cmd);
+    let vars = run_one_tick(&mut m);
+    assert_eq!(vars.env_slide_add, 4, "cmd9 sets env_slide_add = +parameter");
+    assert_eq!(vars.env_delay,     2, "cmd9 sets env_delay from delay field");
+}
+
+#[test]
+fn effect_cmd10_env_slide_down_sets_negative_add() {
+    let cmd = AdditionalCommand { number: 10, delay: 3, parameter: 7 };
+    let mut m = make_effect_module(cmd);
+    let vars = run_one_tick(&mut m);
+    assert_eq!(vars.env_slide_add, -7, "cmd10 sets env_slide_add = -parameter");
+    assert_eq!(vars.env_delay,      3, "cmd10 sets env_delay from delay field");
+}
+
+#[test]
+fn effect_cmd11_delay_change() {
+    let cmd = AdditionalCommand { number: 11, delay: 0, parameter: 5 };
+    let mut m = make_effect_module(cmd);
+    let vars = run_one_tick(&mut m);
+    assert_eq!(vars.delay, 5, "cmd11 must change the module delay to parameter value");
+}
+
+#[test]
+fn effect_cmd11_zero_parameter_does_not_change_delay() {
+    // parameter=0 is a no-op (Pascal: if param <> 0 then Delay := param).
+    let cmd = AdditionalCommand { number: 11, delay: 0, parameter: 0 };
+    let mut m = make_effect_module(cmd);
+
+    let mut vars = PlayVars { current_pattern: 0, current_line: 0, delay: 3, delay_counter: 1, ..PlayVars::default() };
+    init_tracker_parameters(&mut m, &mut vars, true);
+    vars.delay = 3; vars.delay_counter = 1;
+    let mut regs = vti_core::AyRegisters::default();
+    let mut e = Engine { module: &mut m, vars: &mut vars };
+    e.pattern_play_current_line(&mut regs);
+    assert_eq!(vars.delay, 3, "cmd11 with parameter=0 must not change the delay");
+}
+
+/// With glide-up (cmd1) the accumulated tone sliding grows positive over ticks.
+#[test]
+fn effect_cmd1_glide_up_increases_sliding_over_ticks() {
+    let cmd = AdditionalCommand { number: 1, delay: 2, parameter: 1 };
+    let mut m = make_effect_module(cmd);
+    if let Some(Some(pat)) = m.patterns.get_mut(0) { pat.length = 32; }
+
+    let mut vars = PlayVars { current_pattern: 0, current_line: 0, delay: 1, delay_counter: 1, ..PlayVars::default() };
+    init_tracker_parameters(&mut m, &mut vars, true);
+    vars.delay = 1; vars.delay_counter = 1;
+
+    let mut regs = vti_core::AyRegisters::default();
+    let mut slides = Vec::new();
+    for _ in 0..20 {
+        let mut e = Engine { module: &mut m, vars: &mut vars };
+        e.pattern_play_current_line(&mut regs);
+        slides.push(vars.params_of_chan[0].current_ton_sliding);
+    }
+    assert!(slides.iter().any(|&s| s > 0),
+        "glide-up should produce a positive current_ton_sliding over ticks: {:?}", slides);
+}
+
+/// With glide-down (cmd2) the accumulated tone sliding becomes negative over ticks.
+#[test]
+fn effect_cmd2_glide_down_decreases_sliding_over_ticks() {
+    let cmd = AdditionalCommand { number: 2, delay: 2, parameter: 1 };
+    let mut m = make_effect_module(cmd);
+    if let Some(Some(pat)) = m.patterns.get_mut(0) { pat.length = 32; }
+
+    let mut vars = PlayVars { current_pattern: 0, current_line: 0, delay: 1, delay_counter: 1, ..PlayVars::default() };
+    init_tracker_parameters(&mut m, &mut vars, true);
+    vars.delay = 1; vars.delay_counter = 1;
+
+    let mut regs = vti_core::AyRegisters::default();
+    let mut slides = Vec::new();
+    for _ in 0..20 {
+        let mut e = Engine { module: &mut m, vars: &mut vars };
+        e.pattern_play_current_line(&mut regs);
+        slides.push(vars.params_of_chan[0].current_ton_sliding);
+    }
+    assert!(slides.iter().any(|&s| s < 0),
+        "glide-down should produce a negative current_ton_sliding over ticks: {:?}", slides);
+}
+
+/// Envelope slide up (cmd9) causes `cur_env_slide` to grow after `env_delay` ticks.
+#[test]
+fn effect_cmd9_envelope_slide_accumulates_over_ticks() {
+    let cmd = AdditionalCommand { number: 9, delay: 1, parameter: 2 };
+    let mut m = make_effect_module(cmd);
+    if let Some(Some(pat)) = m.patterns.get_mut(0) { pat.length = 32; }
+
+    let mut vars = PlayVars { current_pattern: 0, current_line: 0, delay: 1, delay_counter: 1, ..PlayVars::default() };
+    init_tracker_parameters(&mut m, &mut vars, true);
+    vars.delay = 1; vars.delay_counter = 1;
+
+    let mut regs = vti_core::AyRegisters::default();
+    let mut slides = Vec::new();
+    for _ in 0..20 {
+        let mut e = Engine { module: &mut m, vars: &mut vars };
+        e.pattern_play_current_line(&mut regs);
+        slides.push(vars.cur_env_slide);
+    }
+    assert!(slides.iter().any(|&s| s > 0),
+        "cmd9 env slide up should make cur_env_slide grow: {:?}", slides);
 }
