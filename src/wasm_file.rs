@@ -2,20 +2,21 @@
 //!
 //! Provides async helpers that open / save files via the browser's native
 //! file-picker dialogs and ferry results back to the egui frame loop through
-//! thread-local slots (`PENDING_OPEN`, `PENDING_SAVE_STATUS`).
+//! the channel in [`crate::pending_file`].
 //!
 //! Callers (in `app.rs`) call [`spawn_open_file`] or [`spawn_save_file`] from
 //! within a user-gesture handler (button click), then poll
-//! [`take_pending_open`] / [`take_pending_save_status`] on each frame.
+//! [`crate::pending_file::take_pending_open`] /
+//! [`crate::pending_file::take_pending_save_status`] on each frame.
 //!
 //! [File System Access API]: https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API
-
-use std::cell::RefCell;
 
 use js_sys::{Array, ArrayBuffer, Object, Promise, Reflect, Uint8Array};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
+
+use crate::pending_file::{PendingFile, put_pending_open, put_pending_save_status};
 
 // ── extern "C" bindings ───────────────────────────────────────────────────────
 
@@ -75,32 +76,6 @@ extern "C" {
     fn show_save_file_picker_raw(options: &JsValue) -> Result<Promise, JsValue>;
 }
 
-// ── Pending-result channels ───────────────────────────────────────────────────
-
-/// Data returned by a completed open-file operation.
-pub struct PendingFile {
-    pub name: String,
-    pub bytes: Vec<u8>,
-}
-
-thread_local! {
-    /// Written by the async open callback; drained by `App::update` each frame.
-    static PENDING_OPEN: RefCell<Option<PendingFile>> = const { RefCell::new(None) };
-    /// Written by the async save callback (success or error message).
-    static PENDING_SAVE_STATUS: RefCell<Option<Result<String, String>>> =
-        const { RefCell::new(None) };
-}
-
-/// Drain the pending open-file result (if any).  Call once per egui frame.
-pub fn take_pending_open() -> Option<PendingFile> {
-    PENDING_OPEN.with(|c| c.borrow_mut().take())
-}
-
-/// Drain the pending save-file status (if any).  Call once per egui frame.
-pub fn take_pending_save_status() -> Option<Result<String, String>> {
-    PENDING_SAVE_STATUS.with(|c| c.borrow_mut().take())
-}
-
 // ── Check browser support ─────────────────────────────────────────────────────
 
 /// Returns `true` if `window.showOpenFilePicker` is available in this browser.
@@ -124,7 +99,7 @@ pub fn save_picker_supported() -> bool {
 pub fn spawn_open_file() {
     wasm_bindgen_futures::spawn_local(async {
         match do_open_file().await {
-            Ok(pf) => PENDING_OPEN.with(|c| *c.borrow_mut() = Some(pf)),
+            Ok(pf) => put_pending_open(pf),
             Err(e) => {
                 if !is_abort_error(&e) {
                     log::warn!("showOpenFilePicker error: {:?}", e);
@@ -189,16 +164,12 @@ pub fn spawn_save_file(suggested_name: String, bytes: Vec<u8>) {
     wasm_bindgen_futures::spawn_local(async move {
         match do_save_file(&suggested_name, &bytes).await {
             Ok(()) => {
-                PENDING_SAVE_STATUS.with(|c| {
-                    *c.borrow_mut() = Some(Ok(format!("Saved: {suggested_name}")));
-                });
+                put_pending_save_status(Ok(format!("Saved: {suggested_name}")));
             }
             Err(e) => {
                 if !is_abort_error(&e) {
                     let msg = e.as_string().unwrap_or_else(|| format!("{e:?}"));
-                    PENDING_SAVE_STATUS.with(|c| {
-                        *c.borrow_mut() = Some(Err(format!("Save failed: {msg}")));
-                    });
+                    put_pending_save_status(Err(format!("Save failed: {msg}")));
                 }
             }
         }

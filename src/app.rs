@@ -11,6 +11,8 @@ use vti_core::formats;
 
 #[cfg(target_arch = "wasm32")]
 use crate::wasm_file;
+#[cfg(target_arch = "wasm32")]
+use crate::pending_file;
 
 use crate::ui::{PatternEditor, SampleEditor, OrnamentEditor, Toolbar};
 
@@ -359,7 +361,7 @@ impl VortexTrackerApp {
     /// [`wasm_file::spawn_save_file`] running asynchronously in the background.
     #[cfg(target_arch = "wasm32")]
     fn poll_wasm_file_ops(&mut self) {
-        if let Some(pf) = wasm_file::take_pending_open() {
+        if let Some(pf) = pending_file::take_pending_open() {
             match formats::load(&pf.bytes, &pf.name) {
                 Ok(module) => {
                     self.is_playing = false;
@@ -374,7 +376,7 @@ impl VortexTrackerApp {
             }
         }
 
-        if let Some(result) = wasm_file::take_pending_save_status() {
+        if let Some(result) = pending_file::take_pending_save_status() {
             self.status = match result {
                 Ok(msg) => msg,
                 Err(msg) => msg,
