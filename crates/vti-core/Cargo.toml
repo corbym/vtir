@@ -1,0 +1,12 @@
+[package]
+name = "vti-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+log.workspace = true
+serde_big_array = { package = "serde-big-array", version = "0.5" }

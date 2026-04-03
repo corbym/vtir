@@ -1,0 +1,51 @@
+[workspace]
+members = [
+    "crates/vti-core",
+    "crates/vti-ay",
+    "crates/vti-audio",
+    ".",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Vortex Tracker II Rust Port Contributors"]
+license = "MIT"
+
+[workspace.dependencies]
+anyhow = "1.0"
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+log = "0.4"
+env_logger = "0.11"
+
+vti-core  = { path = "crates/vti-core" }
+vti-ay    = { path = "crates/vti-ay" }
+vti-audio = { path = "crates/vti-audio" }
+
+[package]
+name = "vortex-tracker"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "Vortex Tracker II — cross-platform AY/YM music editor (Rust port)"
+
+[[bin]]
+name = "vortex-tracker"
+path = "src/main.rs"
+
+[dependencies]
+vti-core.workspace = true
+vti-ay.workspace = true
+vti-audio.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+log.workspace = true
+env_logger.workspace = true
+eframe = "0.28"
+egui = "0.28"
+egui_extras = "0.28"
+rfd = "0.14"
