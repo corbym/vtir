@@ -330,6 +330,37 @@ impl VortexTrackerApp {
         }
     }
 
+    /// Open a save-file dialog and write the current module as a PT3 binary file.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_pt3_dialog(&mut self) {
+        let path = rfd::FileDialog::new()
+            .add_filter("Pro Tracker 3 (*.pt3)", &["pt3"])
+            .set_file_name("module.pt3")
+            .save_file();
+
+        let Some(path) = path else {
+            return; // user cancelled
+        };
+
+        match formats::save_pt3(&self.modules[self.active_module]) {
+            Ok(bytes) => match std::fs::write(&path, &bytes) {
+                Ok(()) => {
+                    let name = path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("file");
+                    self.status = format!("Saved: {}", name);
+                }
+                Err(e) => {
+                    self.status = format!("Save failed: {e}");
+                }
+            },
+            Err(e) => {
+                self.status = format!("Export failed: {e}");
+            }
+        }
+    }
+
     #[cfg(target_arch = "wasm32")]
     fn save_vtm_dialog(&mut self) {
         let text = formats::save_vtm(&self.modules[self.active_module]);
@@ -354,6 +385,32 @@ impl VortexTrackerApp {
                         e.as_string().unwrap_or_else(|| format!("{e:?}"))
                     );
                 }
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn save_pt3_dialog(&mut self) {
+        let filename = "module.pt3".to_string();
+        match formats::save_pt3(&self.modules[self.active_module]) {
+            Ok(bytes) => {
+                if wasm_file::save_picker_supported() {
+                    self.status = "Saving…".to_string();
+                    wasm_file::spawn_save_file(filename, bytes);
+                } else {
+                    match wasm_file::download_blob(&filename, &bytes) {
+                        Ok(()) => self.status = format!("Saved: {filename}"),
+                        Err(e) => {
+                            self.status = format!(
+                                "Save failed: {}",
+                                e.as_string().unwrap_or_else(|| format!("{e:?}"))
+                            );
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                self.status = format!("Export failed: {e}");
             }
         }
     }
@@ -472,6 +529,10 @@ impl eframe::App for VortexTrackerApp {
                     }
                     if ui.button("Save as VTM…").clicked() {
                         self.save_vtm_dialog();
+                        ui.close_menu();
+                    }
+                    if ui.button("Save as PT3…").clicked() {
+                        self.save_pt3_dialog();
                         ui.close_menu();
                     }
                     ui.separator();

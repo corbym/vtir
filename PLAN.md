@@ -75,12 +75,12 @@
 ### 2.5 Format Parsers & Writers (`formats/`)
 
 #### 2.5.1 PT3 (`formats/pt3.rs`) — `PT32VTM` / `VTM2PT3`
-- [~] `parse()` — header, sample pointers, ornament pointers, position list ✓
-- [~] `parse_sample()` — 3-byte tick encoding ✓ (needs real bit-field verification)
-- [~] `parse_ornament()` ✓
-- [ ] `decode_channel()` — **full PT3 channel bytecode decoder** (length prefixes,
-      note encoding, envelope/noise inline values, repeat counts)
-- [ ] `write()` — encode Module back to PT3 binary
+- [x] `parse()` — header, sample pointers, ornament pointers, position list ✓
+- [x] `parse_sample()` — 4-byte tick encoding, all fields ✓
+- [x] `parse_ornament()` ✓
+- [x] `decode_channel()` — **full PT3 channel bytecode decoder** (PatternInterpreter:
+      all opcodes $10-$FF, skip/repeat, envelope period, all 9 effect commands)
+- [x] `write()` — encode Module back to PT3 binary (VTM2PT3 full port)
 
 #### 2.5.2 PT2 (`formats/pt2.rs`) — `PT22VTM`
 - [ ] Header decode
@@ -150,7 +150,7 @@
 - [ ] Envelope-slide (commands 9 and 10)
 - [ ] Sample position jump (command 4)
 - [ ] Ornament position jump (command 5)
-- [ ] PT3 binary round-trip (parse → write → parse)
+- [ ] PT3 binary round-trip (parse → write → parse)  ← **done, 5 tests passing**
 
 ---
 
@@ -243,7 +243,8 @@
 - [x] `eframe::App::update` skeleton with menu bar / toolbar / status / panels
 - [x] `make_demo_module()` — 3-channel arpeggio (I–V–vi–IV) + noise drum, loops forever
 - [x] `File → Open` — rfd file dialog (native) / File System Access API (WASM) → format detection → Module load
-- [x] `File → Save` — rfd save dialog (native) / File System Access API (WASM) → VTM text output
+- [x] `File → Save as VTM…` — rfd save dialog (native) / File System Access API (WASM) → VTM text output
+- [x] `File → Save as PT3…` — rfd save dialog (native) / File System Access API (WASM) → PT3 binary output
 - [ ] `File → Open` / `File → Save` — show load/save errors and parse failures in an egui modal error dialog (currently only reported in the status bar)
 - [ ] `File → Export ZX` — PT3 to .tap/.tzx (ported from `ExportZX.pas`)
 - [ ] Turbo Sound second-chip slot management
@@ -545,7 +546,7 @@ should be treated as regressions and investigated before merging.
 | `vti-core` note tables | ✅ complete | — |
 | `vti-core` playback engine | ~80% | timing helpers, some effect edge cases |
 | `vti-core` util | ~70% | `get_pattern_line_string`, `get_sample_string` |
-| **PT3 format parser** | ~40% | full channel bytecode decoder, writer |
+| **PT3 format parser** | ✅ complete | full parse + write (round-trip tested) |
 | All other format parsers (12×) | 0% | ~3000 lines of Pascal to port |
 | `vti-ay` chip emulator | ~85% | perf-mode paths, channel presets |
 | `vti-ay` synthesizer | ~75% | channel allocation presets, Turbo Sound |
@@ -553,7 +554,7 @@ should be treated as regressions and investigated before merging.
 | `vti-app` GUI skeleton | ~30% | all editing interaction, dialogs |
 | Build pipeline | ~50% | GitHub Actions release workflow |
 | README | 0% | full write-up |
-| **Integration tests** | ✅ 59 passing | effect-command edge cases, PT3 round-trip |
+| **Integration tests** | ✅ 52 passing | effect-command edge cases, PT3 load/save round-trip |
 | **Pascal parity baselines** | ✅ infrastructure done | Fix 4 known bugs (see §9.4) |
 | **Web target (eframe WASM)** | ✅ ~95% | file-dialog fallback done via File System Access API |
 | **Web target (KMP/Compose)** | 0% | `vti-ffi` WASM bindings, Kotlin/Wasm UI (long-term) |
