@@ -22,6 +22,18 @@ Keep this separation of concerns. New behaviour belongs in the most appropriate 
 
 ---
 
+## Faithful Conversion from the Original Pascal/Delphi Source
+
+This project is a **port**, not a rewrite. The goal is to replicate the behaviour of the original Delphi/Pascal code as closely as possible, not to redesign it.
+
+- **Timing is critical.** The original tracker advances state on a per-frame basis tied to the AY chip's interrupt rate (typically 50 Hz on ZX Spectrum hardware). Any logic that counts frames, advances delay counters, or sequences sample/ornament ticks must replicate the original cadence exactly. Off-by-one errors in timing will cause audibly wrong playback.
+- **Refer to the original source.** The Pascal files (`trfuncs.pas`, `AY.pas`, etc.) are preserved in the repository root. When porting a routine, read the original implementation first and translate it statement-by-statement before refactoring. Do not guess at intended behaviour.
+- **Preserve numeric precision.** The original code uses specific integer widths and wrapping arithmetic. Match these precisely — do not silently widen types or change arithmetic order unless you have verified equivalence with tests.
+- **Do not "improve" algorithms during porting.** Port faithfully first; optimise or clean up only after tests confirm the output is bit-identical to the original.
+- **Use the original as the specification.** If the Rust behaviour diverges from the Pascal behaviour in any observable way (register values, timing, envelope shape, noise pattern), treat the Pascal as correct.
+
+---
+
 ## Development Approach
 
 ### Work in Small Vertical Stripes
