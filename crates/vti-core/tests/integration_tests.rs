@@ -1257,3 +1257,135 @@ fn vtm_to_pt3_to_vtm_round_trip() {
         );
     }
 }
+
+// ─── PT2 format tests ─────────────────────────────────────────────────────────
+
+#[test]
+fn pt2_smoke_parse_minimal() {
+    use vti_core::formats::pt2;
+    let bytes = read_fixture("minimal_roundtrip.pt2");
+    let m = pt2::parse(&bytes).expect("minimal_roundtrip.pt2 must parse");
+    assert_eq!(m.title.trim(), "PT2 minimal fixture", "title");
+    assert_eq!(m.initial_delay, 6, "delay");
+    assert_eq!(m.positions.length, 1, "num_positions");
+    assert_eq!(m.positions.loop_pos, 0, "loop_pos");
+
+    let p0 = m.patterns[0].as_deref().expect("pattern 0 must exist");
+    assert_eq!(p0.length, 1, "pattern 0 length");
+    assert_eq!(p0.items[0].channel[0].note, 36, "note C-4 on ch A");
+    // Sample 1 is present in the module
+    assert!(m.samples[1].is_some(), "sample 1 exists");
+}
+
+#[test]
+fn pt2_roundtrip_via_pt3() {
+    use vti_core::formats::pt2;
+    let bytes = read_fixture("minimal_roundtrip.pt2");
+    let original = pt2::parse(&bytes).expect("parse PT2");
+    let pt3_bytes = save_pt3(&original).expect("save as PT3");
+    let reloaded = pt3_fmt::parse(&pt3_bytes).expect("re-parse PT3");
+    assert_eq!(reloaded.initial_delay, original.initial_delay, "delay");
+    assert_eq!(reloaded.positions.length, original.positions.length, "positions");
+    let orig_p0 = original.patterns[0].as_deref().expect("orig pat 0");
+    let new_p0 = reloaded.patterns[0].as_deref().expect("reloaded pat 0");
+    assert_eq!(new_p0.items[0].channel[0].note, orig_p0.items[0].channel[0].note, "note");
+}
+
+// ─── PT1 format tests ─────────────────────────────────────────────────────────
+
+#[test]
+fn pt1_smoke_parse_minimal() {
+    use vti_core::formats::pt1;
+    let bytes = read_fixture("minimal_roundtrip.pt1");
+    let m = pt1::parse(&bytes).expect("minimal_roundtrip.pt1 must parse");
+    assert_eq!(m.title.trim(), "PT1 minimal fixture", "title");
+    assert_eq!(m.initial_delay, 6, "delay");
+    assert_eq!(m.positions.length, 1, "num_positions");
+    let p0 = m.patterns[0].as_deref().expect("pattern 0 must exist");
+    assert_eq!(p0.items[0].channel[0].note, 36, "note C-4");
+    assert!(m.samples[1].is_some(), "sample 1 exists");
+}
+
+#[test]
+fn pt1_roundtrip_via_pt3() {
+    use vti_core::formats::pt1;
+    let bytes = read_fixture("minimal_roundtrip.pt1");
+    let original = pt1::parse(&bytes).expect("parse PT1");
+    let pt3_bytes = save_pt3(&original).expect("save as PT3");
+    let reloaded = pt3_fmt::parse(&pt3_bytes).expect("re-parse PT3");
+    assert_eq!(reloaded.initial_delay, original.initial_delay, "delay");
+    assert_eq!(reloaded.positions.length, original.positions.length, "positions");
+    let orig_p0 = original.patterns[0].as_deref().expect("orig pat 0");
+    let new_p0 = reloaded.patterns[0].as_deref().expect("reloaded pat 0");
+    assert_eq!(new_p0.items[0].channel[0].note, orig_p0.items[0].channel[0].note, "note");
+}
+
+// ─── STC format tests ─────────────────────────────────────────────────────────
+
+#[test]
+fn stc_smoke_parse_minimal() {
+    use vti_core::formats::stc;
+    let bytes = read_fixture("minimal_roundtrip.stc");
+    let m = stc::parse(&bytes).expect("minimal_roundtrip.stc must parse");
+    assert_eq!(m.title.trim(), "STC minimal", "title");
+    assert_eq!(m.initial_delay, 6, "delay");
+    assert_eq!(m.positions.length, 1, "num_positions");
+    let p0 = m.patterns[0].as_deref().expect("pattern 0 must exist");
+    assert_eq!(p0.items[0].channel[0].note, 36, "note C-4");
+}
+
+#[test]
+fn stc_roundtrip_via_pt3() {
+    use vti_core::formats::stc;
+    let bytes = read_fixture("minimal_roundtrip.stc");
+    let original = stc::parse(&bytes).expect("parse STC");
+    let pt3_bytes = save_pt3(&original).expect("save as PT3");
+    let reloaded = pt3_fmt::parse(&pt3_bytes).expect("re-parse PT3");
+    assert_eq!(reloaded.initial_delay, original.initial_delay, "delay");
+    assert_eq!(reloaded.positions.length, original.positions.length, "positions");
+    let orig_p0 = original.patterns[0].as_deref().expect("orig pat 0");
+    let new_p0 = reloaded.patterns[0].as_deref().expect("reloaded pat 0");
+    assert_eq!(new_p0.items[0].channel[0].note, orig_p0.items[0].channel[0].note, "note");
+}
+
+// ─── STP format tests ─────────────────────────────────────────────────────────
+
+#[test]
+fn stp_smoke_parse_minimal() {
+    use vti_core::formats::stp;
+    let bytes = read_fixture("minimal_roundtrip.stp");
+    let m = stp::parse(&bytes).expect("minimal_roundtrip.stp must parse");
+    assert_eq!(m.initial_delay, 6, "delay");
+    assert_eq!(m.positions.length, 1, "num_positions");
+    let p0 = m.patterns[0].as_deref().expect("pattern 0 must exist");
+    assert_eq!(p0.items[0].channel[0].note, 36, "note C-4");
+    assert!(m.samples[1].is_some(), "sample 1 exists");
+}
+
+#[test]
+fn stp_roundtrip_via_pt3() {
+    use vti_core::formats::stp;
+    let bytes = read_fixture("minimal_roundtrip.stp");
+    let original = stp::parse(&bytes).expect("parse STP");
+    let pt3_bytes = save_pt3(&original).expect("save as PT3");
+    let reloaded = pt3_fmt::parse(&pt3_bytes).expect("re-parse PT3");
+    assert_eq!(reloaded.initial_delay, original.initial_delay, "delay");
+    assert_eq!(reloaded.positions.length, original.positions.length, "positions");
+    let orig_p0 = original.patterns[0].as_deref().expect("orig pat 0");
+    let new_p0 = reloaded.patterns[0].as_deref().expect("reloaded pat 0");
+    assert_eq!(new_p0.items[0].channel[0].note, orig_p0.items[0].channel[0].note, "note");
+}
+
+/// `formats::load()` dispatches correctly for all supported extensions.
+#[test]
+fn format_load_dispatch_all_formats() {
+    use vti_core::formats::load;
+    for ext in &["pt2", "pt1", "stc", "stp"] {
+        let bytes = read_fixture(&format!("minimal_roundtrip.{}", ext));
+        let m = load(&bytes, &format!("module.{}", ext))
+            .unwrap_or_else(|e| panic!("load(.{}) failed: {}", ext, e));
+        assert_eq!(m.initial_delay, 6, "{}: delay", ext);
+        assert_eq!(m.positions.length, 1, "{}: positions", ext);
+    }
+}
+
