@@ -1,0 +1,1235 @@
+program vt_harness;
+{
+  Standalone FPC harness that generates Pascal-baseline JSON fixtures
+  for the Vortex Tracker II Rust port.
+
+  Faithfully implements key algorithmic functions from trfuncs.pas / AY.pas
+  without any GUI, audio or Windows dependencies.
+
+  (c) Original algorithms: S.V.Bulba, 2000-2009
+  Harness wrapper: corbym/vtir project
+
+  Build:  fpc -Mdelphi vt_harness.pas
+  Usage:  ./vt_harness <test-name>
+  Tests:  noise_lfsr | envelopes | pt3_vol | note_tables |
+          pattern_basic | pattern_envelope
+}
+{$mode delphi}
+{$H+}
+
+uses SysUtils;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  Constants (from trfuncs.pas)
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+const
+  MaxPatLen    = 256;
+  MaxSamLen    = 64;
+  MaxOrnLen    = 255;
+  MaxPatNum    = 84;
+  MidChan      = 1;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  Type declarations (mirroring trfuncs.pas exactly)
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+type
+  TSampleTick = record
+    Add_to_Ton                    : SmallInt;
+    Ton_Accumulation              : Boolean;
+    Amplitude                     : Byte;
+    Amplitude_Sliding             : Boolean;
+    Amplitude_Slide_Up            : Boolean;
+    Envelope_Enabled              : Boolean;
+    Envelope_or_Noise_Accumulation: Boolean;
+    Add_to_Envelope_or_Noise      : ShortInt;
+    { false = sample does NOT mute tone channel  (mixer bit 0 stays 0 → tone on)  }
+    { true  = sample mutes tone channel          (mixer bit 0 set   → tone off)   }
+    Mixer_Ton                     : Boolean;
+    { false = sample does NOT mute noise channel }
+    { true  = sample mutes noise channel         }
+    Mixer_Noise                   : Boolean;
+  end;
+
+  TSample = record
+    Length, Loop : Byte;
+    Enabled      : Boolean;
+    Items        : array[0..MaxSamLen-1] of TSampleTick;
+  end;
+  PSample = ^TSample;
+
+  TOrnament = record
+    Items  : array[0..MaxOrnLen-1] of ShortInt;
+    Length : Integer;
+    Loop   : Integer;
+  end;
+  POrnament = ^TOrnament;
+
+  TAdditionalCommand = record
+    Number, Delay, Parameter : Byte;
+  end;
+
+  TChannelLine = record
+    Note               : ShortInt; { 0..95=note, -1=none, -2=sound off }
+    Sample             : Byte;     { 0=keep, 1..31=set }
+    Ornament           : Byte;
+    Volume             : ShortInt; { 0=keep, 1..15=set }
+    Envelope           : Byte;     { 0=keep, 1..14=type, 15=off }
+    Additional_Command : TAdditionalCommand;
+  end;
+
+  TPatternRow = record
+    Noise    : Byte;
+    Envelope : Word;
+    Channel  : array[0..2] of TChannelLine;
+  end;
+
+  TPattern = record
+    Length : Integer;
+    Items  : array[0..MaxPatLen-1] of TPatternRow;
+  end;
+  PPattern = ^TPattern;
+
+  TPosition = record
+    Value  : array[0..255] of Integer;
+    Length : Integer;
+    Loop   : Integer;
+  end;
+
+  TIsChansEntry = record
+    Global_Ton, Global_Noise, Global_Envelope : Boolean;
+    EnvelopeEnabled                            : Boolean;
+    Ornament, Sample, Volume                   : Byte;
+  end;
+
+  TModule = record
+    Title, Author       : string;
+    Ton_Table           : Byte;
+    Initial_Delay       : Byte;
+    Positions           : TPosition;
+    Samples             : array[1..31] of PSample;
+    Ornaments           : array[0..15] of POrnament;
+    Patterns            : array[-1..MaxPatNum] of PPattern;
+    FeaturesLevel       : Integer;
+    VortexModule_Header : Boolean;
+    IsChans             : array[0..2] of TIsChansEntry;
+  end;
+  PModule = ^TModule;
+
+{ ─── AY chip state (minimal subset of TSoundChip from AY.pas) ─── }
+
+  TEnvShape = (
+    esHold0,     { types 0-3, 9     }
+    esHold31,    { types 4-7, 15    }
+    esSaw8,      { type 8           }
+    esTriangle10,{ type 10          }
+    esDecayHold, { type 11          }
+    esSaw12,     { type 12          }
+    esAttackHold,{ type 13          }
+    esTriangle14 { type 14          }
+  );
+
+  TAYRegisters = record
+    TonA, TonB, TonC          : Word;
+    Noise, Mixer              : Byte;
+    AmplitudeA, AmplitudeB, AmplitudeC : Byte;
+    Envelope                  : Word;
+    EnvType                   : Byte;
+  end;
+
+  TChipState = record
+    AYReg        : TAYRegisters;
+    FirstPeriod  : Boolean;
+    Ampl         : Integer;
+    EnvEnA, EnvEnB, EnvEnC : Boolean;
+    Shape        : TEnvShape;
+  end;
+
+{ ─── PlVars anonymous inner type ─── }
+
+  TParamsOfChan = record
+    SamplePosition, OrnamentPosition   : Byte;
+    SoundEnabled                        : Boolean;
+    Slide_To_Note, Note                 : Byte;
+    Ton_Slide_Delay, Ton_Slide_Count    : ShortInt;
+    Ton_Slide_Step, Ton_Slide_Delta     : SmallInt;
+    Ton_Slide_Type                      : Integer;
+    Current_Ton_Sliding                 : SmallInt;
+    OnOff_Delay, OffOn_Delay, Current_OnOff : ShortInt;
+    Ton, Ton_Accumulator                : Word;
+    Amplitude                           : Byte;
+    Current_Amplitude_Sliding           : ShortInt;
+    Current_Envelope_Sliding            : ShortInt;
+    Current_Noise_Sliding               : ShortInt;
+  end;
+
+  TPlVars = record
+    CurrentPosition, CurrentPattern, CurrentLine : Integer;
+    Env_Base        : SmallInt;
+    ParamsOfChan    : array[0..2] of TParamsOfChan;
+    Delay, DelayCounter   : ShortInt;
+    Cur_Env_Slide         : SmallInt;
+    Cur_Env_Delay         : ShortInt;
+    Env_Delay             : ShortInt;
+    Env_Slide_Add         : SmallInt;
+    AddToEnv, AddToNoise  : ShortInt;
+    PT3Noise              : Byte;
+    IntCnt                : Integer;
+  end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  Note tables and volume table  (verbatim from trfuncs.pas constants)
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+type
+  PT3ToneTable = array[0..95] of Word;
+
+const
+  PT3NoteTable_PT: PT3ToneTable = (
+    $0C22,$0B73,$0ACF,$0A33,$09A1,$0917,$0894,$0819,$07A4,$0737,$06CF,$066D,
+    $0611,$05BA,$0567,$051A,$04D0,$048B,$044A,$040C,$03D2,$039B,$0367,$0337,
+    $0308,$02DD,$02B4,$028D,$0268,$0246,$0225,$0206,$01E9,$01CE,$01B4,$019B,
+    $0184,$016E,$015A,$0146,$0134,$0123,$0112,$0103,$00F5,$00E7,$00DA,$00CE,
+    $00C2,$00B7,$00AD,$00A3,$009A,$0091,$0089,$0082,$007A,$0073,$006D,$0067,
+    $0061,$005C,$0056,$0052,$004D,$0049,$0045,$0041,$003D,$003A,$0036,$0033,
+    $0031,$002E,$002B,$0029,$0027,$0024,$0022,$0020,$001F,$001D,$001B,$001A,
+    $0018,$0017,$0016,$0014,$0013,$0012,$0011,$0010,$000F,$000E,$000D,$000C);
+
+  PT3NoteTable_ST: PT3ToneTable = (
+    $0EF8,$0E10,$0D60,$0C80,$0BD8,$0B28,$0A88,$09F0,$0960,$08E0,$0858,$07E0,
+    $077C,$0708,$06B0,$0640,$05EC,$0594,$0544,$04F8,$04B0,$0470,$042C,$03FD,
+    $03BE,$0384,$0358,$0320,$02F6,$02CA,$02A2,$027C,$0258,$0238,$0216,$01F8,
+    $01DF,$01C2,$01AC,$0190,$017B,$0165,$0151,$013E,$012C,$011C,$010A,$00FC,
+    $00EF,$00E1,$00D6,$00C8,$00BD,$00B2,$00A8,$009F,$0096,$008E,$0085,$007E,
+    $0077,$0070,$006B,$0064,$005E,$0059,$0054,$004F,$004B,$0047,$0042,$003F,
+    $003B,$0038,$0035,$0032,$002F,$002C,$002A,$0027,$0025,$0023,$0021,$001F,
+    $001D,$001C,$001A,$0019,$0017,$0016,$0015,$0013,$0012,$0011,$0010,$000F);
+
+  PT3NoteTable_ASM: PT3ToneTable = (
+    $0D10,$0C55,$0BA4,$0AFC,$0A5F,$09CA,$093D,$08B8,$083B,$07C5,$0755,$06EC,
+    $0688,$062A,$05D2,$057E,$052F,$04E5,$049E,$045C,$041D,$03E2,$03AB,$0376,
+    $0344,$0315,$02E9,$02BF,$0298,$0272,$024F,$022E,$020F,$01F1,$01D5,$01BB,
+    $01A2,$018B,$0174,$0160,$014C,$0139,$0128,$0117,$0107,$00F9,$00EB,$00DD,
+    $00D1,$00C5,$00BA,$00B0,$00A6,$009D,$0094,$008C,$0084,$007C,$0075,$006F,
+    $0069,$0063,$005D,$0058,$0053,$004E,$004A,$0046,$0042,$003E,$003B,$0037,
+    $0034,$0031,$002F,$002C,$0029,$0027,$0025,$0023,$0021,$001F,$001D,$001C,
+    $001A,$0019,$0017,$0016,$0015,$0014,$0012,$0011,$0010,$000F,$000E,$000D);
+
+  PT3NoteTable_REAL: PT3ToneTable = (
+    $0CDA,$0C22,$0B73,$0ACF,$0A33,$09A1,$0917,$0894,$0819,$07A4,$0737,$06CF,
+    $066D,$0611,$05BA,$0567,$051A,$04D0,$048B,$044A,$040C,$03D2,$039B,$0367,
+    $0337,$0308,$02DD,$02B4,$028D,$0268,$0246,$0225,$0206,$01E9,$01CE,$01B4,
+    $019B,$0184,$016E,$015A,$0146,$0134,$0123,$0112,$0103,$00F5,$00E7,$00DA,
+    $00CE,$00C2,$00B7,$00AD,$00A3,$009A,$0091,$0089,$0082,$007A,$0073,$006D,
+    $0067,$0061,$005C,$0056,$0052,$004D,$0049,$0045,$0041,$003D,$003A,$0036,
+    $0033,$0031,$002E,$002B,$0029,$0027,$0024,$0022,$0020,$001F,$001D,$001B,
+    $001A,$0018,$0017,$0016,$0014,$0013,$0012,$0011,$0010,$000F,$000E,$000D);
+
+  PT3NoteTable_NATURAL: PT3ToneTable = (
+    2880,2700,2560,2400,2304,2160,2025,1920,1800,1728,1620,1536,
+    1440,1350,1280,1200,1152,1080,1013, 960, 900, 864, 810, 768,
+     720, 675, 640, 600, 576, 540, 506, 480, 450, 432, 405, 384,
+     360, 338, 320, 300, 288, 270, 253, 240, 225, 216, 203, 192,
+     180, 169, 160, 150, 144, 135, 127, 120, 113, 108, 101,  96,
+      90,  84,  80,  75,  72,  68,  63,  60,  56,  54,  51,  48,
+      45,  42,  40,  38,  36,  34,  32,  30,  28,  27,  25,  24,
+      23,  21,  20,  19,  18,  17,  16,  15,  14,  14,  13,  12);
+
+  PT3_Vol: array[0..15, 0..15] of Byte = (
+    ($00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00),
+    ($00,$00,$00,$00,$00,$00,$00,$00,$01,$01,$01,$01,$01,$01,$01,$01),
+    ($00,$00,$00,$00,$01,$01,$01,$01,$01,$01,$01,$01,$02,$02,$02,$02),
+    ($00,$00,$00,$01,$01,$01,$01,$01,$02,$02,$02,$02,$02,$03,$03,$03),
+    ($00,$00,$01,$01,$01,$01,$02,$02,$02,$02,$03,$03,$03,$03,$04,$04),
+    ($00,$00,$01,$01,$01,$02,$02,$02,$03,$03,$03,$04,$04,$04,$05,$05),
+    ($00,$00,$01,$01,$02,$02,$02,$03,$03,$04,$04,$04,$05,$05,$06,$06),
+    ($00,$00,$01,$01,$02,$02,$03,$03,$04,$04,$05,$05,$06,$06,$07,$07),
+    ($00,$01,$01,$02,$02,$03,$03,$04,$04,$05,$05,$06,$06,$07,$07,$08),
+    ($00,$01,$01,$02,$02,$03,$04,$04,$05,$05,$06,$07,$07,$08,$08,$09),
+    ($00,$01,$01,$02,$03,$03,$04,$05,$05,$06,$07,$07,$08,$09,$09,$0A),
+    ($00,$01,$01,$02,$03,$04,$04,$05,$06,$07,$07,$08,$09,$0A,$0A,$0B),
+    ($00,$01,$02,$02,$03,$04,$05,$06,$06,$07,$08,$09,$0A,$0A,$0B,$0C),
+    ($00,$01,$02,$03,$03,$04,$05,$06,$07,$08,$09,$0A,$0A,$0B,$0C,$0D),
+    ($00,$01,$02,$03,$04,$05,$06,$07,$07,$08,$09,$0A,$0B,$0C,$0D,$0E),
+    ($00,$01,$02,$03,$04,$05,$06,$07,$08,$09,$0A,$0B,$0C,$0D,$0E,$0F));
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  Global state
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+var
+  VTM      : PModule;
+  CurChip  : Integer = 1;
+  SoundChip: array[1..2] of TChipState;
+  PlVars   : array[1..2] of TPlVars;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  AY chip register helpers  (mirrors TSoundChip methods in AY.pas)
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+procedure SetMixerRegister(Chip: Integer; Value: Byte);
+begin
+  SoundChip[Chip].AYReg.Mixer := Value;
+end;
+
+procedure SetAmplA(Chip: Integer; Value: Byte);
+begin
+  SoundChip[Chip].AYReg.AmplitudeA := Value;
+  SoundChip[Chip].EnvEnA := (Value and 16) <> 0;
+end;
+
+procedure SetAmplB(Chip: Integer; Value: Byte);
+begin
+  SoundChip[Chip].AYReg.AmplitudeB := Value;
+  SoundChip[Chip].EnvEnB := (Value and 16) <> 0;
+end;
+
+procedure SetAmplC(Chip: Integer; Value: Byte);
+begin
+  SoundChip[Chip].AYReg.AmplitudeC := Value;
+  SoundChip[Chip].EnvEnC := (Value and 16) <> 0;
+end;
+
+procedure SetEnvelopeRegister(Chip: Integer; Value: Byte);
+begin
+  SoundChip[Chip].AYReg.EnvType := Value;
+  SoundChip[Chip].FirstPeriod := True;
+  if (Value and 4) = 0 then
+    SoundChip[Chip].Ampl := 32
+  else
+    SoundChip[Chip].Ampl := -1;
+  case Value of
+    0,1,2,3,9  : SoundChip[Chip].Shape := esHold0;
+    4,5,6,7,15 : SoundChip[Chip].Shape := esHold31;
+    8           : SoundChip[Chip].Shape := esSaw8;
+    10          : SoundChip[Chip].Shape := esTriangle10;
+    11          : SoundChip[Chip].Shape := esDecayHold;
+    12          : SoundChip[Chip].Shape := esSaw12;
+    13          : SoundChip[Chip].Shape := esAttackHold;
+    14          : SoundChip[Chip].Shape := esTriangle14;
+  else
+    SoundChip[Chip].Shape := esHold0;
+  end;
+end;
+
+{ Step envelope by one AY clock tick — direct port of TSoundChip.Case_EnvType_* }
+procedure StepEnvelope(Chip: Integer);
+var C: Integer;
+begin
+  C := Chip;
+  case SoundChip[C].Shape of
+    esHold0:
+      if SoundChip[C].FirstPeriod then
+      begin
+        Dec(SoundChip[C].Ampl);
+        if SoundChip[C].Ampl = 0 then SoundChip[C].FirstPeriod := False;
+      end;
+
+    esHold31:
+      if SoundChip[C].FirstPeriod then
+      begin
+        Inc(SoundChip[C].Ampl);
+        if SoundChip[C].Ampl = 32 then
+        begin
+          SoundChip[C].FirstPeriod := False;
+          SoundChip[C].Ampl := 0;
+        end;
+      end;
+
+    esSaw8:
+      SoundChip[C].Ampl := (SoundChip[C].Ampl - 1) and 31;
+
+    esTriangle10:
+      if SoundChip[C].FirstPeriod then
+      begin
+        Dec(SoundChip[C].Ampl);
+        if SoundChip[C].Ampl < 0 then
+        begin
+          SoundChip[C].FirstPeriod := False;
+          SoundChip[C].Ampl := 0;
+        end;
+      end
+      else
+      begin
+        Inc(SoundChip[C].Ampl);
+        if SoundChip[C].Ampl = 32 then
+        begin
+          SoundChip[C].FirstPeriod := True;
+          SoundChip[C].Ampl := 31;
+        end;
+      end;
+
+    esDecayHold:
+      if SoundChip[C].FirstPeriod then
+      begin
+        Dec(SoundChip[C].Ampl);
+        if SoundChip[C].Ampl < 0 then
+        begin
+          SoundChip[C].FirstPeriod := False;
+          SoundChip[C].Ampl := 31;
+        end;
+      end;
+
+    esSaw12:
+      SoundChip[C].Ampl := (SoundChip[C].Ampl + 1) and 31;
+
+    esAttackHold:
+      if SoundChip[C].FirstPeriod then
+      begin
+        Inc(SoundChip[C].Ampl);
+        if SoundChip[C].Ampl = 32 then
+        begin
+          SoundChip[C].FirstPeriod := False;
+          SoundChip[C].Ampl := 31;
+        end;
+      end;
+
+    esTriangle14:
+      if not SoundChip[C].FirstPeriod then
+      begin
+        Dec(SoundChip[C].Ampl);
+        if SoundChip[C].Ampl < 0 then
+        begin
+          SoundChip[C].FirstPeriod := True;
+          SoundChip[C].Ampl := 0;
+        end;
+      end
+      else
+      begin
+        Inc(SoundChip[C].Ampl);
+        if SoundChip[C].Ampl = 32 then
+        begin
+          SoundChip[C].FirstPeriod := False;
+          SoundChip[C].Ampl := 31;
+        end;
+      end;
+  end;
+end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  Pure-Pascal NoiseGenerator
+  Replaces the x86 asm in AY.pas.
+
+  The original SHLD-based asm extracts feedback = bit13(Seed) XOR bit16(Seed).
+    shld edx,eax,16  → bit0(edx) = bit16(eax)
+    shld ecx,eax,19  → bit0(ecx) = bit13(eax)   [shift left 19 fills low 19 from high 19]
+    xor ecx,edx; and ecx,1  → feedback = bit13 XOR bit16
+
+  new_seed = ((seed shl 1) AND $1FFFF) OR 1 XOR feedback
+
+  noise_val (used in mixer) = bytes 2-3 of Seed via the packed union:
+    Noise.Val = (Seed shr 16) AND $FFFF  =  bit16 of seed (0 or 1 for 17-bit seed)
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+function NoiseGenerator(Seed: LongWord): LongWord;
+var
+  feedback: LongWord;
+begin
+  feedback := ((Seed shr 13) xor (Seed shr 16)) and 1;
+  Result := (((Seed shl 1) and $0001FFFF) or 1) xor feedback;
+end;
+
+function NoiseVal(Seed: LongWord): LongWord;
+begin
+  { Replicates Noise.Val from the packed-record union in TSoundChip:
+    union layout: Seed (LongWord) at offset 0, Val (DWord) at offset 2
+    → Val = bytes 2..5 of Seed = (Seed shr 16) for a 17-bit value }
+  Result := (Seed shr 16) and $FFFF;
+end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  GetNoteFreq  (verbatim logic from trfuncs.pas)
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+function GetNoteFreq(t: Integer; j: Byte): Word;
+begin
+  if j > 95 then j := 95;
+  case t of
+    0: Result := PT3NoteTable_PT[j];
+    1: Result := PT3NoteTable_ST[j];
+    2: Result := PT3NoteTable_ASM[j];
+    3: Result := PT3NoteTable_REAL[j];
+  else
+    Result := PT3NoteTable_NATURAL[j];
+  end;
+end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  InitTrackerParameters  (verbatim from trfuncs.pas)
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+procedure InitTrackerParameters(All: Boolean);
+var
+  k: Integer;
+begin
+  { Reset AY chip state (simplified — we only need register state) }
+  SoundChip[CurChip].AYReg := Default(TAYRegisters);
+  SetEnvelopeRegister(CurChip, 0);
+
+  PlVars[CurChip].DelayCounter := 1;
+  PlVars[CurChip].PT3Noise     := 0;
+  PlVars[CurChip].Env_Base     := 0;
+  PlVars[CurChip].IntCnt       := 0;
+
+  if All then
+    for k := 0 to 2 do
+    begin
+      VTM.IsChans[k].Sample          := 1;
+      VTM.IsChans[k].EnvelopeEnabled := False;
+      VTM.IsChans[k].Ornament        := 0;
+      VTM.IsChans[k].Volume          := 15;
+    end;
+
+  for k := 0 to 2 do
+    PlVars[CurChip].ParamsOfChan[k] := Default(TParamsOfChan);
+
+  PlVars[CurChip].CurrentLine := 0;
+end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  Pattern_PlayOnlyCurrentLine  (verbatim from trfuncs.pas)
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+procedure Pattern_PlayOnlyCurrentLine;
+var
+  TempMixer: Integer;
+
+  { Nested procedure — accesses TempMixer from enclosing scope }
+  procedure GetRegisters(ChNum: Integer);
+  var
+    j: Byte;
+    w: Word;
+    gt, gn, ge: Boolean;
+  begin
+    with PlVars[CurChip].ParamsOfChan[ChNum], VTM^.IsChans[ChNum] do
+    begin
+      if SoundEnabled then
+      begin
+        { ── Tone computation ── }
+        if (VTM^.Samples[Sample] = nil) or
+           (SamplePosition >= VTM^.Samples[Sample]^.Length) then
+          Ton := 0
+        else
+        begin
+          Ton := Ton_Accumulator + Word(VTM^.Samples[Sample]^.Items[SamplePosition].Add_to_Ton);
+          if VTM^.Samples[Sample]^.Items[SamplePosition].Ton_Accumulation then
+            Ton_Accumulator := Ton;
+        end;
+
+        { ── Ornament-adjusted note ── }
+        if (VTM^.Ornaments[Ornament] = nil) or
+           (OrnamentPosition >= VTM^.Ornaments[Ornament]^.Length) then
+          j := Note
+        else
+          j := Note + Byte(VTM^.Ornaments[Ornament]^.Items[OrnamentPosition]);
+
+        if ShortInt(j) < 0 then
+          j := 0
+        else if j > 95 then
+          j := 95;
+
+        w   := GetNoteFreq(VTM^.Ton_Table, j);
+        Ton := (Ton + Word(Current_Ton_Sliding) + w) and $0FFF;
+
+        { ── Glissando / tone-slide counter ── }
+        if Ton_Slide_Count > 0 then
+        begin
+          Dec(Ton_Slide_Count);
+          if Ton_Slide_Count = 0 then
+          begin
+            Inc(Current_Ton_Sliding, Ton_Slide_Step);
+            Ton_Slide_Count := Ton_Slide_Delay;
+            if Ton_Slide_Type = 1 then
+              if ((Ton_Slide_Step < 0) and (Current_Ton_Sliding <= Ton_Slide_Delta)) or
+                 ((Ton_Slide_Step >= 0) and (Current_Ton_Sliding >= Ton_Slide_Delta)) then
+              begin
+                Note            := Slide_To_Note;
+                Ton_Slide_Count := 0;
+                Current_Ton_Sliding := 0;
+              end;
+          end;
+        end;
+
+        { ── Amplitude computation ── }
+        if (VTM^.Samples[Sample] = nil) or
+           (SamplePosition >= VTM^.Samples[Sample]^.Length) then
+          Amplitude := 0
+        else
+        begin
+          Amplitude := VTM^.Samples[Sample]^.Items[SamplePosition].Amplitude;
+
+          if VTM^.Samples[Sample]^.Items[SamplePosition].Amplitude_Sliding then
+          begin
+            if VTM^.Samples[Sample]^.Items[SamplePosition].Amplitude_Slide_Up then
+            begin
+              if Current_Amplitude_Sliding < 15 then Inc(Current_Amplitude_Sliding);
+            end
+            else
+              if Current_Amplitude_Sliding > -15 then Dec(Current_Amplitude_Sliding);
+          end;
+
+          Inc(Amplitude, Byte(Current_Amplitude_Sliding));
+          if ShortInt(Amplitude) < 0 then Amplitude := 0
+          else if Amplitude > 15 then Amplitude := 15;
+
+          Amplitude := PT3_Vol[Volume, Amplitude];
+
+          if VTM^.Samples[Sample]^.Items[SamplePosition].Envelope_Enabled and
+             EnvelopeEnabled then
+            Amplitude := Amplitude or 16;
+
+          { ── Envelope / noise accumulation ── }
+          if not VTM^.Samples[Sample]^.Items[SamplePosition].Mixer_Noise then
+          begin
+            j := Byte(Current_Envelope_Sliding +
+                      VTM^.Samples[Sample]^.Items[SamplePosition].Add_to_Envelope_or_Noise);
+            if VTM^.Samples[Sample]^.Items[SamplePosition].Envelope_or_Noise_Accumulation then
+              Current_Envelope_Sliding := ShortInt(j);
+            Inc(PlVars[CurChip].AddToEnv, ShortInt(j));
+          end
+          else
+          begin
+            PlVars[CurChip].PT3Noise :=
+              Byte(Current_Noise_Sliding +
+                   VTM^.Samples[Sample]^.Items[SamplePosition].Add_to_Envelope_or_Noise);
+            if VTM^.Samples[Sample]^.Items[SamplePosition].Envelope_or_Noise_Accumulation then
+              Current_Noise_Sliding := ShortInt(PlVars[CurChip].PT3Noise);
+          end;
+
+          { ── Mixer bits from sample ── }
+          if not VTM^.Samples[Sample]^.Items[SamplePosition].Mixer_Ton then
+            TempMixer := TempMixer or 8;
+          if not VTM^.Samples[Sample]^.Items[SamplePosition].Mixer_Noise then
+            TempMixer := TempMixer or $40;
+        end;
+
+        { ── Advance sample position ── }
+        if VTM^.Samples[Sample] <> nil then
+        begin
+          Inc(SamplePosition);
+          if SamplePosition >= VTM^.Samples[Sample]^.Length then
+            SamplePosition := VTM^.Samples[Sample]^.Loop;
+        end;
+
+        { ── Advance ornament position ── }
+        if VTM^.Ornaments[Ornament] <> nil then
+        begin
+          Inc(OrnamentPosition);
+          if OrnamentPosition >= VTM^.Ornaments[Ornament]^.Length then
+            OrnamentPosition := Byte(VTM^.Ornaments[Ornament]^.Loop);
+        end;
+      end
+      else
+        Amplitude := 0;
+
+      { ── Always: shift mixer accumulator ── }
+      TempMixer := TempMixer shr 1;
+
+      { ── On/Off toggling ── }
+      if Current_OnOff > 0 then
+      begin
+        Dec(Current_OnOff);
+        if Current_OnOff = 0 then
+        begin
+          SoundEnabled := not SoundEnabled;
+          if SoundEnabled then
+            Current_OnOff := OnOff_Delay
+          else
+            Current_OnOff := OffOn_Delay;
+        end;
+      end;
+
+      { ── Early exit for blank pattern -1 ── }
+      if PlVars[CurChip].CurrentPattern = -1 then Exit;
+
+      { ── Global channel flags ── }
+      gt := VTM^.IsChans[ChNum].Global_Ton;
+      gn := VTM^.IsChans[ChNum].Global_Noise;
+      ge := VTM^.IsChans[ChNum].Global_Envelope;
+
+      if (VTM^.Samples[Sample] <> nil) and not VTM^.Samples[Sample]^.Enabled then
+      begin
+        gt := False; gn := False; ge := False;
+      end;
+
+      if not gt then TempMixer := TempMixer or 4;
+      if not gn then TempMixer := TempMixer or 32;
+      if not ge then Amplitude := Amplitude and 15;
+
+      if (not gt or not gn) and (Amplitude and 16 = 0) and (TempMixer and 36 = 36) then
+        Amplitude := 0;
+    end; { with }
+  end; { GetRegisters }
+
+var
+  k: Integer;
+begin
+  Inc(PlVars[CurChip].IntCnt);
+  PlVars[CurChip].AddToEnv := 0;
+  TempMixer := 0;
+
+  for k := 0 to 2 do
+    GetRegisters(k);
+
+  { Push computed values into AY registers }
+  SetMixerRegister(CurChip, Byte(TempMixer));
+
+  SoundChip[CurChip].AYReg.TonA := PlVars[CurChip].ParamsOfChan[0].Ton;
+  SoundChip[CurChip].AYReg.TonB := PlVars[CurChip].ParamsOfChan[1].Ton;
+  SoundChip[CurChip].AYReg.TonC := PlVars[CurChip].ParamsOfChan[2].Ton;
+
+  SetAmplA(CurChip, PlVars[CurChip].ParamsOfChan[0].Amplitude);
+  SetAmplB(CurChip, PlVars[CurChip].ParamsOfChan[1].Amplitude);
+  SetAmplC(CurChip, PlVars[CurChip].ParamsOfChan[2].Amplitude);
+
+  SoundChip[CurChip].AYReg.Noise :=
+    (PlVars[CurChip].PT3Noise + PlVars[CurChip].AddToNoise) and 31;
+
+  SoundChip[CurChip].AYReg.Envelope :=
+    Word(Integer(PlVars[CurChip].AddToEnv) +
+         PlVars[CurChip].Cur_Env_Slide +
+         PlVars[CurChip].Env_Base);
+
+  { ── Envelope slide counter ── }
+  if PlVars[CurChip].Cur_Env_Delay > 0 then
+  begin
+    Dec(PlVars[CurChip].Cur_Env_Delay);
+    if PlVars[CurChip].Cur_Env_Delay = 0 then
+    begin
+      PlVars[CurChip].Cur_Env_Delay := PlVars[CurChip].Env_Delay;
+      Inc(PlVars[CurChip].Cur_Env_Slide, PlVars[CurChip].Env_Slide_Add);
+    end;
+  end;
+end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  Pattern_PlayCurrentLine  (verbatim from trfuncs.pas)
+  Returns: 0=rendering, 1=line advanced, 2=pattern ended
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+function Pattern_PlayCurrentLine: Integer;
+
+  procedure PatternInterpreter(ChNum: Integer);
+  var
+    TS, PrNote, Ch, Gls: Integer;
+  begin
+    Ch := ChNum;
+    if PlVars[CurChip].CurrentPattern = -1 then Ch := MidChan;
+
+    with VTM^.Patterns[PlVars[CurChip].CurrentPattern]^.
+           Items[PlVars[CurChip].CurrentLine].Channel[ChNum] do
+    begin
+      TS     := PlVars[CurChip].ParamsOfChan[Ch].Current_Ton_Sliding;
+      PrNote := PlVars[CurChip].ParamsOfChan[Ch].Note;
+
+      if Note = -2 then
+      begin
+        PlVars[CurChip].ParamsOfChan[Ch].SoundEnabled          := False;
+        PlVars[CurChip].ParamsOfChan[Ch].Current_Envelope_Sliding := 0;
+        PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Count        := 0;
+        PlVars[CurChip].ParamsOfChan[Ch].SamplePosition         := 0;
+        PlVars[CurChip].ParamsOfChan[Ch].OrnamentPosition       := 0;
+        PlVars[CurChip].ParamsOfChan[Ch].Current_Noise_Sliding  := 0;
+        PlVars[CurChip].ParamsOfChan[Ch].Current_Amplitude_Sliding := 0;
+        PlVars[CurChip].ParamsOfChan[Ch].Current_OnOff          := 0;
+        PlVars[CurChip].ParamsOfChan[Ch].Current_Ton_Sliding    := 0;
+        PlVars[CurChip].ParamsOfChan[Ch].Ton_Accumulator        := 0;
+      end
+      else if Note <> -1 then
+      begin
+        PlVars[CurChip].ParamsOfChan[Ch].SoundEnabled          := True;
+        PlVars[CurChip].ParamsOfChan[Ch].Note                  := Byte(Note);
+        PlVars[CurChip].ParamsOfChan[Ch].Current_Envelope_Sliding := 0;
+        PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Count        := 0;
+        PlVars[CurChip].ParamsOfChan[Ch].SamplePosition         := 0;
+        PlVars[CurChip].ParamsOfChan[Ch].OrnamentPosition       := 0;
+        PlVars[CurChip].ParamsOfChan[Ch].Current_Noise_Sliding  := 0;
+        PlVars[CurChip].ParamsOfChan[Ch].Current_Amplitude_Sliding := 0;
+        PlVars[CurChip].ParamsOfChan[Ch].Current_OnOff          := 0;
+        PlVars[CurChip].ParamsOfChan[Ch].Current_Ton_Sliding    := 0;
+        PlVars[CurChip].ParamsOfChan[Ch].Ton_Accumulator        := 0;
+      end;
+
+      if (Note <> -1) and (Sample <> 0) then
+        VTM^.IsChans[Ch].Sample := Sample;
+
+      if not (Envelope in [0, 15]) then
+      begin
+        VTM^.IsChans[Ch].EnvelopeEnabled := True;
+        PlVars[CurChip].Env_Base :=
+          SmallInt(VTM^.Patterns[PlVars[CurChip].CurrentPattern]^.
+                     Items[PlVars[CurChip].CurrentLine].Envelope);
+        SetEnvelopeRegister(CurChip, Envelope);
+        VTM^.IsChans[Ch].Ornament := Ornament;
+        PlVars[CurChip].ParamsOfChan[Ch].OrnamentPosition := 0;
+        PlVars[CurChip].Cur_Env_Slide := 0;
+        PlVars[CurChip].Cur_Env_Delay := 0;
+      end
+      else if Envelope = 15 then
+      begin
+        VTM^.IsChans[Ch].EnvelopeEnabled := False;
+        VTM^.IsChans[Ch].Ornament        := Ornament;
+        PlVars[CurChip].ParamsOfChan[Ch].OrnamentPosition := 0;
+      end
+      else if Ornament <> 0 then
+      begin
+        VTM^.IsChans[Ch].Ornament := Ornament;
+        PlVars[CurChip].ParamsOfChan[Ch].OrnamentPosition := 0;
+      end;
+
+      if Volume > 0 then VTM^.IsChans[Ch].Volume := Byte(Volume);
+
+      case Additional_Command.Number of
+        1:
+          begin
+            Gls := Additional_Command.Delay;
+            PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay := ShortInt(Gls);
+            if (Gls = 0) and (VTM^.FeaturesLevel >= 2) then Inc(Gls);
+            PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Count := ShortInt(Gls);
+            PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Step  := Additional_Command.Parameter;
+            PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Type  := 0;
+            PlVars[CurChip].ParamsOfChan[Ch].Current_OnOff   := 0;
+          end;
+
+        2:
+          begin
+            Gls := Additional_Command.Delay;
+            PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay := ShortInt(Gls);
+            if (Gls = 0) and (VTM^.FeaturesLevel >= 2) then Inc(Gls);
+            PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Count := ShortInt(Gls);
+            PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Step  := -SmallInt(Additional_Command.Parameter);
+            PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Type  := 0;
+            PlVars[CurChip].ParamsOfChan[Ch].Current_OnOff   := 0;
+          end;
+
+        3:
+          if (Note >= 0) or ((Note <> -2) and (VTM^.FeaturesLevel >= 1)) then
+          begin
+            PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay := Additional_Command.Delay;
+            PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Count :=
+              PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delay;
+            PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Step  := Additional_Command.Parameter;
+            PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delta :=
+              SmallInt(GetNoteFreq(VTM^.Ton_Table,
+                                   PlVars[CurChip].ParamsOfChan[Ch].Note)) -
+              SmallInt(GetNoteFreq(VTM^.Ton_Table, PrNote));
+            PlVars[CurChip].ParamsOfChan[Ch].Slide_To_Note :=
+              PlVars[CurChip].ParamsOfChan[Ch].Note;
+            PlVars[CurChip].ParamsOfChan[Ch].Note := PrNote;
+            if VTM^.FeaturesLevel >= 1 then
+              PlVars[CurChip].ParamsOfChan[Ch].Current_Ton_Sliding := TS;
+            if PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Delta -
+               PlVars[CurChip].ParamsOfChan[Ch].Current_Ton_Sliding < 0 then
+              PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Step :=
+                -PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Step;
+            PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Type  := 1;
+            PlVars[CurChip].ParamsOfChan[Ch].Current_OnOff   := 0;
+          end;
+
+        4: PlVars[CurChip].ParamsOfChan[Ch].SamplePosition   := Additional_Command.Parameter;
+        5: PlVars[CurChip].ParamsOfChan[Ch].OrnamentPosition := Additional_Command.Parameter;
+
+        6:
+          begin
+            PlVars[CurChip].ParamsOfChan[Ch].OffOn_Delay   :=
+              ShortInt(Additional_Command.Parameter and 15);
+            PlVars[CurChip].ParamsOfChan[Ch].OnOff_Delay   :=
+              ShortInt(Additional_Command.Parameter shr 4);
+            PlVars[CurChip].ParamsOfChan[Ch].Current_OnOff :=
+              PlVars[CurChip].ParamsOfChan[Ch].OnOff_Delay;
+            PlVars[CurChip].ParamsOfChan[Ch].Ton_Slide_Count   := 0;
+            PlVars[CurChip].ParamsOfChan[Ch].Current_Ton_Sliding := 0;
+          end;
+
+        9:
+          begin
+            PlVars[CurChip].Env_Delay     := Additional_Command.Delay;
+            PlVars[CurChip].Cur_Env_Delay := PlVars[CurChip].Env_Delay;
+            PlVars[CurChip].Env_Slide_Add := Additional_Command.Parameter;
+          end;
+
+        10:
+          begin
+            PlVars[CurChip].Env_Delay     := Additional_Command.Delay;
+            PlVars[CurChip].Cur_Env_Delay := PlVars[CurChip].Env_Delay;
+            PlVars[CurChip].Env_Slide_Add := -SmallInt(Additional_Command.Parameter);
+          end;
+
+        11:
+          if Additional_Command.Parameter <> 0 then
+            PlVars[CurChip].Delay := Additional_Command.Parameter;
+      end; { case }
+    end; { with }
+  end; { PatternInterpreter }
+
+var
+  k: Integer;
+begin
+  Result := 0;
+
+  if PlVars[CurChip].CurrentPattern = -1 then
+  begin
+    PlVars[CurChip].AddToNoise :=
+      VTM^.Patterns[-1]^.Items[PlVars[CurChip].CurrentLine].Noise;
+    PatternInterpreter(0);
+  end
+  else
+  begin
+    Dec(PlVars[CurChip].DelayCounter);
+    if PlVars[CurChip].DelayCounter = 0 then
+    begin
+      Inc(Result);
+      if VTM^.Patterns[PlVars[CurChip].CurrentPattern]^.Length <=
+         PlVars[CurChip].CurrentLine then
+      begin
+        Inc(PlVars[CurChip].DelayCounter);
+        Inc(Result);
+        Exit; { ← exits WITHOUT calling Pattern_PlayOnlyCurrentLine }
+      end;
+
+      PlVars[CurChip].AddToNoise :=
+        VTM^.Patterns[PlVars[CurChip].CurrentPattern]^.
+          Items[PlVars[CurChip].CurrentLine].Noise;
+
+      for k := 0 to 2 do
+        PatternInterpreter(k);
+
+      Inc(PlVars[CurChip].CurrentLine);
+      PlVars[CurChip].DelayCounter := PlVars[CurChip].Delay;
+    end;
+  end;
+
+  Pattern_PlayOnlyCurrentLine; { called in all cases except pattern-end exit }
+end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  JSON helpers
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+function JBoolStr(v: Boolean): string; inline;
+begin
+  if v then Result := 'true' else Result := 'false';
+end;
+
+procedure JBool(const s: string; v: Boolean; const sep: string);
+begin
+  Write(s, ': ', JBoolStr(v), sep);
+end;
+
+procedure WriteRegs;
+var
+  R: TAYRegisters;
+begin
+  R := SoundChip[CurChip].AYReg;
+  Write('{"ton_a":',   R.TonA,
+        ',"ton_b":',   R.TonB,
+        ',"ton_c":',   R.TonC,
+        ',"noise":',   R.Noise,
+        ',"mixer":',   R.Mixer,
+        ',"ampl_a":',  R.AmplitudeA,
+        ',"ampl_b":',  R.AmplitudeB,
+        ',"ampl_c":',  R.AmplitudeC,
+        ',"envelope":',R.Envelope,
+        ',"env_type":',R.EnvType,
+        '}');
+end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  Module builder helpers
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+procedure BuildBasicModule(WithEnvelope: Boolean);
+{
+  4-row pattern, delay=3, tone-only sample (mixer_ton=True, mixer_noise=False).
+  Row 0: note C-4 (36) on all 3 channels, sample 1, volume 15.
+  Rows 1-3: no note (all channels silent continuation).
+
+  When WithEnvelope=True:
+    Row 0 channel A additionally sets envelope type = 8 (sawtooth-down),
+    pattern-row Envelope = $0800, sample tick has Envelope_Enabled=True.
+}
+var
+  i, ch: Integer;
+begin
+  New(VTM);
+  FillChar(VTM^, SizeOf(TModule), 0);
+
+  VTM^.Ton_Table      := 0;          { PT table }
+  VTM^.Initial_Delay  := 3;
+  VTM^.FeaturesLevel  := 1;          { VT II / PT3.6 behaviour }
+  VTM^.VortexModule_Header := True;
+
+  { Position list }
+  VTM^.Positions.Length := 1;
+  VTM^.Positions.Loop   := 0;
+  VTM^.Positions.Value[0] := 0;
+
+  { Default channel state }
+  for ch := 0 to 2 do
+  begin
+    VTM^.IsChans[ch].Global_Ton      := True;
+    VTM^.IsChans[ch].Global_Noise    := True;
+    VTM^.IsChans[ch].Global_Envelope := True;
+    VTM^.IsChans[ch].EnvelopeEnabled := False;
+    VTM^.IsChans[ch].Ornament        := 0;
+    VTM^.IsChans[ch].Sample          := 1;
+    VTM^.IsChans[ch].Volume          := 15;
+  end;
+
+  { Ornament 0: single step, zero offset }
+  New(VTM^.Ornaments[0]);
+  FillChar(VTM^.Ornaments[0]^, SizeOf(TOrnament), 0);
+  VTM^.Ornaments[0]^.Length := 1;
+  VTM^.Ornaments[0]^.Loop   := 0;
+
+  { Sample 1: 4 ticks, amplitude 15, pure-tone (mixer_ton=True, mixer_noise=False) }
+  New(VTM^.Samples[1]);
+  FillChar(VTM^.Samples[1]^, SizeOf(TSample), 0);
+  VTM^.Samples[1]^.Length  := 4;
+  VTM^.Samples[1]^.Loop    := 0;
+  VTM^.Samples[1]^.Enabled := True;
+  for i := 0 to 3 do
+  begin
+    VTM^.Samples[1]^.Items[i].Amplitude            := 15;
+    VTM^.Samples[1]^.Items[i].Mixer_Ton            := True;   { tone NOT muted }
+    VTM^.Samples[1]^.Items[i].Mixer_Noise          := False;  { noise muted    }
+    VTM^.Samples[1]^.Items[i].Envelope_Enabled     := WithEnvelope;
+  end;
+
+  { Pattern 0: 4 rows }
+  New(VTM^.Patterns[0]);
+  FillChar(VTM^.Patterns[0]^, SizeOf(TPattern), 0);
+  VTM^.Patterns[0]^.Length := 4;
+
+  { Row 0: all channels play C-4 (note 36), sample 1, volume 15 }
+  for ch := 0 to 2 do
+  begin
+    VTM^.Patterns[0]^.Items[0].Channel[ch].Note    := 36;
+    VTM^.Patterns[0]^.Items[0].Channel[ch].Sample  := 1;
+    VTM^.Patterns[0]^.Items[0].Channel[ch].Volume  := 15;
+    VTM^.Patterns[0]^.Items[0].Channel[ch].Ornament  := 0;
+    VTM^.Patterns[0]^.Items[0].Channel[ch].Envelope  := 0;
+  end;
+
+  if WithEnvelope then
+  begin
+    { Channel A on row 0 sets envelope type 8 (sawtooth-down) }
+    VTM^.Patterns[0]^.Items[0].Channel[0].Envelope := 8;
+    { Pattern-row envelope period = 0x0800 }
+    VTM^.Patterns[0]^.Items[0].Envelope := $0800;
+    VTM^.IsChans[0].EnvelopeEnabled := True;
+  end;
+
+  { Rows 1-3: all channels have note=-1 (no note), everything else 0 }
+  for i := 1 to 3 do
+    for ch := 0 to 2 do
+      VTM^.Patterns[0]^.Items[i].Channel[ch].Note := -1;
+end;
+
+procedure FreeModule;
+begin
+  if VTM = nil then Exit;
+  Dispose(VTM^.Samples[1]);
+  Dispose(VTM^.Ornaments[0]);
+  Dispose(VTM^.Patterns[0]);
+  Dispose(VTM);
+  VTM := nil;
+end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  Test: LFSR 200 steps
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+procedure RunNoiseLFSR;
+var
+  Seed, NV: LongWord;
+  i: Integer;
+begin
+  Seed := $FFFF;
+  WriteLn('{');
+  WriteLn('  "generator": "vt_pascal_harness",');
+  WriteLn('  "test": "noise_lfsr",');
+  WriteLn('  "initial_seed": ', Seed, ',');
+  WriteLn('  "steps": [');
+  for i := 1 to 200 do
+  begin
+    Seed := NoiseGenerator(Seed);
+    NV   := NoiseVal(Seed);
+    Write('    {"seed":', Seed, ',"noise_val":', NV, '}');
+    if i < 200 then WriteLn(',') else WriteLn;
+  end;
+  WriteLn('  ]');
+  WriteLn('}');
+end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  Test: all 8 envelope shapes, 64 steps each
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+procedure RunEnvelopes;
+const
+  { (register_value, name) pairs — one representative per shape }
+  TestRegs: array[0..7] of Byte  = (0, 4, 8, 10, 11, 12, 13, 14);
+  TestNames: array[0..7] of string = (
+    'Hold0', 'Hold31', 'Saw8', 'Triangle10',
+    'DecayHold', 'Saw12', 'AttackHold', 'Triangle14');
+var
+  s, i: Integer;
+begin
+  WriteLn('{');
+  WriteLn('  "generator": "vt_pascal_harness",');
+  WriteLn('  "test": "envelope_shapes",');
+  WriteLn('  "shapes": [');
+  for s := 0 to 7 do
+  begin
+    SetEnvelopeRegister(1, TestRegs[s]);
+    Write('    {"register_value":', TestRegs[s],
+          ',"name":"', TestNames[s],
+          '","initial_ampl":', SoundChip[1].Ampl,
+          ',"steps":[');
+    for i := 1 to 64 do
+    begin
+      StepEnvelope(1);
+      Write('{"ampl":', SoundChip[1].Ampl,
+            ',"first_period":', JBoolStr(SoundChip[1].FirstPeriod), '}');
+      if i < 64 then Write(',');
+    end;
+    Write(']}');
+    if s < 7 then WriteLn(',') else WriteLn;
+  end;
+  WriteLn('  ]');
+  WriteLn('}');
+end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  Test: PT3_Vol 16×16 table
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+procedure RunPT3Vol;
+var
+  r, c: Integer;
+begin
+  WriteLn('{');
+  WriteLn('  "generator": "vt_pascal_harness",');
+  WriteLn('  "test": "pt3_vol",');
+  WriteLn('  "table": [');
+  for r := 0 to 15 do
+  begin
+    Write('    [');
+    for c := 0 to 15 do
+    begin
+      Write(PT3_Vol[r, c]);
+      if c < 15 then Write(',');
+    end;
+    Write(']');
+    if r < 15 then WriteLn(',') else WriteLn;
+  end;
+  WriteLn('  ]');
+  WriteLn('}');
+end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  Test: all 5 note tables (96 entries each)
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+procedure RunNoteTables;
+
+  procedure DumpTable(const Name: string; const T: PT3ToneTable; Last: Boolean);
+  var j: Integer;
+  begin
+    Write('    "', Name, '": [');
+    for j := 0 to 95 do
+    begin
+      Write(T[j]);
+      if j < 95 then Write(',');
+    end;
+    Write(']');
+    if not Last then WriteLn(',') else WriteLn;
+  end;
+begin
+  WriteLn('{');
+  WriteLn('  "generator": "vt_pascal_harness",');
+  WriteLn('  "test": "note_tables",');
+  WriteLn('  "tables": {');
+  DumpTable('PT',      PT3NoteTable_PT,      False);
+  DumpTable('ST',      PT3NoteTable_ST,      False);
+  DumpTable('ASM',     PT3NoteTable_ASM,     False);
+  DumpTable('REAL',    PT3NoteTable_REAL,    False);
+  DumpTable('NATURAL', PT3NoteTable_NATURAL, True);
+  WriteLn('  }');
+  WriteLn('}');
+end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  Test: Pattern_PlayCurrentLine — 4-row pattern, delay=3, run 20 ticks
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+procedure RunPatternPlay(WithEnvelope: Boolean; const TestName: string);
+var
+  tick, res: Integer;
+begin
+  BuildBasicModule(WithEnvelope);
+
+  CurChip := 1;
+  PlVars[CurChip] := Default(TPlVars);
+  PlVars[CurChip].Delay          := VTM^.Initial_Delay;
+  PlVars[CurChip].CurrentPattern := VTM^.Positions.Value[0];
+  PlVars[CurChip].CurrentLine    := 0;
+
+  InitTrackerParameters(True);
+
+  WriteLn('{');
+  WriteLn('  "generator": "vt_pascal_harness",');
+  WriteLn('  "test": "', TestName, '",');
+  WriteLn('  "delay": ', VTM^.Initial_Delay, ',');
+  WriteLn('  "ticks": [');
+
+  for tick := 0 to 19 do
+  begin
+    res := Pattern_PlayCurrentLine;
+    Write('    {"tick":', tick,
+          ',"result":', res,
+          ',"current_line":', PlVars[CurChip].CurrentLine,
+          ',"delay_counter":', PlVars[CurChip].DelayCounter,
+          ',"regs":');
+    WriteRegs;
+    Write('}');
+    if tick < 19 then WriteLn(',') else WriteLn;
+  end;
+
+  WriteLn('  ]');
+  WriteLn('}');
+
+  FreeModule;
+end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  Main
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+var
+  Cmd: string;
+begin
+  if ParamCount < 1 then
+  begin
+    WriteLn(StdErr, 'Usage: vt_harness <test>');
+    WriteLn(StdErr, 'Tests: noise_lfsr | envelopes | pt3_vol | note_tables |');
+    WriteLn(StdErr, '       pattern_basic | pattern_envelope');
+    Halt(1);
+  end;
+
+  Cmd := LowerCase(ParamStr(1));
+
+  if      Cmd = 'noise_lfsr'        then RunNoiseLFSR
+  else if Cmd = 'envelopes'         then RunEnvelopes
+  else if Cmd = 'pt3_vol'           then RunPT3Vol
+  else if Cmd = 'note_tables'       then RunNoteTables
+  else if Cmd = 'pattern_basic'     then RunPatternPlay(False, 'pattern_basic')
+  else if Cmd = 'pattern_envelope'  then RunPatternPlay(True,  'pattern_envelope')
+  else
+  begin
+    WriteLn(StdErr, 'Unknown test: ', Cmd);
+    Halt(1);
+  end;
+end.

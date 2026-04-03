@@ -1,0 +1,27 @@
+{
+  "generator": "vt_pascal_harness",
+  "test": "pattern_basic",
+  "delay": 3,
+  "ticks": [
+    {"tick":0,"result":1,"current_line":1,"delay_counter":3,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":1,"result":0,"current_line":1,"delay_counter":2,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":2,"result":0,"current_line":1,"delay_counter":1,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":3,"result":1,"current_line":2,"delay_counter":3,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":4,"result":0,"current_line":2,"delay_counter":2,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":5,"result":0,"current_line":2,"delay_counter":1,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":6,"result":1,"current_line":3,"delay_counter":3,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":7,"result":0,"current_line":3,"delay_counter":2,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":8,"result":0,"current_line":3,"delay_counter":1,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":9,"result":1,"current_line":4,"delay_counter":3,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":10,"result":0,"current_line":4,"delay_counter":2,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":11,"result":0,"current_line":4,"delay_counter":1,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":12,"result":2,"current_line":4,"delay_counter":1,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":13,"result":2,"current_line":4,"delay_counter":1,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":14,"result":2,"current_line":4,"delay_counter":1,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":15,"result":2,"current_line":4,"delay_counter":1,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":16,"result":2,"current_line":4,"delay_counter":1,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":17,"result":2,"current_line":4,"delay_counter":1,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":18,"result":2,"current_line":4,"delay_counter":1,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}},
+    {"tick":19,"result":2,"current_line":4,"delay_counter":1,"regs":{"ton_a":388,"ton_b":388,"ton_c":388,"noise":0,"mixer":56,"ampl_a":15,"ampl_b":15,"ampl_c":15,"envelope":0,"env_type":0}}
+  ]
+}
