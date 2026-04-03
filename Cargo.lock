@@ -3933,6 +3933,7 @@ dependencies = [
  "vti-audio",
  "vti-ay",
  "vti-core",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
