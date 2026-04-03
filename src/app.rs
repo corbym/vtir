@@ -47,6 +47,10 @@ pub struct VortexTrackerApp {
 
     // Status bar text
     pub status: String,
+
+    /// If `Some`, an egui modal error dialog is shown with this message.
+    /// Mirrors the Delphi `MessageBox(…, MB_ICONEXCLAMATION)` on load failure.
+    pub error_dialog: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -229,6 +233,7 @@ impl VortexTrackerApp {
             samples_per_tick,
             last_tick_time: 0.0,
             status: "Ready".to_string(),
+            error_dialog: None,
         }
     }
 
@@ -238,6 +243,15 @@ impl VortexTrackerApp {
 
     fn active_module_mut(&mut self) -> &mut Module {
         &mut self.modules[self.active_module]
+    }
+
+    /// Set the status bar text and raise a modal error dialog with the same
+    /// message.  Mirrors the Delphi `MessageBox(…, MB_ICONEXCLAMATION)` called
+    /// whenever a file fails to open or parse.
+    fn set_error(&mut self, msg: impl Into<String>) {
+        let msg = msg.into();
+        self.status = msg.clone();
+        self.error_dialog = Some(msg);
     }
 
     /// Try to open the audio output device and return an `AudioPlayer`.
@@ -269,7 +283,7 @@ impl VortexTrackerApp {
 
         match std::fs::read(&path) {
             Err(e) => {
-                self.status = format!("Open failed: {e}");
+                self.set_error(format!("Open failed: {e}"));
             }
             Ok(bytes) => {
                 let filename = path
@@ -285,7 +299,7 @@ impl VortexTrackerApp {
                         self.status = format!("Loaded: {}", filename);
                     }
                     Err(e) => {
-                        self.status = format!("Parse error: {e}");
+                        self.set_error(format!("Parse error: {e}"));
                     }
                 }
             }
@@ -444,8 +458,8 @@ impl VortexTrackerApp {
                     self.status = format!("Loaded: {}", pf.name);
                 }
                 Err(e) => {
-                    self.status = format!("Parse error: {e}");
-                }
+                        self.set_error(format!("Parse error: {e}"));
+                    }
             }
         }
 
@@ -494,6 +508,32 @@ impl eframe::App for VortexTrackerApp {
         // ── Drain pending WASM file operations ────────────────────────────
         #[cfg(target_arch = "wasm32")]
         self.poll_wasm_file_ops();
+
+        // ── Load error dialog ──────────────────────────────────────────────
+        // Mirrors the Delphi `MessageBox(…, MB_ICONEXCLAMATION)` shown when a
+        // file fails to open or parse.  The dialog is modal: other UI is still
+        // rendered beneath it but the window stays on top until dismissed.
+        if self.error_dialog.is_some() {
+            let mut open = true;
+            let mut ok_clicked = false;
+            egui::Window::new("Load Error")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+                .open(&mut open)
+                .show(ctx, |ui| {
+                    if let Some(msg) = &self.error_dialog {
+                        ui.label(msg.as_str());
+                    }
+                    ui.add_space(8.0);
+                    if ui.button("OK").clicked() {
+                        ok_clicked = true;
+                    }
+                });
+            if !open || ok_clicked {
+                self.error_dialog = None;
+            }
+        }
 
         // ── Audio tick driver ──────────────────────────────────────────────
         // Tick the tracker engine at ~50 Hz whenever playback is active.
