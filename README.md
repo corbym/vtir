@@ -12,7 +12,7 @@
 **Vortex Tracker II** was created by **Sergey V. Bulba** (c) 2000–2009.
 
 > *Author: Sergey Bulba*  
-> *E-mail: vorobey@mail.khstu.ru*  
+> *E-mail: svbulba@gmail.com *  
 > *Support page: http://bulba.untergrund.net/*
 
 This Rust port exists only because of his extraordinary work. Sergey built
