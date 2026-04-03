@@ -1078,3 +1078,182 @@ fn load_madness_descent_vtm_sections_and_playback_loop() {
     let t = loop_tick.expect("fixture should loop within 3000 ticks");
     assert!(t >= 2100 && t <= 2150, "loop tick out of expected range: {t}");
 }
+
+// ─── PT3 binary format: load, save, round-trip ───────────────────────────────
+
+use vti_core::formats::pt3 as pt3_fmt;
+use vti_core::formats::save_pt3;
+
+/// Helper: read a fixture file from `tests/fixtures/tunes/`
+fn read_fixture(name: &str) -> Vec<u8> {
+    let path = format!(
+        "{}/tests/fixtures/tunes/{}",
+        env!("CARGO_MANIFEST_DIR"),
+        name
+    );
+    std::fs::read(&path).unwrap_or_else(|e| panic!("Cannot read fixture {}: {}", path, e))
+}
+
+/// Smoke-test: the minimal_roundtrip.pt3 fixture parses without error.
+#[test]
+fn pt3_smoke_parse_minimal() {
+    let bytes = read_fixture("minimal_roundtrip.pt3");
+    let m = pt3_fmt::parse(&bytes).expect("minimal_roundtrip.pt3 must parse");
+    assert_eq!(m.title.trim(), "Round Trip Test");
+    assert_eq!(m.initial_delay, 3);
+    assert_eq!(m.positions.length, 4);
+    assert_eq!(m.positions.loop_pos, 0);
+    assert_eq!(m.ton_table, 0);
+
+    // Pattern 0: 4 rows, C-4 on ch A
+    let p0 = m.patterns[0].as_deref().expect("pattern 0 must exist");
+    assert_eq!(p0.length, 4);
+    assert_eq!(p0.items[0].channel[0].note, 36); // C-4
+
+    // Pattern 1: 3 rows, B-4 on ch A
+    let p1 = m.patterns[1].as_deref().expect("pattern 1 must exist");
+    assert_eq!(p1.length, 3);
+    assert_eq!(p1.items[0].channel[0].note, 60); // B-4
+}
+
+/// Load minimal_roundtrip.pt3, write it back as PT3, parse the output, and
+/// compare key fields — verifying the write→parse round-trip is lossless.
+#[test]
+fn pt3_round_trip_minimal() {
+    let original_bytes = read_fixture("minimal_roundtrip.pt3");
+    let original = pt3_fmt::parse(&original_bytes).expect("parse original");
+
+    let written_bytes = save_pt3(&original).expect("write back to PT3");
+    let reloaded = pt3_fmt::parse(&written_bytes).expect("re-parse written PT3");
+
+    assert_eq!(reloaded.title.trim(), original.title.trim(), "title");
+    assert_eq!(reloaded.initial_delay, original.initial_delay, "delay");
+    assert_eq!(reloaded.ton_table, original.ton_table, "ton_table");
+    assert_eq!(reloaded.positions.length, original.positions.length, "num_positions");
+    assert_eq!(reloaded.positions.loop_pos, original.positions.loop_pos, "loop_pos");
+
+    for i in 0..original.positions.length {
+        assert_eq!(
+            reloaded.positions.value[i], original.positions.value[i],
+            "position[{}]", i
+        );
+    }
+
+    // Pattern structure
+    for pat_idx in 0..2 {
+        let orig_pat = original.patterns[pat_idx]
+            .as_deref()
+            .expect("original pattern must exist");
+        let new_pat = reloaded.patterns[pat_idx]
+            .as_deref()
+            .expect("reloaded pattern must exist");
+        assert_eq!(new_pat.length, orig_pat.length, "pattern {} length", pat_idx);
+        for row in 0..orig_pat.length {
+            for ch in 0..3 {
+                assert_eq!(
+                    new_pat.items[row].channel[ch].note,
+                    orig_pat.items[row].channel[ch].note,
+                    "pattern[{}] row[{}] ch[{}] note", pat_idx, row, ch
+                );
+                if orig_pat.items[row].channel[ch].volume != 0 {
+                    assert_eq!(
+                        new_pat.items[row].channel[ch].volume,
+                        orig_pat.items[row].channel[ch].volume,
+                        "pattern[{}] row[{}] ch[{}] volume", pat_idx, row, ch
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// Smoke-test: madness_descent.pt3 parses without error and has the expected
+/// key fields (title, positions, delay).
+#[test]
+fn pt3_smoke_parse_madness_descent() {
+    let bytes = read_fixture("madness_descent.pt3");
+    let m = pt3_fmt::parse(&bytes).expect("madness_descent.pt3 must parse");
+    assert_eq!(m.title.trim(), "Descent Into Madness");
+    assert_eq!(m.initial_delay, 6);
+    assert_eq!(m.positions.length, 11);
+    assert!(m.patterns[0].is_some(), "pattern 0 must be present");
+    assert!(m.patterns[1].is_some(), "pattern 1 must be present");
+}
+
+/// Load madness_descent.pt3, write → re-parse and verify the first note of
+/// pattern 0 is preserved exactly.
+#[test]
+fn pt3_round_trip_madness_descent() {
+    let bytes = read_fixture("madness_descent.pt3");
+    let original = pt3_fmt::parse(&bytes).expect("parse original");
+
+    let written = save_pt3(&original).expect("write PT3");
+    let reloaded = pt3_fmt::parse(&written).expect("re-parse");
+
+    assert_eq!(reloaded.positions.length, original.positions.length, "num_positions");
+    assert_eq!(reloaded.initial_delay, original.initial_delay, "delay");
+
+    for i in 0..original.positions.length {
+        assert_eq!(
+            reloaded.positions.value[i], original.positions.value[i],
+            "position[{}]", i
+        );
+    }
+
+    let orig_p0 = original.patterns[0].as_deref().expect("orig pattern 0");
+    let new_p0  = reloaded.patterns[0].as_deref().expect("reloaded pattern 0");
+    assert_eq!(new_p0.length, orig_p0.length, "pattern 0 length");
+
+    // First note row should survive the round-trip unchanged
+    for ch in 0..3 {
+        assert_eq!(
+            new_p0.items[0].channel[ch].note,
+            orig_p0.items[0].channel[ch].note,
+            "pattern[0] row[0] ch[{}] note", ch
+        );
+    }
+}
+
+/// VTM → PT3 → VTM round-trip: convert madness_descent.vtm to PT3 binary,
+/// then parse it back as a module and verify the key fields match.
+#[test]
+fn vtm_to_pt3_to_vtm_round_trip() {
+    // Load the authoritative VTM text fixture
+    let vtm_path = format!(
+        "{}/tests/fixtures/tunes/madness_descent.vtm",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let vtm_text = std::fs::read_to_string(&vtm_path)
+        .unwrap_or_else(|e| panic!("Cannot read VTM fixture: {}", e));
+    let from_vtm = vtm::parse(&vtm_text).expect("parse VTM");
+
+    // Convert to PT3
+    let pt3_bytes = save_pt3(&from_vtm).expect("VTM → PT3");
+    // Parse the PT3 back
+    let from_pt3 = pt3_fmt::parse(&pt3_bytes).expect("PT3 → Module");
+
+    // Key metadata must survive
+    assert_eq!(from_pt3.title.trim(), from_vtm.title.trim(), "title");
+    assert_eq!(from_pt3.initial_delay, from_vtm.initial_delay, "delay");
+    assert_eq!(from_pt3.ton_table, from_vtm.ton_table, "ton_table");
+    assert_eq!(from_pt3.positions.length, from_vtm.positions.length, "num_positions");
+
+    // Positions order must be preserved
+    for i in 0..from_vtm.positions.length {
+        assert_eq!(
+            from_pt3.positions.value[i], from_vtm.positions.value[i],
+            "position[{}]", i
+        );
+    }
+
+    // Pattern 0 first row: all notes must survive
+    let orig = from_vtm.patterns[0].as_deref().expect("orig pattern 0");
+    let dest = from_pt3.patterns[0].as_deref().expect("dest pattern 0");
+    assert_eq!(dest.length, orig.length, "pattern 0 length");
+    for ch in 0..3 {
+        assert_eq!(
+            dest.items[0].channel[ch].note, orig.items[0].channel[ch].note,
+            "p0 row0 ch{} note", ch
+        );
+    }
+}

@@ -4,7 +4,7 @@
 //!
 //! # Status
 //! - `vtm`  — implemented (text format, full round-trip)
-//! - `pt3`  — partial parser; writer TODO
+//! - `pt3`  — full parser and writer
 //! - All others — **TODO** stubs; see PLAN.md
 
 pub mod pt3;
@@ -36,6 +36,12 @@ pub fn load(data: &[u8], filename: &str) -> Result<Module> {
 /// file.
 pub fn save_vtm(module: &Module) -> String {
     vtm::write(module)
+}
+
+/// Serialise a [`Module`] to a PT3 binary blob suitable for writing to a `.pt3`
+/// file.
+pub fn save_pt3(module: &Module) -> Result<Vec<u8>> {
+    pt3::write(module)
 }
 
 // TODO: implement remaining format parsers
