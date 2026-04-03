@@ -269,7 +269,7 @@ impl VortexTrackerApp {
     /// On WASM this is a no-op (file access is handled separately via the
     /// browser `<input type="file">` element — see PLAN.md §8).
     #[cfg(not(target_arch = "wasm32"))]
-    fn open_file_dialog(&mut self) {
+    fn open_file_dialog(&mut self, _ctx: &egui::Context) {
         let path = rfd::FileDialog::new()
             .add_filter(
                 "Tracker modules",
@@ -314,19 +314,19 @@ impl VortexTrackerApp {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn open_file_dialog(&mut self) {
+    fn open_file_dialog(&mut self, ctx: &egui::Context) {
         if !wasm_file::open_picker_supported() {
             self.status =
                 "File open: File System Access API not supported in this browser".to_string();
             return;
         }
         self.status = "Opening file…".to_string();
-        wasm_file::spawn_open_file();
+        wasm_file::spawn_open_file(ctx.clone());
     }
 
     /// Open a save-file dialog and write the current module as a VTM text file.
     #[cfg(not(target_arch = "wasm32"))]
-    fn save_vtm_dialog(&mut self) {
+    fn save_vtm_dialog(&mut self, _ctx: &egui::Context) {
         let path = rfd::FileDialog::new()
             .add_filter("VTM text (*.vtm)", &["vtm"])
             .set_file_name("module.vtm")
@@ -353,7 +353,7 @@ impl VortexTrackerApp {
 
     /// Open a save-file dialog and write the current module as a PT3 binary file.
     #[cfg(not(target_arch = "wasm32"))]
-    fn save_pt3_dialog(&mut self) {
+    fn save_pt3_dialog(&mut self, _ctx: &egui::Context) {
         let path = rfd::FileDialog::new()
             .add_filter("Pro Tracker 3 (*.pt3)", &["pt3"])
             .set_file_name("module.pt3")
@@ -383,14 +383,14 @@ impl VortexTrackerApp {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn save_vtm_dialog(&mut self) {
+    fn save_vtm_dialog(&mut self, ctx: &egui::Context) {
         let text = formats::save_vtm(&self.modules[self.active_module]);
         let bytes = text.into_bytes();
         let filename = "module.vtm".to_string();
 
         if wasm_file::save_picker_supported() {
             self.status = "Saving…".to_string();
-            wasm_file::spawn_save_file(filename, bytes);
+            wasm_file::spawn_save_file(ctx.clone(), filename, bytes);
         } else {
             // Fallback for browsers without the File System Access API
             // (e.g. Firefox).  Download via a temporary object URL with
@@ -411,13 +411,13 @@ impl VortexTrackerApp {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn save_pt3_dialog(&mut self) {
+    fn save_pt3_dialog(&mut self, ctx: &egui::Context) {
         let filename = "module.pt3".to_string();
         match formats::save_pt3(&self.modules[self.active_module]) {
             Ok(bytes) => {
                 if wasm_file::save_picker_supported() {
                     self.status = "Saving…".to_string();
-                    wasm_file::spawn_save_file(filename, bytes);
+                    wasm_file::spawn_save_file(ctx.clone(), filename, bytes);
                 } else {
                     match wasm_file::download_blob(&filename, &bytes) {
                         Ok(()) => self.status = format!("Saved: {filename}"),
@@ -571,15 +571,15 @@ impl eframe::App for VortexTrackerApp {
                         ui.close_menu();
                     }
                     if ui.button("Open…").clicked() {
-                        self.open_file_dialog();
+                        self.open_file_dialog(ctx);
                         ui.close_menu();
                     }
                     if ui.button("Save as VTM…").clicked() {
-                        self.save_vtm_dialog();
+                        self.save_vtm_dialog(ctx);
                         ui.close_menu();
                     }
                     if ui.button("Save as PT3…").clicked() {
-                        self.save_pt3_dialog();
+                        self.save_pt3_dialog(ctx);
                         ui.close_menu();
                     }
                     ui.separator();
