@@ -991,7 +991,8 @@ fn vtm_round_trip_demo_song() {
     let o1_load = loaded.ornaments[1].as_deref().expect("ornament 1 must round-trip");
     assert_eq!(o1_load.length,   o1_orig.length);
     assert_eq!(o1_load.loop_pos, o1_orig.loop_pos);
-    assert_eq!(&o1_load.items[..o1_orig.length], &o1_orig.items[..o1_orig.length]);
+    let orn_len = o1_orig.length;
+    assert_eq!(&o1_load.items[..orn_len], &o1_orig.items[..orn_len]);
 
     // Pattern 0 – spot-check key rows
     let p0_orig = original.patterns[0].as_deref().expect("pattern 0 must exist");

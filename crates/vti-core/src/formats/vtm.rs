@@ -114,7 +114,7 @@ fn write_sample_tick(tick: &SampleTick) -> String {
     let env = if tick.add_to_envelope_or_noise >= 0 {
         format!("+{:02X}", tick.add_to_envelope_or_noise)
     } else {
-        format!("-{:02X}", (-(tick.add_to_envelope_or_noise as i16)) as u8)
+        format!("-{:02X}", tick.add_to_envelope_or_noise.unsigned_abs())
     };
     let env_acc = if tick.envelope_or_noise_accumulation { '^' } else { '_' };
 
@@ -452,9 +452,10 @@ fn parse_ornament_line(s: &str) -> Result<Ornament> {
             }
         }
         if digits.is_empty() { break; }
-        let val: i8 = digits.parse::<i8>().unwrap_or(0);
+        let val: i8 = digits.parse::<i8>()
+            .with_context(|| format!("ornament value {:?}", digits))?;
         ensure!(length < MAX_ORN_LEN, "ornament too long");
-        orn.items[length] = if neg { -val } else { val };
+        orn.items[length] = if neg { val.checked_neg().unwrap_or(i8::MIN) } else { val };
         length += 1;
         if length >= MAX_ORN_LEN { break; }
     }
@@ -740,7 +741,7 @@ fn parse_sample_section(lines: &[String]) -> Result<Sample> {
         let tick = parse_sample_tick(l)?;
         sam.items[length] = tick;
         // Check for loop marker: 'L' somewhere after the tick data
-        if l.to_uppercase().contains(" L") || l.ends_with('L') || l.ends_with('l') {
+        if l.to_ascii_uppercase().contains(" L") {
             loop_pos = length;
         }
         length += 1;
