@@ -83,21 +83,30 @@
 - [x] `write()` — encode Module back to PT3 binary (VTM2PT3 full port)
 
 #### 2.5.2 PT2 (`formats/pt2.rs`) — `PT22VTM`
-- [ ] Header decode
-- [ ] Sample / ornament decode
-- [ ] Pattern decode
+- [x] Header decode (delay, loop pos, sample/ornament/pattern pointers, title)
+- [x] Sample decode (3-byte tick: noise/ton flags, amplitude, add_to_ton with sign)
+- [x] Ornament decode
+- [x] Pattern decode (full opcode set: notes, sample, ornament, envelope, skip, effects)
+- [x] Integration test + `minimal_roundtrip.pt2` fixture
+- [x] PT2 → PT3 roundtrip test
 
 #### 2.5.3 PT1 (`formats/pt1.rs`) — `PT12VTM`
-- [ ] Full parser
+- [x] Full parser (header, samples, ornaments, patterns, orn2sam tracking)
+- [x] Integration test + `minimal_roundtrip.pt1` fixture
+- [x] PT1 → PT3 roundtrip test
 
 #### 2.5.4 STC (`formats/stc.rs`) — `STC2VTM`
-- [ ] Full parser
+- [x] Full parser (fixed-offset 99-byte sample table, ornament table, position list with transposition)
+- [x] Integration test + `minimal_roundtrip.stc` fixture
+- [x] STC → PT3 roundtrip test
 
 #### 2.5.5 ASC / ASC0 (`formats/asc.rs`) — `ASC2VTM`
 - [ ] Full parser
 
 #### 2.5.6 STP (`formats/stp.rs`) — `STP2VTM`
-- [ ] Full parser
+- [x] Full parser (pointer-based structure, glissando state, KSA metadata detection)
+- [x] Integration test + `minimal_roundtrip.stp` fixture
+- [x] STP → PT3 roundtrip test
 
 #### 2.5.7 SQT (`formats/sqt.rs`) — `SQT2VTM`
 - [ ] Full parser
@@ -125,7 +134,8 @@
 - [ ] `LoadModuleFromText()` — parse text format
 
 #### 2.5.15 Format auto-detection
-- [ ] `LoadAndDetect()` — detect file type and dispatch to correct parser
+- [x] `load()` — detect file type from extension, dispatch to correct parser (vtm, pt3, pt2, pt1, stc, stp)
+- [ ] `LoadAndDetect()` — ZX Spectrum binary magic-number detection
 - [ ] `PrepareZXModule()` — ZX Spectrum memory layout handling
 
 ### 2.6 Tests (`tests/integration_tests.rs`)

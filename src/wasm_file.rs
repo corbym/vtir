@@ -131,10 +131,14 @@ async fn do_open_file() -> Result<PendingFile, JsValue> {
 }
 
 fn build_open_options() -> JsValue {
-    // { types: [{ description: "Tracker modules", accept: { "application/octet-stream": [".vtm", ".pt3"] } }], multiple: false }
+    // { types: [{ description: "Tracker modules", accept: { "application/octet-stream": [".vtm", ".pt3", ".pt2", ".pt1", ".stc", ".stp"] } }], multiple: false }
     let exts = Array::new();
     exts.push(&JsValue::from_str(".vtm"));
     exts.push(&JsValue::from_str(".pt3"));
+    exts.push(&JsValue::from_str(".pt2"));
+    exts.push(&JsValue::from_str(".pt1"));
+    exts.push(&JsValue::from_str(".stc"));
+    exts.push(&JsValue::from_str(".stp"));
 
     let accept = Object::new();
     let _ = Reflect::set(&accept, &JsValue::from_str("application/octet-stream"), &exts);

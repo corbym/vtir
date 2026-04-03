@@ -1115,8 +1115,8 @@ fn write_word(buf: &mut [u8], off: usize, val: u16) {
 }
 
 fn trim_right_ascii(bytes: &[u8]) -> String {
-    let s = String::from_utf8_lossy(bytes);
-    s.trim_end().to_string()
+    let end = bytes.iter().rposition(|&b| b > 0x20).map_or(0, |i| i + 1);
+    String::from_utf8_lossy(&bytes[..end]).to_string()
 }
 
 /// Return the index in `strs` of a slice equal to `s`, inserting it if not found.
