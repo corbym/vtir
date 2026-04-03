@@ -25,7 +25,7 @@ use vti_core::note_tables::{
 use vti_core::note_tables::PT3_VOL;
 use vti_core::playback::{Engine, PlayVars, init_tracker_parameters};
 use vti_core::{
-    AdditionalCommand, AyRegisters, ChannelLine, Module, Pattern, PatternRow,
+    AdditionalCommand, AyRegisters, ChannelLine, Module, Pattern,
     Sample, SampleTick,
 };
 

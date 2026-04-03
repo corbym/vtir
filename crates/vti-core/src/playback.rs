@@ -337,8 +337,8 @@ impl<'a> Engine<'a> {
         let pat_idx = Module::pat_idx(self.vars.current_pattern);
         let line = self.vars.current_line;
 
-        let cell = if let Some(Some(pat)) = self.module.patterns.get(pat_idx) {
-            pat.items[line].channel[ch]
+        let (cell, row_envelope) = if let Some(Some(pat)) = self.module.patterns.get(pat_idx) {
+            (pat.items[line].channel[ch], pat.items[line].envelope)
         } else {
             return;
         };
@@ -385,7 +385,8 @@ impl<'a> Engine<'a> {
         let env = cell.envelope;
         if env > 0 && env < 15 {
             self.module.is_chans[ch_idx].envelope_enabled = true;
-            // Store env base (from pattern row) — grabbed elsewhere
+            // Env_Base = row-level envelope period (Delphi: PlVars.Env_Base := Patterns[Pat].Items[Line].Envelope)
+            self.vars.env_base = row_envelope as i16;
             ay_regs.env_type = env;
             self.module.is_chans[ch_idx].ornament = cell.ornament;
             self.vars.params_of_chan[ch_idx].ornament_position = 0;

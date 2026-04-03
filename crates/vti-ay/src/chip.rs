@@ -74,7 +74,12 @@ impl EnvShape {
 /// 17-bit Galois LFSR — port of the `NoiseGenerator` asm function in AY.pas.
 #[inline]
 pub fn noise_generator(seed: u32) -> u32 {
-    let bit = ((seed >> 16) ^ (seed >> 19)) & 1;
+    // Taps: bit13 XOR bit16 of the 17-bit seed.
+    // Derived from the original Delphi asm in AY.pas:
+    //   shld edx,eax,16  → bit0(edx) = bit16(eax)
+    //   shld ecx,eax,19  → bit0(ecx) = bit13(eax)
+    //   xor ecx,edx; and ecx,1  → feedback = bit13 XOR bit16
+    let bit = ((seed >> 13) ^ (seed >> 16)) & 1;
     let s = ((seed << 1) & 0x1_FFFF) | 1;
     s ^ bit
 }
