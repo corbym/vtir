@@ -1,8 +1,11 @@
 name: Deploy to GitHub Pages
 
+# Runs on push to master OR can be triggered manually.
+# This workflow is intentionally separate from the binary release workflow
+# (release.yml) so the web build can be deployed independently at any time.
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -34,8 +37,12 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
+          key: ${{ runner.os }}-wasm-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-wasm-cargo-
+
+      # Verify the WASM target compiles before invoking trunk
+      - name: Check WASM build
+        run: cargo check --target wasm32-unknown-unknown
 
       - name: Install trunk
         uses: jetli/trunk-action@v0.5.0

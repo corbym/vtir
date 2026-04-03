@@ -37,3 +37,30 @@ jobs:
 
       - name: Run library + integration tests
         run: cargo test -p vti-core -p vti-ay -p vti-audio
+
+  # ── Web / WASM check ────────────────────────────────────────────────────────
+  # Verifies that the web (wasm32-unknown-unknown) target still compiles on
+  # every push and PR.  Actual Pages deployment is handled by pages.yml and
+  # runs only on pushes to master (or manually).
+  check-wasm:
+    name: Check WASM build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable + wasm32 target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: wasm-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: cargo check (wasm32-unknown-unknown)
+        run: cargo check --target wasm32-unknown-unknown
