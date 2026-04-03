@@ -399,7 +399,12 @@ impl eframe::App for VortexTrackerApp {
         // ── Central area: pattern editor ──────────────────────────────────
         egui::CentralPanel::default().show(ctx, |ui| {
             let module = &mut self.modules[self.active_module];
-            self.pattern_editor.show(ui, module);
+            let play_pos = if self.is_playing {
+                Some((self.play_vars.current_pattern, self.play_vars.current_line))
+            } else {
+                None
+            };
+            self.pattern_editor.show(ui, module, play_pos);
         });
     }
 }

@@ -29,7 +29,6 @@ pub struct PatternEditor {
     cursor: Cursor,
     current_pattern: i32,
     octave: u8,
-    scroll_to_cursor: bool,
 }
 
 impl Default for PatternEditor {
@@ -38,13 +37,22 @@ impl Default for PatternEditor {
             cursor: Cursor::default(),
             current_pattern: 0,
             octave: 4,
-            scroll_to_cursor: false,
         }
     }
 }
 
 impl PatternEditor {
-    pub fn show(&mut self, ui: &mut egui::Ui, module: &mut Module) {
+    /// Show the pattern editor.
+    ///
+    /// `play_pos` — when the engine is playing, pass `Some((pattern_index, current_line))`.
+    /// The editor will follow the playhead: switch to the playing pattern, highlight the
+    /// current row and keep it centred in the scroll view.
+    pub fn show(&mut self, ui: &mut egui::Ui, module: &mut Module, play_pos: Option<(i32, usize)>) {
+        // When playback is active, mirror the engine's current pattern.
+        if let Some((pat, _)) = play_pos {
+            self.current_pattern = pat;
+        }
+
         let pat_idx = Module::pat_idx(self.current_pattern);
 
         // ── Pattern selector ───────────────────────────────────────────────
@@ -71,10 +79,23 @@ impl PatternEditor {
 
         // ── Grid ──────────────────────────────────────────────────────────
         let row_height = 18.0;
-        let col_widths = [60.0_f32, 30.0, 24.0, 24.0, 16.0, 60.0]; // Note, Samp, Orn, Vol, Env, Fx
 
-        egui::ScrollArea::vertical()
-            .auto_shrink([false, false])
+        // Compute the playing line within the current pattern (if any).
+        let playing_line: Option<usize> = play_pos.and_then(|(pat, line)| {
+            if pat == self.current_pattern { Some(line) } else { None }
+        });
+
+        // When following the playhead, centre the playing row in the visible
+        // area.  We compute the offset *before* building the ScrollArea so
+        // that `show_rows` receives the correct visible range on this frame.
+        let available_height = ui.available_height();
+        let mut scroll_area = egui::ScrollArea::vertical().auto_shrink([false, false]);
+        if let Some(line) = playing_line {
+            let centred = (line as f32 * row_height) - (available_height / 2.0);
+            scroll_area = scroll_area.vertical_scroll_offset(centred.max(0.0));
+        }
+
+        scroll_area
             .show_rows(ui, row_height, pat_len, |ui, row_range| {
                 egui::Grid::new("pattern_grid")
                     .num_columns(1 + 6 * 3)
@@ -91,11 +112,34 @@ impl PatternEditor {
 
                         for row in row_range {
                             let is_selected = row == self.cursor.row;
+                            let is_playing  = playing_line == Some(row);
                             let row_data = &module.patterns[pat_idx].as_ref().unwrap().items[row];
 
+                            // Paint a coloured background strip behind the playing row.
+                            if is_playing {
+                                let row_rect = ui.cursor().expand(2.0);
+                                // We will repaint this rect after all cells; for now use a
+                                // painter call layered behind the row text.
+                                ui.painter().rect_filled(
+                                    egui::Rect::from_min_size(
+                                        row_rect.min,
+                                        egui::vec2(ui.available_width(), row_height),
+                                    ),
+                                    2.0,
+                                    egui::Color32::from_rgba_premultiplied(0, 80, 60, 120),
+                                );
+                            }
+
                             // Row number
+                            let row_number_color = if is_playing {
+                                egui::Color32::from_rgb(0, 255, 180) // bright cyan-green for playing row
+                            } else if is_selected {
+                                egui::Color32::YELLOW
+                            } else {
+                                egui::Color32::GRAY
+                            };
                             let row_label = egui::RichText::new(format!("{:03X}", row))
-                                .color(if is_selected { egui::Color32::YELLOW } else { egui::Color32::GRAY })
+                                .color(row_number_color)
                                 .monospace();
                             if ui.label(row_label).clicked() {
                                 self.cursor.row = row;
@@ -104,10 +148,20 @@ impl PatternEditor {
                             for ch in 0..3 {
                                 let cell = &row_data.channel[ch];
                                 let note_str = note_to_str(cell.note);
-                                let note_color = match cell.note {
-                                    n if n == NOTE_SOUND_OFF => egui::Color32::RED,
-                                    n if n == NOTE_NONE => egui::Color32::DARK_GRAY,
-                                    _ => egui::Color32::WHITE,
+                                // When playing, brighten note text on the active row so it
+                                // stands out from the background highlight.
+                                let note_color = if is_playing {
+                                    match cell.note {
+                                        n if n == NOTE_SOUND_OFF => egui::Color32::from_rgb(255, 100, 100),
+                                        n if n == NOTE_NONE      => egui::Color32::from_gray(120),
+                                        _                        => egui::Color32::WHITE,
+                                    }
+                                } else {
+                                    match cell.note {
+                                        n if n == NOTE_SOUND_OFF => egui::Color32::RED,
+                                        n if n == NOTE_NONE      => egui::Color32::DARK_GRAY,
+                                        _                        => egui::Color32::WHITE,
+                                    }
                                 };
                                 if ui.add(
                                     egui::Label::new(
