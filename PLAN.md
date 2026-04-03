@@ -242,8 +242,9 @@
 - [x] `BottomPanel` enum (Sample / Ornament)
 - [x] `eframe::App::update` skeleton with menu bar / toolbar / status / panels
 - [x] `make_demo_module()` — 3-channel arpeggio (I–V–vi–IV) + noise drum, loops forever
-- [ ] `File → Open` — rfd file dialog → format detection → Module load
-- [ ] `File → Save` — PT3 writer → rfd save dialog
+- [x] `File → Open` — rfd file dialog (native) / File System Access API (WASM) → format detection → Module load
+- [x] `File → Save` — rfd save dialog (native) / File System Access API (WASM) → VTM text output
+- [ ] `File → Open` / `File → Save` — show load/save errors and parse failures in an egui modal error dialog (currently only reported in the status bar)
 - [ ] `File → Export ZX` — PT3 to .tap/.tzx (ported from `ExportZX.pas`)
 - [ ] Turbo Sound second-chip slot management
 - [ ] Module properties dialog (title, author, delay, tone table)
@@ -382,7 +383,7 @@ eframe already compiles to WASM via [`trunk`](https://trunkrs.dev/). This gives 
 
 - [x] Add `trunk` to the build toolchain (config in `Trunk.toml`)
 - [x] Add `index.html` template (canvas mount point)
-- [ ] Gate `rfd` (file dialog) behind `not(target_arch = "wasm32")` and provide a browser `<input type="file">` fallback via `web-sys`
+- [x] Gate `rfd` (file dialog) behind `not(target_arch = "wasm32")` and provide a browser File System Access API fallback (`showOpenFilePicker` / `showSaveFilePicker`) via `wasm-bindgen` in `src/wasm_file.rs`; pending-result channel extracted to `src/pending_file.rs` with 10 native unit tests
 - [x] Enable `cpal`'s `wasm-bindgen` feature so the WebAudio backend is compiled in for WASM targets; lazy-init `AudioPlayer` on first Play press to satisfy browser autoplay policy (AudioContext must be created inside a user-gesture handler)
 - [x] Add `wasm32-unknown-unknown` target to CI build matrix
 - [x] Publish the WASM build to GitHub Pages on every release tag
@@ -554,6 +555,6 @@ should be treated as regressions and investigated before merging.
 | README | 0% | full write-up |
 | **Integration tests** | ✅ 59 passing | effect-command edge cases, PT3 round-trip |
 | **Pascal parity baselines** | ✅ infrastructure done | Fix 4 known bugs (see §9.4) |
-| **Web target (eframe WASM)** | ~80% | `rfd` file-dialog fallback remaining |
+| **Web target (eframe WASM)** | ✅ ~95% | file-dialog fallback done via File System Access API |
 | **Web target (KMP/Compose)** | 0% | `vti-ffi` WASM bindings, Kotlin/Wasm UI (long-term) |
 | **Android target (KMP/Compose)** | 0% | `vti-ffi` cdylib, UniFFI bindings, Compose UI, `cargo-ndk` pipeline |

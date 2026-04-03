@@ -7,6 +7,12 @@ use vti_ay::config::AyConfig;
 use vti_ay::synth::Synthesizer;
 use vti_core::playback::{Engine, PlayVars, init_tracker_parameters, PlayResult};
 use vti_audio::AudioPlayer;
+use vti_core::formats;
+
+#[cfg(target_arch = "wasm32")]
+use crate::wasm_file;
+#[cfg(target_arch = "wasm32")]
+use crate::pending_file;
 
 use crate::ui::{PatternEditor, SampleEditor, OrnamentEditor, Toolbar};
 
@@ -243,6 +249,99 @@ impl VortexTrackerApp {
         }
     }
 
+    /// Open a file-picker dialog and load the chosen module.
+    ///
+    /// Supported extensions: `.vtm`, `.pt3`.
+    /// On WASM this is a no-op (file access is handled separately via the
+    /// browser `<input type="file">` element — see PLAN.md §8).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn open_file_dialog(&mut self) {
+        let path = rfd::FileDialog::new()
+            .add_filter("Tracker modules", &["vtm", "pt3"])
+            .add_filter("VTM text (*.vtm)", &["vtm"])
+            .add_filter("Pro Tracker 3 (*.pt3)", &["pt3"])
+            .add_filter("All files", &["*"])
+            .pick_file();
+
+        let Some(path) = path else {
+            return; // user cancelled
+        };
+
+        match std::fs::read(&path) {
+            Err(e) => {
+                self.status = format!("Open failed: {e}");
+            }
+            Ok(bytes) => {
+                let filename = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("file");
+                match formats::load(&bytes, filename) {
+                    Ok(module) => {
+                        self.is_playing = false;
+                        self.modules = vec![module];
+                        self.active_module = 0;
+                        self.reset_playback();
+                        self.status = format!("Loaded: {}", filename);
+                    }
+                    Err(e) => {
+                        self.status = format!("Parse error: {e}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn open_file_dialog(&mut self) {
+        if !wasm_file::open_picker_supported() {
+            self.status =
+                "File open: File System Access API not supported in this browser".to_string();
+            return;
+        }
+        self.status = "Opening file…".to_string();
+        wasm_file::spawn_open_file();
+    }
+
+    /// Open a save-file dialog and write the current module as a VTM text file.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_vtm_dialog(&mut self) {
+        let path = rfd::FileDialog::new()
+            .add_filter("VTM text (*.vtm)", &["vtm"])
+            .set_file_name("module.vtm")
+            .save_file();
+
+        let Some(path) = path else {
+            return; // user cancelled
+        };
+
+        let text = formats::save_vtm(&self.modules[self.active_module]);
+        match std::fs::write(&path, text.as_bytes()) {
+            Ok(()) => {
+                let name = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("file");
+                self.status = format!("Saved: {}", name);
+            }
+            Err(e) => {
+                self.status = format!("Save failed: {e}");
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn save_vtm_dialog(&mut self) {
+        if !wasm_file::save_picker_supported() {
+            self.status =
+                "File save: File System Access API not supported in this browser".to_string();
+            return;
+        }
+        let text = formats::save_vtm(&self.modules[self.active_module]);
+        self.status = "Saving…".to_string();
+        wasm_file::spawn_save_file("module.vtm".to_string(), text.into_bytes());
+    }
+
     /// Re-initialise playback state so the next Play starts from the beginning.
     fn reset_playback(&mut self) {
         init_tracker_parameters(&mut self.modules[self.active_module], &mut self.play_vars, true);
@@ -253,6 +352,36 @@ impl VortexTrackerApp {
             } else {
                 0
             };
+    }
+
+    /// Drain any pending WASM file-operation results and apply them to app state.
+    ///
+    /// Called once per frame (at the top of `update`) on WASM targets.
+    /// Results are produced by [`wasm_file::spawn_open_file`] /
+    /// [`wasm_file::spawn_save_file`] running asynchronously in the background.
+    #[cfg(target_arch = "wasm32")]
+    fn poll_wasm_file_ops(&mut self) {
+        if let Some(pf) = pending_file::take_pending_open() {
+            match formats::load(&pf.bytes, &pf.name) {
+                Ok(module) => {
+                    self.is_playing = false;
+                    self.modules = vec![module];
+                    self.active_module = 0;
+                    self.reset_playback();
+                    self.status = format!("Loaded: {}", pf.name);
+                }
+                Err(e) => {
+                    self.status = format!("Parse error: {e}");
+                }
+            }
+        }
+
+        if let Some(result) = pending_file::take_pending_save_status() {
+            self.status = match result {
+                Ok(msg) => msg,
+                Err(msg) => msg,
+            };
+        }
     }
 
     /// Render one 50 Hz tracker tick: advance the engine, synthesise samples, push to audio.
@@ -289,6 +418,10 @@ impl VortexTrackerApp {
 
 impl eframe::App for VortexTrackerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // ── Drain pending WASM file operations ────────────────────────────
+        #[cfg(target_arch = "wasm32")]
+        self.poll_wasm_file_ops();
+
         // ── Audio tick driver ──────────────────────────────────────────────
         // Tick the tracker engine at ~50 Hz whenever playback is active.
         const TICK_INTERVAL: f64 = 1.0 / 50.0;
@@ -318,13 +451,11 @@ impl eframe::App for VortexTrackerApp {
                         ui.close_menu();
                     }
                     if ui.button("Open…").clicked() {
-                        // TODO: rfd file dialog + format detection (PLAN.md §5)
-                        self.status = "Open not yet implemented".to_string();
+                        self.open_file_dialog();
                         ui.close_menu();
                     }
-                    if ui.button("Save…").clicked() {
-                        // TODO: PT3 writer (PLAN.md §3.3)
-                        self.status = "Save not yet implemented".to_string();
+                    if ui.button("Save as VTM…").clicked() {
+                        self.save_vtm_dialog();
                         ui.close_menu();
                     }
                     ui.separator();

@@ -833,3 +833,212 @@ fn current_line_and_pattern_reset_on_module_loop() {
     assert_eq!(vars.current_position, 0, "position must be at loop_pos=0 after module loop");
     assert_eq!(vars.current_pattern, 0, "pattern must be 0 after module loop");
 }
+
+// ─── VTM text-format round-trip ──────────────────────────────────────────────
+
+use vti_core::formats::vtm;
+use vti_core::formats::load as format_load;
+
+/// Rebuild the demo module from `src/app.rs` inside the test crate so we can
+/// use it without a dependency on the binary.
+fn make_demo_module_for_test() -> Module {
+    let mut module = Module::default();
+    module.title = "Demo Song".to_string();
+    module.author = "Vortex Tracker II".to_string();
+    module.initial_delay = 3;
+
+    // Sample 1 – lead tone
+    let mut lead = Sample::default();
+    lead.length = 1;
+    lead.loop_pos = 0;
+    lead.items[0] = SampleTick {
+        amplitude: 14,
+        mixer_ton: true,
+        mixer_noise: false,
+        ..SampleTick::default()
+    };
+    module.samples[1] = Some(Box::new(lead));
+
+    // Sample 2 – bass tone
+    let mut bass = Sample::default();
+    bass.length = 1;
+    bass.loop_pos = 0;
+    bass.items[0] = SampleTick {
+        amplitude: 10,
+        mixer_ton: true,
+        mixer_noise: false,
+        ..SampleTick::default()
+    };
+    module.samples[2] = Some(Box::new(bass));
+
+    // Sample 3 – noise drum (8-tick decay, loops on tick 7)
+    let mut drum = Sample::default();
+    drum.length = 8;
+    drum.loop_pos = 7;
+    let amps: [u8; 8] = [15, 13, 11, 9, 7, 5, 2, 0];
+    for (i, &amp) in amps.iter().enumerate() {
+        drum.items[i] = SampleTick {
+            amplitude: amp,
+            mixer_ton: false,
+            mixer_noise: true,
+            add_to_envelope_or_noise: 12,
+            ..SampleTick::default()
+        };
+    }
+    module.samples[3] = Some(Box::new(drum));
+
+    // Ornament 1 – major arpeggio
+    let mut orn_maj = Ornament::default();
+    orn_maj.length = 3;
+    orn_maj.loop_pos = 0;
+    orn_maj.items[0] = 0;
+    orn_maj.items[1] = 4;
+    orn_maj.items[2] = 7;
+    module.ornaments[1] = Some(Box::new(orn_maj));
+
+    // Ornament 2 – minor arpeggio
+    let mut orn_min = Ornament::default();
+    orn_min.length = 3;
+    orn_min.loop_pos = 0;
+    orn_min.items[0] = 0;
+    orn_min.items[1] = 3;
+    orn_min.items[2] = 7;
+    module.ornaments[2] = Some(Box::new(orn_min));
+
+    // Pattern 0 – 16 rows, I–V–vi–IV chord progression
+    let mut pat = Pattern::default();
+    pat.length = 16;
+    let mk = |note: i8, sample: u8, ornament: u8, volume: u8| ChannelLine {
+        note, sample, ornament, volume, envelope: 0,
+        additional_command: AdditionalCommand::default(),
+    };
+    pat.items[0].channel[0]  = mk(48, 1, 1, 15); // C-5 lead
+    pat.items[0].channel[1]  = mk(24, 2, 1, 12); // C-3 bass
+    pat.items[0].channel[2]  = mk(0,  3, 0, 15); // noise drum
+    pat.items[4].channel[0]  = mk(43, 1, 1, 15);
+    pat.items[4].channel[1]  = mk(31, 2, 1, 12);
+    pat.items[8].channel[0]  = mk(45, 1, 2, 15);
+    pat.items[8].channel[1]  = mk(33, 2, 2, 12);
+    pat.items[8].channel[2]  = mk(0,  3, 0, 15);
+    pat.items[12].channel[0] = mk(41, 1, 1, 15);
+    pat.items[12].channel[1] = mk(29, 2, 1, 12);
+    module.patterns[0] = Some(Box::new(pat));
+
+    module.positions.length = 1;
+    module.positions.value[0] = 0;
+    module.positions.loop_pos = 0;
+    module
+}
+
+/// Verify that the VTM text format can be written and read back, and that the
+/// key module fields survive the round-trip unchanged.
+#[test]
+fn vtm_round_trip_demo_song() {
+    let original = make_demo_module_for_test();
+
+    // --- save ---
+    let text = vtm::write(&original);
+    assert!(!text.is_empty(), "write should produce non-empty output");
+    assert!(text.contains("[Module]"),  "output must contain [Module] section");
+    assert!(text.contains("[Pattern0]"), "output must contain [Pattern0] section");
+    assert!(text.contains("[Sample1]"),  "output must contain [Sample1] section");
+    assert!(text.contains("[Ornament1]"), "output must contain [Ornament1] section");
+
+    // --- load ---
+    let loaded = vtm::parse(&text).expect("VTM parse should succeed");
+
+    // Module metadata
+    assert_eq!(loaded.title,         original.title);
+    assert_eq!(loaded.author,        original.author);
+    assert_eq!(loaded.initial_delay, original.initial_delay);
+    assert_eq!(loaded.ton_table,     original.ton_table);
+    assert_eq!(loaded.features_level, original.features_level);
+
+    // Position list
+    assert_eq!(loaded.positions.length,   original.positions.length);
+    assert_eq!(loaded.positions.loop_pos, original.positions.loop_pos);
+    assert_eq!(loaded.positions.value[0], original.positions.value[0]);
+
+    // Sample 1 – lead tone
+    let s1_orig = original.samples[1].as_deref().expect("sample 1 must exist");
+    let s1_load = loaded.samples[1].as_deref().expect("sample 1 must round-trip");
+    assert_eq!(s1_load.length,          s1_orig.length);
+    assert_eq!(s1_load.loop_pos,        s1_orig.loop_pos);
+    assert_eq!(s1_load.items[0].amplitude,   s1_orig.items[0].amplitude);
+    assert_eq!(s1_load.items[0].mixer_ton,   s1_orig.items[0].mixer_ton);
+    assert_eq!(s1_load.items[0].mixer_noise, s1_orig.items[0].mixer_noise);
+
+    // Sample 3 – noise drum (8 ticks, loop on tick 7)
+    let s3_orig = original.samples[3].as_deref().expect("sample 3 must exist");
+    let s3_load = loaded.samples[3].as_deref().expect("sample 3 must round-trip");
+    assert_eq!(s3_load.length,   s3_orig.length);
+    assert_eq!(s3_load.loop_pos, s3_orig.loop_pos);
+    for i in 0..s3_orig.length as usize {
+        assert_eq!(
+            s3_load.items[i].amplitude,
+            s3_orig.items[i].amplitude,
+            "drum tick {i} amplitude mismatch",
+        );
+        assert_eq!(
+            s3_load.items[i].mixer_noise,
+            s3_orig.items[i].mixer_noise,
+            "drum tick {i} mixer_noise mismatch",
+        );
+    }
+
+    // Ornament 1 – major arpeggio
+    let o1_orig = original.ornaments[1].as_deref().expect("ornament 1 must exist");
+    let o1_load = loaded.ornaments[1].as_deref().expect("ornament 1 must round-trip");
+    assert_eq!(o1_load.length,   o1_orig.length);
+    assert_eq!(o1_load.loop_pos, o1_orig.loop_pos);
+    let orn_len = o1_orig.length;
+    assert_eq!(&o1_load.items[..orn_len], &o1_orig.items[..orn_len]);
+
+    // Pattern 0 – spot-check key rows
+    let p0_orig = original.patterns[0].as_deref().expect("pattern 0 must exist");
+    let p0_load = loaded.patterns[0].as_deref().expect("pattern 0 must round-trip");
+    assert_eq!(p0_load.length, p0_orig.length);
+    // Row 0: C major hit
+    assert_eq!(p0_load.items[0].channel[0].note,    p0_orig.items[0].channel[0].note);
+    assert_eq!(p0_load.items[0].channel[0].sample,  p0_orig.items[0].channel[0].sample);
+    assert_eq!(p0_load.items[0].channel[0].ornament,p0_orig.items[0].channel[0].ornament);
+    assert_eq!(p0_load.items[0].channel[0].volume,  p0_orig.items[0].channel[0].volume);
+    // Row 8: A minor hit
+    assert_eq!(p0_load.items[8].channel[0].note,    p0_orig.items[8].channel[0].note);
+    assert_eq!(p0_load.items[8].channel[2].note,    p0_orig.items[8].channel[2].note);
+}
+
+/// The `formats::load` dispatcher must route `.vtm` files through the VTM text
+/// parser without error.
+#[test]
+fn format_load_dispatches_vtm() {
+    let demo = make_demo_module_for_test();
+    let text = vtm::write(&demo);
+    let bytes = text.into_bytes();
+    let loaded = format_load(&bytes, "song.vtm").expect("load should succeed for .vtm");
+    assert_eq!(loaded.initial_delay, demo.initial_delay);
+    assert_eq!(loaded.positions.length, demo.positions.length);
+}
+
+/// A round-trip via the filesystem: write to a temp file, read it back.
+#[test]
+fn vtm_file_save_load_round_trip() {
+    use std::io::Write;
+
+    let original = make_demo_module_for_test();
+    let text = vtm::write(&original);
+
+    // Write to a temp file
+    let mut tmp = tempfile::NamedTempFile::new().expect("tempfile");
+    tmp.write_all(text.as_bytes()).expect("write");
+    let path = tmp.path().to_owned();
+
+    // Read back
+    let bytes = std::fs::read(&path).expect("re-read");
+    let loaded = format_load(&bytes, "demo.vtm").expect("load round-trip");
+
+    assert_eq!(loaded.title,         original.title);
+    assert_eq!(loaded.positions.length, original.positions.length);
+    let p = loaded.patterns[0].as_deref().expect("pattern 0");
+    assert_eq!(p.length, original.patterns[0].as_deref().unwrap().length);
+}
