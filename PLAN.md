@@ -242,8 +242,9 @@
 - [x] `BottomPanel` enum (Sample / Ornament)
 - [x] `eframe::App::update` skeleton with menu bar / toolbar / status / panels
 - [x] `make_demo_module()` — 3-channel arpeggio (I–V–vi–IV) + noise drum, loops forever
-- [ ] `File → Open` — rfd file dialog → format detection → Module load
-- [ ] `File → Save` — PT3 writer → rfd save dialog
+- [x] `File → Open` — rfd file dialog (native) / File System Access API (WASM) → format detection → Module load
+- [x] `File → Save` — rfd save dialog (native) / File System Access API (WASM) → VTM text output
+- [ ] `File → Open` / `File → Save` — show load/save errors and parse failures in an egui modal error dialog (currently only reported in the status bar)
 - [ ] `File → Export ZX` — PT3 to .tap/.tzx (ported from `ExportZX.pas`)
 - [ ] Turbo Sound second-chip slot management
 - [ ] Module properties dialog (title, author, delay, tone table)
