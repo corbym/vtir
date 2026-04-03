@@ -316,6 +316,150 @@
 
 ---
 
+## 8. Web & Android Targets — Feasibility and Plan
+
+### 8.0 Feasibility Summary
+
+| Target | Feasibility | Complexity | Notes |
+|--------|-------------|------------|-------|
+| Web (eframe/WASM) | ✅ High | Low–Medium | eframe has first-class WASM support via `trunk`; almost free |
+| Web (KMP/Compose for Web) | 🟡 Medium | High | Kotlin/Wasm is still maturing; Rust→WASM→Kotlin interop is indirect |
+| Android (Rust + KMP/Compose) | ✅ High | Medium–High | Well-proven path (Firefox, 1Password, Signal); `uniffi` automates JNI |
+| iOS (Rust + KMP/Swift) | 🟡 Medium | High | `uniffi` generates Swift bindings; KMP iOS support exists but is beta |
+
+**Short answer:** The core Rust libraries (`vti-core`, `vti-ay`) have **zero OS or native dependencies** — they will compile to WASM and Android targets unchanged. `vti-audio` uses `cpal`, which has experimental WASM and production-quality Android backends already. The main work is the FFI glue layer and the KMP UI code.
+
+---
+
+### 8.1 Dependency Portability Audit
+
+| Crate | WASM | Android | Blocker? |
+|-------|------|---------|---------|
+| `vti-core` | ✅ | ✅ | None — pure Rust, `serde`/`anyhow`/`log` all WASM-safe |
+| `vti-ay` | ✅ | ✅ | None — pure computation |
+| `vti-audio` | ⚠️ | ✅ | `cpal` WASM backend is experimental (uses Web Audio API via `web-sys`); threading model needs care |
+| `eframe`/`egui` | ✅ | ❌ | `eframe` supports WASM but not Android; a KMP UI replaces it on mobile |
+
+---
+
+### 8.2 New Crate: `crates/vti-ffi`
+
+A thin FFI / binding layer that wraps the core playback API and is the only crate that needs to know about the host environment.
+
+- [ ] Add `crates/vti-ffi` to the workspace
+- [ ] Add `uniffi` as a build dependency (generates Kotlin & Swift bindings from a `.udl` interface file)
+- [ ] Define a `vti.udl` interface covering:
+  - `load_module(bytes: sequence<u8>) -> Module` — parse a PT3/VTM file
+  - `Engine::new(module: Module) -> Engine`
+  - `Engine::tick() -> AyRegisters` — advance one frame, return register snapshot
+  - `Engine::reset()`
+  - `module_title(module: Module) -> string`
+  - `module_author(module: Module) -> string`
+  - `module_position_count(module: Module) -> u32`
+- [ ] Add `wasm-bindgen` feature flag for WASM target (exports the same API as JS-callable functions instead of JNI)
+- [ ] Unit-test the FFI surface with the existing PT3 fixtures
+
+---
+
+### 8.3 Web Target
+
+#### 8.3.1 Option A — eframe WASM (recommended first step, no KMP)
+
+eframe already compiles to WASM via [`trunk`](https://trunkrs.dev/). This gives a working web UI with near-zero extra code.
+
+- [ ] Add `trunk` to the build toolchain (config in `Trunk.toml`)
+- [ ] Add `index.html` template (canvas mount point)
+- [ ] Gate `rfd` (file dialog) behind `not(target_arch = "wasm32")` and provide a browser `<input type="file">` fallback via `web-sys`
+- [ ] Gate `vti-audio`'s `cpal` render thread behind `not(target_arch = "wasm32")`; on WASM, drive audio from a `web_sys::AudioWorkletNode` or a JavaScript `ScriptProcessorNode` callback instead
+- [ ] Add `wasm32-unknown-unknown` target to CI build matrix
+- [ ] Publish the WASM build to GitHub Pages on every release tag
+
+#### 8.3.2 Option B — KMP / Compose for Web (longer term)
+
+For a shared Kotlin UI across Android and web:
+
+- [ ] Compile `vti-core` + `vti-ay` to WASM via `wasm-bindgen` in `vti-ffi`
+- [ ] Write a Kotlin/Wasm wrapper (`vti-ffi-wasm`) that imports the WASM module via `@JsModule` and exposes a `VtiEngine` Kotlin class
+- [ ] Write a Compose Multiplatform (Wasm target) UI in `apps/web-kmp/`
+- [ ] Wire audio output through Kotlin's `kotlinx.coroutines` + a JS `AudioContext` interop helper
+- [ ] Note: Kotlin/Wasm is production-ready as of Kotlin 2.0; Compose for Web (Wasm) is stable for simple UIs but lacks some layout widgets
+
+---
+
+### 8.4 Android Target
+
+#### 8.4.1 Rust shared libraries
+
+- [ ] Add Android NDK targets to the workspace:
+  ```
+  aarch64-linux-android
+  armv7-linux-androideabi
+  x86_64-linux-android
+  i686-linux-android
+  ```
+- [ ] Install `cargo-ndk` (builds all targets and copies `.so` files into the correct `jniLibs/` tree)
+- [ ] Enable `cpal`'s `asio` feature flag off, ensure AAudio backend compiles (cpal ≥ 0.15 supports AAudio on Android API 26+)
+- [ ] Verify `vti-ffi` builds as a `cdylib` for Android targets
+
+#### 8.4.2 UniFFI bindings
+
+- [ ] Run `uniffi-bindgen generate vti.udl --language kotlin` to produce `VtiCore.kt` and a JNI loader
+- [ ] Add the generated Kotlin sources to the Android module's source set
+- [ ] Keep the generated files out of version control; regenerate in the Gradle build via a `generateUniFFIBindings` task
+
+#### 8.4.3 KMP / Compose Multiplatform UI (`apps/android-kmp/`)
+
+- [ ] Scaffold a new Compose Multiplatform project targeting Android (and optionally Desktop to share with the existing egui app during transition)
+- [ ] Implement screens mirroring the egui panels:
+  - [ ] `PatternEditorScreen` — pattern grid, note/sample/ornament/volume columns
+  - [ ] `SampleEditorScreen`
+  - [ ] `OrnamentEditorScreen`
+  - [ ] `PositionListScreen`
+  - [ ] `OptionsScreen`
+- [ ] Implement a `VtiViewModel` (using `ViewModel` + `StateFlow`) that calls `vti-ffi` and drives the synthesizer render loop on a `Dispatchers.Default` coroutine
+- [ ] Wire audio output: use Android's `AudioTrack` (or `cpal` on the Rust side) streaming 16-bit stereo PCM from the render loop
+- [ ] File open: Android `Intent.ACTION_OPEN_DOCUMENT` → pass bytes to `vti_ffi::load_module()`
+
+#### 8.4.4 Build & packaging
+
+- [ ] `release.yml` Android job: `cargo ndk -t arm64-v8a -t armeabi-v7a build --release` → `./gradlew assembleRelease`
+- [ ] Upload unsigned `.apk` as a release artifact
+- [ ] (Optional) Sign with a release keystore stored as a GitHub Actions secret
+
+---
+
+### 8.5 Shared Architecture Diagram
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                       UI Layer                               │
+│  ┌─────────────┐  ┌──────────────────┐  ┌────────────────┐  │
+│  │ egui/eframe │  │ Compose Android  │  │ eframe WASM /  │  │
+│  │  (desktop)  │  │      (KMP)       │  │ Compose Web    │  │
+│  └──────┬──────┘  └────────┬─────────┘  └───────┬────────┘  │
+│         │                  │  JNI/UniFFI          │ wasm-bind │
+│  ───────┴──────────────────┴──────────────────────┴───────── │
+│                     vti-ffi  (cdylib / wasm)                 │
+│  ───────────────────────────────────────────────────────────  │
+│           vti-core    │    vti-ay    │    vti-audio           │
+│        (pure Rust)    │ (pure Rust)  │  (cpal — OS audio)     │
+└──────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 8.6 Key Risks & Mitigations
+
+| Risk | Mitigation |
+|------|------------|
+| `cpal` WASM audio is experimental | Option A web: drive audio from a JS `AudioWorkletNode`; call `Engine::tick()` from the worklet each frame |
+| Rust WASM single-thread limits | Audio processing is lightweight per-frame; avoid spawning threads in WASM; use `wasm-bindgen-futures` for async |
+| KMP Kotlin/Wasm interop with Rust WASM is immature | Prototype with `wasm-bindgen` + plain TypeScript first; wrap in KMP expect/actual later |
+| Android binary size (4 `.so` files × 4 ABIs) | Use `strip` in release profile; consider shipping only `arm64-v8a` for initial release |
+| UniFFI UDL maintenance overhead | Keep the UDL surface minimal (load / tick / reset); complex types stay on the Rust side |
+
+---
+
 ## Summary
 
 | Area | Done | Remaining |
@@ -334,3 +478,6 @@
 | Build pipeline | 0% | GitHub Actions release workflow |
 | README | 0% | full write-up |
 | **Integration tests** | ✅ 59 passing | effect-command edge cases, PT3 round-trip |
+| **Web target (eframe WASM)** | 0% | `trunk` build, WASM audio backend, GitHub Pages deploy |
+| **Web target (KMP/Compose)** | 0% | `vti-ffi` WASM bindings, Kotlin/Wasm UI (long-term) |
+| **Android target (KMP/Compose)** | 0% | `vti-ffi` cdylib, UniFFI bindings, Compose UI, `cargo-ndk` pipeline |
