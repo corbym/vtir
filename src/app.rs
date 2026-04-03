@@ -399,7 +399,18 @@ impl eframe::App for VortexTrackerApp {
         // ── Central area: pattern editor ──────────────────────────────────
         egui::CentralPanel::default().show(ctx, |ui| {
             let module = &mut self.modules[self.active_module];
-            self.pattern_editor.show(ui, module);
+            let play_pos = if self.is_playing {
+                // `current_line` is always one ahead of the row being rendered:
+                // `pattern_play_current_line` interprets a row then increments the
+                // pointer before returning (mirrors the Pascal `Pattern_PlayCurrentLine`
+                // convention, which is why `umredrawtracks` applies `line - 1` when
+                // unpacking the position from the posted Windows message).
+                let display_line = self.play_vars.current_line.saturating_sub(1);
+                Some((self.play_vars.current_pattern, display_line))
+            } else {
+                None
+            };
+            self.pattern_editor.show(ui, module, play_pos);
         });
     }
 }

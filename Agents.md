@@ -156,6 +156,44 @@ The following categories of Pascal code require baselines (highest priority firs
 
 ---
 
+## GUI Platform Coverage
+
+The GUI layer (`src/`) uses **egui / eframe**, which is a single cross-platform framework. A change to any file in `src/ui/` automatically applies to:
+
+- **Native desktop**: Linux, macOS, Windows (compiled via `cargo build`)
+- **Web (WASM)**: deployed to GitHub Pages (see `pages.yml` workflow)
+
+There are **no separate platform-specific UI files**. Any feature or bug fix committed to `src/ui/*.rs` is live on all platforms simultaneously — no per-platform follow-up is needed.
+
+---
+
+## Playback Cursor — Key Architecture Decision
+
+### `current_line` is one ahead of the rendered row
+
+`PlayVars::current_line` always points to the **next** row to be processed, not the row whose audio is currently being rendered.  `pattern_play_current_line` interprets a row, then increments the pointer before returning:
+
+```rust
+// Inside pattern_play_current_line (playback.rs):
+for ch in 0..3 { self.pattern_interpreter(ch, ay_regs); }
+self.vars.current_line += 1;   // pointer now points to NEXT row
+self.pattern_play_only_current_line(ay_regs);  // renders using the state just set
+```
+
+This matches the original Pascal `Pattern_PlayCurrentLine`, which is why `umredrawtracks` in `main.pas` applies `- 1` when unpacking the line from the posted Windows message.
+
+### Rule: always subtract 1 for display
+
+Anywhere the UI reads `current_line` to show "which row is playing", it must use:
+
+```rust
+let display_line = play_vars.current_line.saturating_sub(1);
+```
+
+Violation of this rule causes the highlight to be one row ahead of the sound being produced.  The integration tests in `crates/vti-core/tests/integration_tests.rs` (section "playback cursor tracking") document and enforce this contract.
+
+---
+
 ## Workflow Checklist
 
 Before starting any new task:
@@ -168,4 +206,6 @@ Before starting any new task:
 6. [ ] Run `cargo test -p vti-core -p vti-ay -p vti-audio` — all tests must be green.
 7. [ ] Run `cargo build` — must compile cleanly.
 8. [ ] Commit only green, passing code.
-9. [ ] Update `PLAN.md` to reflect what is now done.
+9. [ ] Update `PLAN.md` to tick off completed items and add any new ones discovered.
+10. [ ] Update `README.md` "What works today" / "Still in progress" sections to match `PLAN.md`.
+11. [ ] Update `Agents.md` with any new architecture decisions, conventions, or key contracts that future agents need to know.

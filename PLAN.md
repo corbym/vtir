@@ -262,6 +262,7 @@
 - [x] Arrow-key navigation
 - [x] Pattern selector (drag value)
 - [x] Colour-coded cells (note off = red, empty = dark grey)
+- [x] Playback cursor follow — highlighted playing row (cyan-green), auto-scrolls to keep it centred, auto-switches to the playing pattern (`RedrawPlWindow` equivalent)
 - [ ] Full keyboard note entry (piano key mapping, with octave)
 - [ ] Hex digit entry for sample/ornament/volume/effect fields
 - [ ] Insert / delete row

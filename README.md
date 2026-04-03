@@ -74,7 +74,8 @@ source. See [`PLAN.md`](PLAN.md) for a detailed, checked-off task list.
 - ✅ Tracker playback engine (note entry, all 11 effect commands, ornaments)
 - ✅ Cross-platform audio output via `cpal`
 - ✅ egui-based GUI skeleton (pattern view, sample view, ornament view, toolbar)
-- ✅ 59 integration tests, 0 failing
+- ✅ Playback cursor follow — pattern editor highlights and scrolls to the playing row in real time
+- ✅ 77 integration tests, 0 failing
 
 ### Still in progress
 - PT3 binary channel decoder / writer
