@@ -17,6 +17,7 @@ pub mod pt3;
 pub mod stc;
 pub mod stp;
 pub mod vtm;
+pub mod zx_export;
 
 use crate::types::Module;
 use anyhow::{bail, Result};
@@ -58,6 +59,12 @@ pub fn save_vtm(module: &Module) -> String {
 /// file.
 pub fn save_pt3(module: &Module) -> Result<Vec<u8>> {
     pt3::write(module)
+}
+
+/// Export a [`Module`] to a ZX Spectrum binary in the format specified by
+/// `opts`.  See [`zx_export::ZxExportOptions`] and [`zx_export::ZxFormat`].
+pub fn save_zx(module: &Module, opts: &zx_export::ZxExportOptions) -> Result<Vec<u8>> {
+    zx_export::export_zx(module, opts)
 }
 
 // TODO: implement remaining format parsers
