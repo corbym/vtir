@@ -191,11 +191,12 @@
 
 ### 3.3 Synthesizer (`synth.rs`) — ported from `AY.pas`
 - [x] `LevelTables` struct
-- [x] `calculate_level_tables()` — AY and YM amplitude → PCM level tables
+- [x] `calculate_level_tables()` — AY and YM amplitude → PCM level tables (**fixed**: `l` now uses `* 2` normalisation factor matching Pascal; single-step `trunc(… + 0.5)` formula replaces double-round)
 - [x] `Synthesizer` struct (chips array, ring buffer, FIR state)
 - [x] `Synthesizer::new()` — initialise with chip type
 - [x] `Synthesizer::apply_registers()` — push AY register snapshot to chip
-- [x] `Synthesizer::render_frame()` — produce N stereo-16 PCM samples
+- [x] `Synthesizer::render_frame()` — produce N stereo-16 PCM samples (performance / test mode)
+- [x] `Synthesizer::render_frame_quality()` — **quality mode**: runs AY chip at correct clock rate (`ay_tiks_in_interrupt` ≈ 4434 ticks / 50 Hz frame), Bresenham upsampler decimates to `sample_tiks_in_interrupt` ≈ 960 audio samples. FIR runs at AY rate. Fixes all-tones-2.2-octaves-too-low bug. (Ports `TBufferMaker.Synthesizer_Stereo16` from `digsoundbuf.pas`)
 - [x] `Synthesizer::drain()` — pull samples from output buffer
 - [x] FIR low-pass filter (windowed-sinc, Hanning window)
 - [x] `calculate_level_tables()` global-volume scaling (`k = exp(vol*ln2/max) - 1`)
@@ -219,6 +220,9 @@
 - [x] Silent chip produces zero output
 - [x] Active tone produces non-zero output
 - [x] Two chips produce ≥ signal of one chip
+- [x] `render_frame_quality` produces correct sample count (~960 ± 1)
+- [x] `render_frame_quality` produces non-zero output with active tone
+- [x] `render_frame_quality` phase is continuous across 3 consecutive frames
 - [ ] Envelope shapes produce correct waveforms end-to-end
 - [ ] `SetStdChannelsAllocation` panning preset values
 
@@ -520,6 +524,7 @@ truth as committed JSON fixtures and asserts that the Rust code matches them.
 |------|-------|-----------------|
 | `crates/vti-ay/tests/fixtures/pascal-baselines/noise_lfsr.json` | `vti-ay` | 200-step LFSR sequence, seed + noise_val |
 | `crates/vti-ay/tests/fixtures/pascal-baselines/envelope_shapes.json` | `vti-ay` | All 8 envelope shapes, 64 steps each |
+| `crates/vti-ay/tests/fixtures/pascal-baselines/level_tables.json` | `vti-ay` | AY + YM stereo level tables, default panning |
 | `crates/vti-core/tests/fixtures/pascal-baselines/pt3_vol.json` | `vti-core` | 16×16 PT3_Vol table |
 | `crates/vti-core/tests/fixtures/pascal-baselines/note_tables.json` | `vti-core` | All 5 note tables, 96 entries each |
 | `crates/vti-core/tests/fixtures/pascal-baselines/pattern_play_basic.json` | `vti-core` | 20 ticks of pure-tone 4-row pattern |
@@ -528,23 +533,26 @@ truth as committed JSON fixtures and asserts that the Rust code matches them.
 
 ### 9.3 Rust tests (`tests/pascal_baseline_tests.rs` in each crate)
 
-- [x] `vti-ay::noise_lfsr_matches_pascal_baseline` — **currently FAILING** (exposes wrong LFSR taps: Rust bit16⊕19 vs Pascal bit13⊕16, and wrong `noise_val` extraction)
+- [x] `vti-ay::noise_lfsr_matches_pascal_baseline` — passing
 - [x] `vti-ay::envelope_shapes_match_pascal_baseline` — passing
 - [x] `vti-ay::envelope_shape_from_register_matches_baseline` — passing
+- [x] `vti-ay::level_tables_match_pascal_baseline` — passing
 - [x] `vti-core::pt3_vol_matches_pascal_baseline` — passing
 - [x] `vti-core::note_tables_match_pascal_baseline` — passing
 - [x] `vti-core::pattern_play_basic_matches_pascal_baseline` — passing
-- [x] `vti-core::pattern_play_envelope_matches_pascal_baseline` — **currently FAILING** (exposes missing `env_base` write from pattern row: Rust gives `envelope=0`, Pascal gives `2048`)
+- [x] `vti-core::pattern_play_envelope_matches_pascal_baseline` — passing
 - [x] `vti-core::pattern_play_arpeggio_matches_pascal_baseline` — passing (covers ornament stepping and noise mixer path)
 
 ### 9.4 Known bugs exposed by baselines
 
-| Bug | Test that fails | Rust behaviour | Pascal (correct) behaviour |
-|-----|----------------|----------------|---------------------------|
-| Wrong LFSR taps | `noise_lfsr_matches_pascal_baseline` | Uses bit16⊕19 | Uses bit13⊕16 |
-| Wrong `noise_val` extraction | `noise_lfsr_matches_pascal_baseline` | `seed & 1` (bit0) | `(seed >> 16) & 1` (bit16, union layout) |
-| `env_base` not written from pattern row | `pattern_play_envelope_matches_pascal_baseline` | `envelope = 0` | `envelope = pattern_row.envelope` |
-| `PatternEnd` renders extra frame | (observable with non-stable registers) | Calls `PlayOnly` before return | Exits without calling `PlayOnly` |
+All previously known bugs are fixed. No baseline tests are currently failing.
+
+| Bug | Status | Test |
+|-----|--------|------|
+| Wrong LFSR taps (bit16⊕19 vs Pascal bit13⊕16) | ✅ fixed | `noise_lfsr_matches_pascal_baseline` |
+| Wrong `noise_val` extraction (`seed & 1` vs `(seed >> 16) & 1`) | ✅ fixed | `noise_lfsr_matches_pascal_baseline` |
+| `env_base` not written from pattern row (`envelope=0` vs `pattern_row.envelope`) | ✅ fixed | `pattern_play_envelope_matches_pascal_baseline` |
+| `calculate_level_tables` missing `* 2` on `l`; double-rounding in formula | ✅ fixed | `level_tables_match_pascal_baseline` |
 
 ### 9.5 Workflow for updating baselines (`pascal-baselines.yml`)
 
@@ -577,7 +585,7 @@ should be treated as regressions and investigated before merging.
 | Build pipeline | ~50% | GitHub Actions release workflow |
 | README | 0% | full write-up |
 | **Integration tests** | ✅ 52 passing | effect-command edge cases, PT3 load/save round-trip |
-| **Pascal parity baselines** | ✅ infrastructure done | Fix 4 known bugs (see §9.4) |
+| **Pascal parity baselines** | ✅ all passing | — |
 | **Web target (eframe WASM)** | ✅ ~95% | file-dialog fallback done via File System Access API |
 | **Web target (KMP/Compose)** | 0% | `vti-ffi` WASM bindings, Kotlin/Wasm UI (long-term) |
 | **Android target (KMP/Compose)** | 0% | `vti-ffi` cdylib, UniFFI bindings, Compose UI, `cargo-ndk` pipeline |

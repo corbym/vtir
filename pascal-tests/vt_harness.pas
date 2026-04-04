@@ -1411,6 +1411,138 @@ begin
 end;
 
 { ═══════════════════════════════════════════════════════════════════════════
+  Test: Calculate_Level_Tables (from digsoundbuf.pas)
+
+  Computes stereo AY and YM level tables for the default panning preset
+  (A=255/13, B=170/170, C=13/255) with k=1 (GlobalVolume = GlobalVolumeMax)
+  and 16-bit sample output.
+
+  The formula is:
+    b := trunc(Index / l * Amplitudes[i] / 65535 * r * k + 0.5)
+
+  where l = max(sum_L, sum_R) * 2  for stereo mode.
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+procedure RunLevelTables;
+const
+  { Amplitude tables (from AY.pas, (c) Hacker KAY) }
+  Amplitudes_AY: array[0..15] of LongWord = (
+    0, 836, 1212, 1773, 2619, 3875, 5397, 8823, 10392, 16706, 23339,
+    29292, 36969, 46421, 55195, 65535);
+  Amplitudes_YM: array[0..31] of LongWord = (
+    0, 0, $F8, $1C2, $29E, $33A, $3F2, $4D7, $610, $77F, $90A, $A42,
+    $C3B, $EC2, $1137, $13A7, $1750, $1BF9, $20DF, $2596, $2C9D, $3579,
+    $3E55, $4768, $54FF, $6624, $773B, $883F, $A1DA, $C0FC, $E094, $FFFF);
+
+  { Default stereo panning (ChanAllocDef = 1, "ABC" preset) }
+  Index_AL = 255; Index_AR = 13;
+  Index_BL = 170; Index_BR = 170;
+  Index_CL = 13;  Index_CR = 255;
+  R        = 32767; { 16-bit max }
+
+  procedure WriteTable(const Values: array of Integer; Count: Integer);
+  var j: Integer;
+  begin
+    Write('[');
+    for j := 0 to Count - 1 do
+    begin
+      Write(Values[j]);
+      if j < Count - 1 then Write(',');
+    end;
+    Write(']');
+  end;
+
+  procedure EmitCase(const Name, ChipName: string; IsYM: Boolean);
+  var
+    i, b, L_val: Integer;
+    k: Real;
+    AL, AR, BL, BR, CL, CR: array[0..31] of Integer;
+  begin
+    { Stereo: l = max(sum_L, sum_R) * 2 }
+    L_val := (Index_AL + Index_BL + Index_CL) * 2;
+    if (Index_AR + Index_BR + Index_CR) * 2 > L_val then
+      L_val := (Index_AR + Index_BR + Index_CR) * 2;
+
+    k := 1.0; { GlobalVolume = GlobalVolumeMax }
+
+    if not IsYM then
+    begin
+      for i := 0 to 15 do
+      begin
+        b := Trunc(Index_AL / L_val * Amplitudes_AY[i] / 65535 * R * k + 0.5);
+        AL[i * 2] := b; AL[i * 2 + 1] := b;
+        b := Trunc(Index_AR / L_val * Amplitudes_AY[i] / 65535 * R * k + 0.5);
+        AR[i * 2] := b; AR[i * 2 + 1] := b;
+        b := Trunc(Index_BL / L_val * Amplitudes_AY[i] / 65535 * R * k + 0.5);
+        BL[i * 2] := b; BL[i * 2 + 1] := b;
+        b := Trunc(Index_BR / L_val * Amplitudes_AY[i] / 65535 * R * k + 0.5);
+        BR[i * 2] := b; BR[i * 2 + 1] := b;
+        b := Trunc(Index_CL / L_val * Amplitudes_AY[i] / 65535 * R * k + 0.5);
+        CL[i * 2] := b; CL[i * 2 + 1] := b;
+        b := Trunc(Index_CR / L_val * Amplitudes_AY[i] / 65535 * R * k + 0.5);
+        CR[i * 2] := b; CR[i * 2 + 1] := b;
+      end;
+      WriteLn('    {');
+      WriteLn('      "name": "', Name, '",');
+      WriteLn('      "chip": "', ChipName, '",');
+      WriteLn('      "num_channels": 2,');
+      WriteLn('      "sample_bit": 16,');
+      WriteLn('      "index_al": ', Index_AL, ', "index_ar": ', Index_AR, ',');
+      WriteLn('      "index_bl": ', Index_BL, ', "index_br": ', Index_BR, ',');
+      WriteLn('      "index_cl": ', Index_CL, ', "index_cr": ', Index_CR, ',');
+      WriteLn('      "l": ', L_val, ',');
+      Write('      "al": '); WriteTable(AL, 32); WriteLn(',');
+      Write('      "ar": '); WriteTable(AR, 32); WriteLn(',');
+      Write('      "bl": '); WriteTable(BL, 32); WriteLn(',');
+      Write('      "br": '); WriteTable(BR, 32); WriteLn(',');
+      Write('      "cl": '); WriteTable(CL, 32); WriteLn(',');
+      Write('      "cr": '); WriteTable(CR, 32); WriteLn;
+      Write('    }');
+    end
+    else
+    begin
+      for i := 0 to 31 do
+      begin
+        AL[i] := Trunc(Index_AL / L_val * Amplitudes_YM[i] / 65535 * R * k + 0.5);
+        AR[i] := Trunc(Index_AR / L_val * Amplitudes_YM[i] / 65535 * R * k + 0.5);
+        BL[i] := Trunc(Index_BL / L_val * Amplitudes_YM[i] / 65535 * R * k + 0.5);
+        BR[i] := Trunc(Index_BR / L_val * Amplitudes_YM[i] / 65535 * R * k + 0.5);
+        CL[i] := Trunc(Index_CL / L_val * Amplitudes_YM[i] / 65535 * R * k + 0.5);
+        CR[i] := Trunc(Index_CR / L_val * Amplitudes_YM[i] / 65535 * R * k + 0.5);
+      end;
+      WriteLn('    {');
+      WriteLn('      "name": "', Name, '",');
+      WriteLn('      "chip": "', ChipName, '",');
+      WriteLn('      "num_channels": 2,');
+      WriteLn('      "sample_bit": 16,');
+      WriteLn('      "index_al": ', Index_AL, ', "index_ar": ', Index_AR, ',');
+      WriteLn('      "index_bl": ', Index_BL, ', "index_br": ', Index_BR, ',');
+      WriteLn('      "index_cl": ', Index_CL, ', "index_cr": ', Index_CR, ',');
+      WriteLn('      "l": ', L_val, ',');
+      Write('      "al": '); WriteTable(AL, 32); WriteLn(',');
+      Write('      "ar": '); WriteTable(AR, 32); WriteLn(',');
+      Write('      "bl": '); WriteTable(BL, 32); WriteLn(',');
+      Write('      "br": '); WriteTable(BR, 32); WriteLn(',');
+      Write('      "cl": '); WriteTable(CL, 32); WriteLn(',');
+      Write('      "cr": '); WriteTable(CR, 32); WriteLn;
+      Write('    }');
+    end;
+  end;
+
+begin
+  WriteLn('{');
+  WriteLn('  "generator": "vt_pascal_harness",');
+  WriteLn('  "test": "level_tables",');
+  WriteLn('  "cases": [');
+  EmitCase('ay_stereo_default', 'AY', False);
+  WriteLn(',');
+  EmitCase('ym_stereo_default', 'YM', True);
+  WriteLn;
+  WriteLn('  ]');
+  WriteLn('}');
+end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
   Main
   ═══════════════════════════════════════════════════════════════════════════ }
 
@@ -1421,7 +1553,8 @@ begin
   begin
     WriteLn(StdErr, 'Usage: vt_harness <test>');
     WriteLn(StdErr, 'Tests: noise_lfsr | envelopes | pt3_vol | note_tables |');
-    WriteLn(StdErr, '       pattern_basic | pattern_envelope | pattern_arpeggio');
+    WriteLn(StdErr, '       pattern_basic | pattern_envelope | pattern_arpeggio |');
+    WriteLn(StdErr, '       level_tables');
     Halt(1);
   end;
 
@@ -1434,6 +1567,7 @@ begin
   else if Cmd = 'pattern_basic'     then RunPatternPlay(False, 'pattern_basic')
   else if Cmd = 'pattern_envelope'  then RunPatternPlay(True,  'pattern_envelope')
   else if Cmd = 'pattern_arpeggio'  then RunPatternArpeggio
+  else if Cmd = 'level_tables'      then RunLevelTables
   else
   begin
     WriteLn(StdErr, 'Unknown test: ', Cmd);

@@ -582,3 +582,65 @@ fn synthesizer_render_frame_zero_is_noop() {
     synth.render_frame(0);
     assert!(synth.output_buf.is_empty(), "rendering 0 frames should produce no output");
 }
+
+// ─── Quality mode render ──────────────────────────────────────────────────────
+
+#[test]
+fn render_frame_quality_produces_correct_sample_count() {
+    // Quality mode Bresenham upsampler: ay_tiks_in_interrupt (4434) AY ticks
+    // → sample_tiks_in_interrupt (960) audio samples @ 48 kHz / 50 Hz.
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
+    let expected = cfg.sample_tiks_in_interrupt() as usize;
+    let mut synth = Synthesizer::new(cfg, 1, ChipType::AY);
+    synth.render_frame_quality();
+    // Allow ±1 due to fractional Bresenham rounding across the frame boundary.
+    let got = synth.output_buf.len();
+    assert!(
+        got.abs_diff(expected) <= 1,
+        "quality render should produce ~{} samples, got {}",
+        expected, got
+    );
+}
+
+#[test]
+fn render_frame_quality_produces_nonzero_with_active_tone() {
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
+    let mut synth = Synthesizer::new(cfg, 1, ChipType::AY);
+    let regs = AyRegisters {
+        ton_a: 200,
+        mixer: 0b11_111_110, // tone A on, everything else off
+        amplitude_a: 15,
+        ..AyRegisters::default()
+    };
+    synth.apply_registers(0, &regs);
+    synth.render_frame_quality();
+    let any_nonzero = synth.output_buf.iter().any(|s| s.left != 0 || s.right != 0);
+    assert!(any_nonzero, "quality render with active tone should produce non-zero samples");
+}
+
+#[test]
+fn render_frame_quality_phase_continuous_across_frames() {
+    // Verify the Bresenham upsampler state persists correctly across multiple
+    // frame calls (total sample count across 3 frames ≈ 3 × sample_tiks_in_interrupt).
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
+    let expected_per_frame = cfg.sample_tiks_in_interrupt() as usize;
+    let mut synth = Synthesizer::new(cfg, 1, ChipType::AY);
+    let regs = AyRegisters {
+        ton_a: 100,
+        mixer: 0b11_111_110,
+        amplitude_a: 8,
+        ..AyRegisters::default()
+    };
+    synth.apply_registers(0, &regs);
+
+    for _ in 0..3 {
+        synth.render_frame_quality();
+    }
+    let total = synth.output_buf.len();
+    let expected_total = expected_per_frame * 3;
+    assert!(
+        total.abs_diff(expected_total) <= 3,
+        "3 quality frames should produce ~{} samples total, got {}",
+        expected_total, total
+    );
+}

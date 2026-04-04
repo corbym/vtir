@@ -600,7 +600,9 @@ impl VortexTrackerApp {
         }
 
         self.synth.apply_registers(0, &ay_regs);
-        self.synth.render_frame(self.samples_per_tick);
+        // Quality mode: run chip at correct AY clock rate with Bresenham upsampler.
+        // Performance mode (future): render_frame(samples_per_tick).
+        self.synth.render_frame_quality();
         let samples = self.synth.drain(self.samples_per_tick as usize);
 
         if let Some(ref player) = self.audio {
