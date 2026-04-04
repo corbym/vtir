@@ -37,6 +37,13 @@ default-run = "vortex-tracker"
 name = "vortex-tracker"
 path = "src/main.rs"
 
+[[bin]]
+name = "vti-cli"
+path = "src/bin/vti-cli.rs"
+required-features = ["cli"]
+
+[features]
+cli = ["crossterm"]
 
 [dependencies]
 vti-core.workspace = true
@@ -53,6 +60,7 @@ egui_extras = "0.28"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger.workspace = true
 rfd = "0.14"
+crossterm = { version = "0.27", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4"
