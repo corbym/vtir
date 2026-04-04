@@ -76,6 +76,8 @@ source. See [`PLAN.md`](PLAN.md) for a detailed, checked-off task list.
 - ✅ egui-based GUI skeleton (pattern view, sample view, ornament view, toolbar)
 - ✅ Playback cursor follow — pattern editor highlights and scrolls to the playing row in real time
 - ✅ 77 integration tests, 0 failing
+- ✅ ZX Spectrum export (Hobeta `.$C`/`.$M`, `.ay`, `.scl`, `.tap`) with sample/ornament deduplication
+  — see [docs/pt3-dedup-compactness.md](docs/pt3-dedup-compactness.md) for a byte-level comparison against the Pascal original
 
 ### Still in progress
 - PT3 binary channel decoder / writer
