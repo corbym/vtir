@@ -1669,6 +1669,8 @@ fn effect_cmd9_envelope_slide_accumulates_over_ticks() {
     }
     assert!(slides.iter().any(|&s| s > 0),
         "cmd9 env slide up should make cur_env_slide grow: {:?}", slides);
+}
+
 // ─── PT2 format tests ─────────────────────────────────────────────────────────
 
 #[test]
