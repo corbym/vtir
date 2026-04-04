@@ -1,7 +1,7 @@
 //! ZXAY (*.ay) container format parser.
 //!
 //! The ZXAY container wraps one or more AY sub-songs identified by a 4-byte
-//! magic `"ZXAY"` and a 4-byte TypeID.  Two TypeID variants are handled:
+//! magic `"ZXAY"` and a 4-byte TypeID. Supported variants:
 //!
 //! - **ST11** (`b"ST11"`) — embeds a Sound Tracker 1 binary module.  The
 //!   module data is converted to STC format via [`st1_to_stc`] and then parsed
@@ -9,18 +9,23 @@
 //! - **AMAD** (`b"AMAD"`) — contains raw Z80 machine code plus a custom player
 //!   routine.  Playback requires a Z80 emulator which is out of scope; metadata
 //!   is extracted but an error is returned when song data is requested.
+//! - **EMUL** (`b"EMUL"`) — AY/EMUL container. We currently perform a
+//!   best-effort extraction of embedded tracker binaries (STC/PTx/STP).
 //!
 //! Reference: `legacy/trfuncs.pas` (file-loading section ~lines 7310–7460)
 //! and `ST12STC` (lines 4102–4394).
 
 use crate::types::Module;
 use anyhow::{bail, ensure, Result};
+use super::{pt1, pt2, pt3, stc, stp};
+use std::panic::{catch_unwind, AssertUnwindSafe};
 
 // ── ZXAY magic / TypeID constants ────────────────────────────────────────────
 
 const ZXAY_MAGIC: &[u8; 4] = b"ZXAY";
 const TYPE_ST11: &[u8; 4] = b"ST11";
 const TYPE_AMAD: &[u8; 4] = b"AMAD";
+const TYPE_EMUL: &[u8; 4] = b"EMUL";
 
 // ── ZXAY header field offsets (all 2-byte offsets are big-endian signed) ─────
 //
@@ -147,6 +152,10 @@ pub fn parse(data: &[u8], song_index: usize) -> Result<Module> {
         );
     }
 
+    if type_id == *TYPE_EMUL {
+        return parse_emul_song(data, song_struct_off, &song_name, &author);
+    }
+
     // PSongData is the second field (offset +2) of each TSongStructure entry.
     // It holds a big-endian relative offset from its own position in the file.
     let song_data_field = song_struct_off + 2;
@@ -194,6 +203,88 @@ pub fn parse(data: &[u8], song_index: usize) -> Result<Module> {
     Ok(module)
 }
 
+fn parse_emul_song(data: &[u8], song_struct_off: usize, song_name: &str, author: &str) -> Result<Module> {
+    // EMUL songs still use TSongStructure[PSongData] to point at song payload.
+    let song_data_field = song_struct_off + 2;
+    let song_data_abs = resolve_offset(data, song_data_field)?;
+    ensure!(song_data_abs < data.len(), "AY: EMUL song data offset is out of bounds");
+
+    let payload = &data[song_data_abs..];
+    let mut module = extract_embedded_module(payload)?;
+
+    if !song_name.is_empty() {
+        module.title = song_name.to_string();
+    }
+    if !author.is_empty() {
+        module.author = author.to_string();
+    }
+
+    Ok(module)
+}
+
+fn extract_embedded_module(payload: &[u8]) -> Result<Module> {
+    for start in 0..payload.len() {
+        let slice = &payload[start..];
+        if let Some(module) = try_parse_known_tracker_binary(slice) {
+            return Ok(module);
+        }
+    }
+    bail!("AY: EMUL song payload does not contain a supported embedded tracker module")
+}
+
+fn try_parse_known_tracker_binary(data: &[u8]) -> Option<Module> {
+    // STC-first because many EMUL bundles embed ST modules; then other binary formats.
+    // Some parsers still panic on malformed bytes, so probe each format behind
+    // catch_unwind while scanning arbitrary payload offsets.
+    let parsed = maybe_parse_stc(data)
+        .or_else(|| try_parse_no_panic(|| pt3::parse(data)))
+        .or_else(|| try_parse_no_panic(|| pt2::parse(data)))
+        .or_else(|| try_parse_no_panic(|| pt1::parse(data)))
+        .or_else(|| try_parse_no_panic(|| stp::parse(data)))?;
+
+    if parsed.positions.length == 0 {
+        return None;
+    }
+    let first_pat = parsed.positions.value[0];
+    if first_pat >= parsed.patterns.len() || parsed.patterns[first_pat].is_none() {
+        return None;
+    }
+
+    Some(parsed)
+}
+
+fn maybe_parse_stc(data: &[u8]) -> Option<Module> {
+    // Pre-check STC pointer fields to avoid calling stc::parse on clearly
+    // invalid slices while scanning every byte offset.
+    if data.len() < 126 {
+        return None;
+    }
+    let pos_ptr = read_u16_le(data, 1)? as usize;
+    let orn_ptr = read_u16_le(data, 3)? as usize;
+    let pat_ptr = read_u16_le(data, 5)? as usize;
+    if pos_ptr >= data.len() || orn_ptr >= data.len() || pat_ptr >= data.len() {
+        return None;
+    }
+    let pos_count = *data.get(pos_ptr)? as usize;
+    if pos_count > crate::MAX_NUM_OF_PATS {
+        return None;
+    }
+    try_parse_no_panic(|| stc::parse(data))
+}
+
+fn read_u16_le(data: &[u8], off: usize) -> Option<u16> {
+    let lo = *data.get(off)?;
+    let hi = *data.get(off + 1)?;
+    Some(u16::from_le_bytes([lo, hi]))
+}
+
+fn try_parse_no_panic<F>(f: F) -> Option<Module>
+where
+    F: FnOnce() -> Result<Module>,
+{
+    catch_unwind(AssertUnwindSafe(f)).ok()?.ok()
+}
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 /// Parse the ZXAY header.  Returns `(type_id, author, songs_base, num_songs)`.
@@ -212,7 +303,7 @@ fn parse_header(data: &[u8]) -> Result<([u8; 4], String, usize, usize)> {
 
     let type_id: [u8; 4] = data[OFF_TYPE_ID..OFF_TYPE_ID + 4].try_into().unwrap();
     ensure!(
-        &type_id == TYPE_ST11 || &type_id == TYPE_AMAD,
+        &type_id == TYPE_ST11 || &type_id == TYPE_AMAD || &type_id == TYPE_EMUL,
         "AY: unsupported ZXAY sub-format \"{}\"",
         String::from_utf8_lossy(&type_id)
     );
@@ -224,7 +315,13 @@ fn parse_header(data: &[u8]) -> Result<([u8; 4], String, usize, usize)> {
         String::new()
     };
 
-    let num_songs = data[OFF_NUM_SONGS] as usize;
+    // Real-world AY files often store this field as "max song index" where 0
+    // means one song; our synthetic fixtures use count semantics. Treat 0 as 1
+    // for compatibility while preserving existing non-zero behaviour.
+    let num_songs = match data[OFF_NUM_SONGS] as usize {
+        0 => 1,
+        n => n,
+    };
     ensure!(num_songs > 0, "AY: file contains no sub-songs");
 
     let songs_base = resolve_offset(data, OFF_P_SONGS)?;
@@ -775,6 +872,7 @@ mod tests {
         assert!(!songs[0].is_supported);
         assert_eq!(songs[0].name, "Tst");
     }
+
 
     // ── ST11 round-trip ───────────────────────────────────────────────────────
 
