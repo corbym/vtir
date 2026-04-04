@@ -127,6 +127,22 @@ pub fn calculate_level_tables(cfg: &AyConfig, chip_type: ChipType) -> LevelTable
     t
 }
 
+/// Linear interpolation between two i16 samples.
+///
+/// Direct port of `Interpolator16` in `digsoundbuf.pas`:
+/// ```pascal
+/// function Interpolator16(l1, l0, ofs: integer): integer;
+/// begin
+///   Result := (l1 - l0) * ofs div 65536 + l0;
+/// ```
+/// `ofs` is in the range `[0, 65536]`.  `ofs = 65536` selects `l1` (current);
+/// `ofs = 0` selects `l0` (previous).  The result is clamped to `i16` range.
+#[inline]
+fn interpolate16(l1: i32, l0: i32, ofs: i32) -> i16 {
+    let result = (l1 - l0) * ofs / 65536 + l0;
+    result.clamp(-32768, 32767) as i16
+}
+
 /// Drives up to [`MAX_CHIPS`] AY chips and renders PCM audio.
 pub const MAX_CHIPS: usize = 2;
 
@@ -152,8 +168,10 @@ pub struct Synthesizer {
     // Matches Pascal's Tick_Counter.Re / Tik.Re fields in TBufferMaker.
     filt_tick_counter: i32, // AY ticks accumulated × 65536 (reset to 0 after each output batch)
     filt_tik:          i32, // next output trigger point (starts at delay_in_tiks, +delay each sample)
-    filt_last_l:       i32, // last FIR-filtered left value (used as the output sample value)
-    filt_last_r:       i32, // last FIR-filtered right value
+    filt_last_l:       i32, // current FIR-filtered left value (updated each AY tick)
+    filt_last_r:       i32, // current FIR-filtered right value
+    filt_prev_l:       i32, // previous FIR-filtered left value (one AY tick earlier)
+    filt_prev_r:       i32, // previous FIR-filtered right value (one AY tick earlier)
 }
 
 impl Synthesizer {
@@ -175,6 +193,8 @@ impl Synthesizer {
             filt_tik: 0, // overwritten below after delay is computed
             filt_last_l: 0,
             filt_last_r: 0,
+            filt_prev_l: 0,
+            filt_prev_r: 0,
         };
         let delay = s.cfg.delay_in_tiks();
         for chip in &mut s.chips {
@@ -272,8 +292,11 @@ impl Synthesizer {
     /// * Upsampler state (`filt_tick_counter`, `filt_tik`) persists across calls so
     ///   phase is preserved across interrupt boundaries.
     ///
-    /// The FIR anti-aliasing filter runs at AY clock rate (not audio rate), which
-    /// gives correct alias suppression before the 4.6× decimation step.
+    /// When the FIR filter is active, each output sample is **linearly interpolated**
+    /// between the previous and current filtered values at the exact sub-tick trigger
+    /// point, matching Pascal's `Interpolator16(Left_Chan, PrevLeft, i)` call where
+    /// `i = Tik.Re - Tick_Counter.Re + 65536`.  This eliminates the timing jitter
+    /// that the previous "use last sample" approach produced.
     ///
     /// Compare with [`render_frame`] which runs at audio rate and is used for tests
     /// and the (unimplemented) performance mode.
@@ -295,10 +318,22 @@ impl Synthesizer {
             //           Dec(Tik.Re, Tick_Counter.Re); Tick_Counter.Re := 0; end;
             if self.filt_tick_counter >= self.filt_tik {
                 loop {
-                    self.output_buf.push(StereoSample {
-                        left:  self.filt_last_l.clamp(-32768, 32767) as i16,
-                        right: self.filt_last_r.clamp(-32768, 32767) as i16,
-                    });
+                    // Pascal: i := Tik.Re - Tick_Counter.Re + 65536
+                    // When filter is active: Interpolator16(Left_Chan, PrevLeft, i)
+                    // = PrevLeft + (Left_Chan - PrevLeft) * i / 65536
+                    // i = 65536 when the sample falls exactly on the AY tick boundary,
+                    // < 65536 when it falls between ticks (blend towards prev value).
+                    let left;
+                    let right;
+                    if self.cfg.is_filt {
+                        let i = self.filt_tik - self.filt_tick_counter + 65536;
+                        left  = interpolate16(self.filt_last_l, self.filt_prev_l, i);
+                        right = interpolate16(self.filt_last_r, self.filt_prev_r, i);
+                    } else {
+                        left  = self.filt_last_l.clamp(-32768, 32767) as i16;
+                        right = self.filt_last_r.clamp(-32768, 32767) as i16;
+                    }
+                    self.output_buf.push(StereoSample { left, right });
                     self.filt_tik += delay;
                     if self.filt_tick_counter < self.filt_tik { break; }
                 }
@@ -324,7 +359,10 @@ impl Synthesizer {
                 lev_r = self.apply_filter(lev_r, false);
             }
 
-            // Store for output on the next upsampler trigger
+            // Pascal: PrevLeft := Left_Chan; Left_Chan := LevelL;
+            // Shift current → prev before storing new current.
+            self.filt_prev_l = self.filt_last_l;
+            self.filt_prev_r = self.filt_last_r;
             self.filt_last_l = lev_l;
             self.filt_last_r = lev_r;
 
