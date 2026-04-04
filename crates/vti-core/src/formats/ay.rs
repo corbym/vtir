@@ -242,15 +242,58 @@ fn try_parse_known_tracker_binary(data: &[u8]) -> Option<Module> {
         .or_else(|| try_parse_no_panic(|| pt1::parse(data)))
         .or_else(|| try_parse_no_panic(|| stp::parse(data)))?;
 
-    if parsed.positions.length == 0 {
-        return None;
-    }
-    let first_pat = parsed.positions.value[0];
-    if first_pat >= parsed.patterns.len() || parsed.patterns[first_pat].is_none() {
+    if !is_playable_tracker_module(&parsed) {
         return None;
     }
 
     Some(parsed)
+}
+
+fn is_playable_tracker_module(module: &Module) -> bool {
+    if module.positions.length == 0 {
+        return false;
+    }
+
+    let sample_count = module.samples.iter().filter(|s| s.is_some()).count();
+    if sample_count == 0 {
+        return false;
+    }
+
+    let mut note_events = 0usize;
+    let mut playable_events = 0usize;
+    let sample1_exists = module.samples.get(1).and_then(|s| s.as_ref()).is_some();
+
+    for pos in 0..module.positions.length {
+        let pat_idx = module.positions.value[pos];
+        if pat_idx >= module.patterns.len() {
+            return false;
+        }
+        let Some(pattern) = module.patterns[pat_idx].as_deref() else {
+            return false;
+        };
+
+        for row in 0..pattern.length {
+            for ch in 0..3 {
+                let line = &pattern.items[row].channel[ch];
+                if line.note < 0 {
+                    continue;
+                }
+
+                note_events += 1;
+                let sample_idx = line.sample as usize;
+                if sample_idx > 0 {
+                    if module.samples.get(sample_idx).and_then(|s| s.as_ref()).is_some() {
+                        playable_events += 1;
+                    }
+                } else if sample1_exists {
+                    // Sample 0 means "keep previous"; on first notes the engine defaults to sample 1.
+                    playable_events += 1;
+                }
+            }
+        }
+    }
+
+    note_events > 0 && playable_events > 0
 }
 
 fn maybe_parse_stc(data: &[u8]) -> Option<Module> {

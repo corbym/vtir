@@ -2252,6 +2252,7 @@ fn ay_smoke_parse_addams2_and_play_one_tick() {
         .expect("ADDAMS2.ay must load via formats::load");
 
     assert!(module.positions.length > 0, "AY module should contain at least one position");
+    assert!(module.initial_delay > 0, "AY module should have non-zero playback delay");
     let first_pat = module.positions.value[0] as usize;
     assert!(module.patterns[first_pat].is_some(), "first pattern from position list must exist");
 
@@ -2265,5 +2266,62 @@ fn ay_smoke_parse_addams2_and_play_one_tick() {
     let mut regs = vti_core::AyRegisters::default();
     let mut engine = Engine { module: &mut module, vars: &mut vars };
     let _ = engine.module_play_current_line(&mut regs);
+}
+
+#[test]
+fn ay_addams2_parse_contains_tracker_note_data() {
+    let bytes = read_fixture("ADDAMS2.ay");
+    let module = format_load(&bytes, "ADDAMS2.ay")
+        .expect("ADDAMS2.ay must load via formats::load");
+
+    let mut note_events = 0usize;
+    for pos in 0..module.positions.length {
+        let pat_idx = module.positions.value[pos];
+        let pat = module.patterns[pat_idx]
+            .as_deref()
+            .unwrap_or_else(|| panic!("missing pattern {pat_idx} referenced by positions[{pos}]"));
+        for row in 0..pat.length {
+            for ch in 0..3 {
+                if pat.items[row].channel[ch].note >= 0 {
+                    note_events += 1;
+                }
+            }
+        }
+    }
+
+    assert!(note_events > 0, "ADDAMS2.ay should contain note events, parser likely selected an empty false-positive payload");
+}
+
+#[test]
+fn ay_addams2_parse_contains_playable_rows_in_order_list() {
+    let bytes = read_fixture("ADDAMS2.ay");
+    let module = format_load(&bytes, "ADDAMS2.ay")
+        .expect("ADDAMS2.ay must load via formats::load");
+
+    let sample_count = module.samples.iter().filter(|s| s.is_some()).count();
+    let mut note_events = 0usize;
+    let mut playable_events = 0usize;
+    for pos in 0..module.positions.length {
+        let pat_idx = module.positions.value[pos];
+        let pat = module.patterns[pat_idx]
+            .as_deref()
+            .unwrap_or_else(|| panic!("missing pattern {pat_idx} referenced by positions[{pos}]"));
+        for row in 0..pat.length {
+            for ch in 0..3 {
+                let line = &pat.items[row].channel[ch];
+                if line.note >= 0 {
+                    note_events += 1;
+                }
+                if line.note >= 0 && line.sample > 0 && module.samples[line.sample as usize].is_some() {
+                    playable_events += 1;
+                }
+            }
+        }
+    }
+
+    assert!(
+        playable_events > 0,
+        "ADDAMS2.ay should contain note rows referencing existing samples (sample_count={sample_count}, note_events={note_events})"
+    );
 }
 
