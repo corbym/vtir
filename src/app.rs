@@ -265,7 +265,8 @@ impl VortexTrackerApp {
 
     /// Open a file-picker dialog and load the chosen module.
     ///
-    /// Supported extensions: `.vtm`, `.pt3`, `.pt2`, `.pt1`, `.stc`, `.stp`.
+    /// Supported extensions: `.vtm`, `.pt3`, `.pt2`, `.pt1`, `.stc`, `.stp`,
+    /// `.ay` (ZXAY container, ST11 sub-format).
     /// On WASM this is a no-op (file access is handled separately via the
     /// browser `<input type="file">` element — see PLAN.md §8).
     #[cfg(not(target_arch = "wasm32"))]
@@ -273,7 +274,7 @@ impl VortexTrackerApp {
         let path = rfd::FileDialog::new()
             .add_filter(
                 "Tracker modules",
-                &["vtm", "pt3", "pt2", "pt1", "stc", "stp"],
+                &["vtm", "pt3", "pt2", "pt1", "stc", "stp", "ay"],
             )
             .add_filter("VTM text (*.vtm)", &["vtm"])
             .add_filter("Pro Tracker 3 (*.pt3)", &["pt3"])
@@ -281,6 +282,7 @@ impl VortexTrackerApp {
             .add_filter("Pro Tracker 1 (*.pt1)", &["pt1"])
             .add_filter("Sound Tracker Compiled (*.stc)", &["stc"])
             .add_filter("Sound Tracker Pro (*.stp)", &["stp"])
+            .add_filter("ZXAY container (*.ay)", &["ay"])
             .add_filter("All files", &["*"])
             .pick_file();
 
