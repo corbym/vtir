@@ -110,6 +110,12 @@ pub fn parse(data: &[u8]) -> Result<Module> {
 
     let mut pos = 0usize;
     while pos <= num_pos_entries {
+        // Guard: positions.value has MAX_NUM_OF_PATS slots (indices 0..MAX_NUM_OF_PATS-1).
+        // The pre-check in ay.rs enforces num_pos_entries < MAX_NUM_OF_PATS, but we add a
+        // runtime guard here too so a direct call to stc::parse cannot panic on bad data.
+        if pos >= crate::MAX_NUM_OF_PATS {
+            break;
+        }
         let numb_off = pos_ptr + 1 + pos * 2;
         let trans_off = pos_ptr + 2 + pos * 2;
         if trans_off >= data.len() {
@@ -129,6 +135,11 @@ pub fn parse(data: &[u8]) -> Result<Module> {
             pats.push((stc_numb, trans));
             idx
         };
+        // Guard: patterns has MAX_NUM_OF_PATS+1 slots (indices 0..MAX_NUM_OF_PATS).
+        if j > crate::MAX_NUM_OF_PATS {
+            pos += 1;
+            continue;
+        }
         module.positions.value[pos] = j;
         pos += 1;
 
