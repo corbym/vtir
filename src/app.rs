@@ -7,6 +7,7 @@ use vti_ay::config::AyConfig;
 use vti_ay::synth::Synthesizer;
 use vti_core::playback::{Engine, PlayVars, init_tracker_parameters, PlayResult};
 use vti_audio::AudioPlayer;
+use vti_ay::config::SAMPLE_RATE_DEF;
 use vti_core::formats;
 
 #[cfg(target_arch = "wasm32")]
@@ -257,7 +258,11 @@ impl VortexTrackerApp {
     /// Try to open the audio output device and return an `AudioPlayer`.
     /// Logs a warning and returns `None` if the device is unavailable.
     fn try_open_audio() -> Option<AudioPlayer> {
-        match AudioPlayer::start(44100) {
+        // Must use the same sample rate as AyConfig::default() so the Bresenham
+        // upsampler in Synthesizer produces samples at the rate the hardware
+        // device expects.  Using 44100 here while the synth runs at 48000 caused
+        // all music to play at 44100/48000 ≈ 0.92× speed (about 1.5 semitones flat).
+        match AudioPlayer::start(SAMPLE_RATE_DEF) {
             Ok(p)  => { log::info!("audio player started"); Some(p) }
             Err(e) => { log::warn!("audio unavailable: {e}"); None }
         }

@@ -195,7 +195,12 @@ impl<'a> Engine<'a> {
 
         if !params.sound_enabled {
             params.amplitude = 0;
-            *temp_mixer = (*temp_mixer >> 1) | ((*temp_mixer << 7) & 0x80); // rotate
+            // Channel is silent: no mixer bits needed.  The direct bit-placement
+            // approach (used in the sound_enabled path) does not require any shift
+            // or rotation here; simply setting amplitude=0 is sufficient because
+            // level_al[0] == 0, so the channel contributes nothing to the output.
+            // The previous code performed a right-rotation which was incorrect and
+            // produced a corrupted mixer byte when any prior channel had set bits.
             return;
         }
 

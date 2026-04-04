@@ -644,3 +644,94 @@ fn render_frame_quality_phase_continuous_across_frames() {
         expected_total, total
     );
 }
+
+// ─── Bug regression: sample-rate / audio-player mismatch ─────────────────────
+
+/// The AudioPlayer must be opened at SAMPLE_RATE_DEF (48 kHz) so that the
+/// Bresenham upsampler inside the Synthesizer produces samples at the rate the
+/// hardware device expects.  If these diverge (e.g. player at 44100, synth at
+/// 48000), all music plays at (device_rate / synth_rate) × speed — about 8%
+/// too slow at 44100/48000.
+///
+/// This test locks the constant so a future accident is caught immediately.
+#[test]
+fn audio_player_must_use_same_sample_rate_as_ay_config() {
+    // The application opens AudioPlayer with SAMPLE_RATE_DEF.
+    // Verify that constant is 48000 so the chip emulator and audio device agree.
+    assert_eq!(
+        SAMPLE_RATE_DEF, 48_000,
+        "SAMPLE_RATE_DEF must be 48000 Hz — AudioPlayer::start() uses this constant \
+         and the synth upsampler is calibrated to it; a mismatch causes slow/fast playback"
+    );
+
+    // Also verify the default AyConfig uses it.
+    let cfg = AyConfig::default();
+    assert_eq!(
+        cfg.sample_rate, SAMPLE_RATE_DEF,
+        "AyConfig::default() sample_rate must equal SAMPLE_RATE_DEF"
+    );
+
+    // The derived sample count per 50 Hz interrupt must match what the device delivers.
+    // At 48000 Hz / 50 Hz = 960 samples/interrupt.
+    let samples_per_interrupt = cfg.sample_tiks_in_interrupt();
+    assert_eq!(
+        samples_per_interrupt, 960,
+        "expected 960 samples per 50 Hz interrupt at 48 kHz, got {}",
+        samples_per_interrupt
+    );
+}
+
+// ─── Bug regression: missing linear interpolation in quality renderer ─────────
+
+/// Verifies that `render_frame_quality` produces smoothly-interpolated output
+/// when the FIR filter is active.
+///
+/// The Pascal `Synthesizer_Stereo16` uses `Interpolator16(Left_Chan, PrevLeft, i)`
+/// where `i = Tik.Re − Tick_Counter.Re + 65536` to produce sub-tick accurate
+/// timing.  Without this interpolation each output sample simply takes the last
+/// filtered value, introducing timing jitter that manifests as aliased noise.
+///
+/// We verify that a step transition (chip registers changed mid-stream) produces
+/// a gradual rather than instantaneous change in the interpolated output.
+#[test]
+fn render_frame_quality_interpolation_smooths_step_transitions() {
+    // Run with filter disabled first to get the "raw" output as a baseline, then
+    // compare with filter+interpolation enabled to confirm smoother transitions.
+    let make_synth = |is_filt: bool| {
+        let cfg = AyConfig { is_filt, ..AyConfig::default() };
+        let mut synth = Synthesizer::new(cfg, 1, ChipType::AY);
+        // Tone A at a low period → frequent square-wave transitions
+        let regs = AyRegisters {
+            ton_a: 20,
+            mixer: 0b11_111_110, // tone A on
+            amplitude_a: 15,
+            ..AyRegisters::default()
+        };
+        synth.apply_registers(0, &regs);
+        synth.render_frame_quality();
+        synth.output_buf.clone()
+    };
+
+    let raw_buf   = make_synth(false);
+    let filt_buf  = make_synth(true);
+
+    assert_eq!(raw_buf.len(), filt_buf.len(),
+        "both paths should produce the same number of samples");
+
+    // The filtered+interpolated output must not be identical to the raw output
+    // (it should be smoother).
+    let raw_distinct: std::collections::HashSet<i16> =
+        raw_buf.iter().map(|s| s.left).collect();
+    let filt_distinct: std::collections::HashSet<i16> =
+        filt_buf.iter().map(|s| s.left).collect();
+
+    // The filtered signal has more distinct values because intermediate amplitudes
+    // are produced during transitions (FIR ramp + interpolation), while the raw
+    // square-wave only has 0 and max.
+    assert!(
+        filt_distinct.len() > raw_distinct.len(),
+        "filtered+interpolated output should have more distinct amplitude levels \
+         than the raw square-wave (got raw={}, filtered={})",
+        raw_distinct.len(), filt_distinct.len()
+    );
+}

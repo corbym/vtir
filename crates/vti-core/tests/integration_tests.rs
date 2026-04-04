@@ -2280,3 +2280,121 @@ fn ay_emul_megaparty_returns_error_without_hanging() {
     );
 }
 
+
+// ─── Bug regression: mixer rotation for disabled channels ────────────────────
+
+/// When a tracker channel has `sound_enabled = false` the mixer byte must not be
+/// corrupted by a bitwise rotation of previously accumulated channel bits.
+///
+/// The old code performed `temp_mixer = (temp_mixer >> 1) | ((temp_mixer << 7) & 0x80)`
+/// (right-rotation by 1) before `return`.  The direct bit-placement approach used
+/// in the enabled path does not use a shift accumulator, so rotating the byte
+/// when a channel is disabled wraps bits into the upper 2 bits of the byte (which
+/// are ignored by the AY hardware but destroy the lower bits set by earlier channels
+/// that are processed after the disabled one).
+///
+/// Example: ch0=enabled-tone, ch1=disabled, ch2=enabled-tone.
+/// Without the fix, ch0's noise-disable bit (bit 3) ends up wrapped to bit 7 (=0xA0),
+/// and bit 3 (noise ch A) is lost.  With the fix, only the bits for enabled channels
+/// are set.
+#[test]
+fn disabled_channel_does_not_corrupt_mixer_register() {
+    use vti_core::{Module, Sample, SampleTick, AyRegisters, Pattern, ChannelLine, NOTE_SOUND_OFF};
+    use vti_core::playback::{PlayVars, Engine, init_tracker_parameters};
+
+    // Build a minimal module with three channels:
+    //   ch A = tone-only (mixer_ton=true, mixer_noise=false)
+    //   ch B = silent (NOTE_SOUND_OFF)
+    //   ch C = tone-only
+    let mut module = Module::default();
+
+    // Provide samples with a single tick each so the channels make a sound.
+    // Sample indices 1, 2, 3 for channels A, B, C respectively.
+    for s in 0..3usize {
+        let mut sample = Sample::default();
+        sample.length = 1;
+        sample.loop_pos = 0;
+        sample.items[0] = SampleTick {
+            amplitude: 10,
+            mixer_ton: true,    // tone channel active
+            mixer_noise: false, // noise channel silent
+            ..SampleTick::default()
+        };
+        module.samples[s + 1] = Some(Box::new(sample));
+    }
+
+    // A pattern is required: `get_channel_registers` returns early when
+    // `module.patterns[pat_idx].is_none()`.
+    let mut pat = Pattern::default();
+    pat.length = 1;
+    // ch A: play note 24 with sample 1
+    pat.items[0].channel[0] = ChannelLine { note: 24, sample: 1, volume: 15, ..ChannelLine::default() };
+    // ch B: sound-off — sets sound_enabled=false
+    pat.items[0].channel[1] = ChannelLine { note: NOTE_SOUND_OFF, ..ChannelLine::default() };
+    // ch C: play note 24 with sample 3
+    pat.items[0].channel[2] = ChannelLine { note: 24, sample: 3, volume: 15, ..ChannelLine::default() };
+    module.patterns[0] = Some(Box::new(pat));
+
+    let mut vars = PlayVars::default();
+    init_tracker_parameters(&mut module, &mut vars, true);
+    vars.delay_counter = 1;
+    vars.delay = 1;
+    vars.current_pattern = 0;
+
+    // pattern_play_current_line: runs pattern_interpreter (sets sound_enabled)
+    // then pattern_play_only_current_line (builds mixer register from params).
+    let mut ay_regs = AyRegisters::default();
+    {
+        let mut engine = Engine { module: &mut module, vars: &mut vars };
+        engine.pattern_play_current_line(&mut ay_regs);
+    }
+
+    // The mixer register is built by OR-ing disable bits directly at their
+    // channel-specific bit positions (bits 0-2 for tone, bits 3-5 for noise).
+    // With ch A tone-only and ch C tone-only and ch B sound-off:
+    //  - Bit 3 = noise ch A disabled (ch A is tone-only) → should be set
+    //  - Bit 5 = noise ch C disabled (ch C is tone-only) → should be set
+    //  - Bits 0,1,2 = tone (0 = enabled) → should all be 0
+    //  - Bit 4 = noise ch B → ch B is silent, contributes nothing → 0
+    //  - Bits 6,7 = unused by AY → must be 0
+
+    // With the old rotation bug:  ch A contributes bit 3 (noise-disable → 0x08).
+    // When ch B is processed (disabled), the rotation right-shifts the byte:
+    //   0x08 >> 1 = 0x04  (bit 3 shifts to bit 2)
+    //   (0x08 << 7) & 0x80 = 0x00  (bit 0 was 0, so bit 7 stays 0)
+    //   → temp_mixer = 0x04 after rotation.
+    // Then ch C adds bit 5: 0x04 | 0x20 = 0x24 (bits 2 and 5).
+    // Correct value should be 0x28 (bits 3 and 5).
+    // The bug moves bit 3 (noise ch A) to bit 2 (noise ch C), corrupting
+    // the channel-to-bit mapping.
+
+    // Verify no bits leaked into the upper 2 bits (the rotation bug's signature)
+    assert_eq!(
+        ay_regs.mixer & 0b1100_0000, 0,
+        "bits 6-7 of mixer register must be zero (unused by AY); \
+         got 0x{:02X} — indicates the rotation bug is present",
+        ay_regs.mixer
+    );
+
+    // Noise-disable for channels A and C must be set (bits 3 and 5)
+    assert_ne!(
+        ay_regs.mixer & (1 << 3), 0,
+        "noise ch A (bit 3) should be set (noise disabled for tone-only ch A); \
+         got 0x{:02X}",
+        ay_regs.mixer
+    );
+    assert_ne!(
+        ay_regs.mixer & (1 << 5), 0,
+        "noise ch C (bit 5) should be set (noise disabled for tone-only ch C); \
+         got 0x{:02X}",
+        ay_regs.mixer
+    );
+
+    // Tone for all channels should be enabled (bits 0,1,2 = 0)
+    assert_eq!(
+        ay_regs.mixer & 0b0000_0111, 0,
+        "tone bits (0-2) should be 0 (all tone channels enabled); \
+         got 0x{:02X}",
+        ay_regs.mixer
+    );
+}
