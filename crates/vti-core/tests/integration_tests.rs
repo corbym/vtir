@@ -2233,8 +2233,36 @@ fn ay_smoke_play_first_line() {
     init_tracker_parameters(&mut module, &mut vars, true);
     vars.delay = module.initial_delay as i8;
     vars.current_pattern = module.positions.value[0] as i32;
+    vars.current_line = 0;
+    vars.delay_counter = 1;
+
     let mut ay_regs = vti_core::AyRegisters::default();
     let mut engine = Engine { module: &mut module, vars: &mut vars };
     // Must not panic
     engine.module_play_current_line(&mut ay_regs);
 }
+
+/// Smoke-test: ADDAMS2.ay loads through the extension dispatcher and can be
+/// advanced by one playback tick without panicking.
+#[test]
+fn ay_smoke_parse_addams2_and_play_one_tick() {
+    let bytes = read_fixture("ADDAMS2.ay");
+    let mut module = format_load(&bytes, "ADDAMS2.ay")
+        .expect("ADDAMS2.ay must load via formats::load");
+
+    assert!(module.positions.length > 0, "AY module should contain at least one position");
+    let first_pat = module.positions.value[0] as usize;
+    assert!(module.patterns[first_pat].is_some(), "first pattern from position list must exist");
+
+    let mut vars = PlayVars::default();
+    init_tracker_parameters(&mut module, &mut vars, true);
+    vars.delay = module.initial_delay as i8;
+    vars.current_pattern = module.positions.value[0] as i32;
+    vars.current_line = 0;
+    vars.delay_counter = 1;
+
+    let mut regs = vti_core::AyRegisters::default();
+    let mut engine = Engine { module: &mut module, vars: &mut vars };
+    let _ = engine.module_play_current_line(&mut regs);
+}
+

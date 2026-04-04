@@ -174,6 +174,7 @@
 - [x] Noise drum decays to silence after 8 ticks (loop on silent tick)
 - [x] Arpeggio module loops after full 16-row pattern
 - [x] Channels A and B both active (non-zero amplitude, tone enabled) after first row
+- [x] `ADDAMS2.ay` fixture loads via `formats::load` and survives one playback tick smoke-test
 - [ ] Glide-up / glide-down effect commands
 - [ ] Tone-slide (command 3) target arrival
 - [ ] On/off toggle (command 6)

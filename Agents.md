@@ -32,6 +32,12 @@ This project is a **port**, not a rewrite. The goal is to replicate the behaviou
 - **Do not "improve" algorithms during porting.** Port faithfully first; optimise or clean up only after tests confirm the output is bit-identical to the original.
 - **Use the original as the specification.** If the Rust behaviour diverges from the Pascal behaviour in any observable way (register values, timing, envelope shape, noise pattern), treat the Pascal as correct.
 
+### AY EMUL container note
+
+- `.ay` files with TypeID `EMUL` can now be loaded with a **best-effort embedded-module extraction** path in `crates/vti-core/src/formats/ay.rs`.
+- This is a compatibility bridge for real fixtures such as `ADDAMS2.ay`; it is **not** a full Z80 player emulation.
+- If you touch this code, prefer deterministic parser checks first and keep a fixture-backed integration test for any newly-supported `.ay` sample.
+ 
 ---
 
 ## Development Approach
