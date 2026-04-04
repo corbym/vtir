@@ -252,6 +252,7 @@ fn parse_emul_song(
     // Adr == 0 marks the end of the list.
     const BLOCK_SIZE: usize = 6;
     let mut block_off = addr_base;
+    let mut pt3_parse_err: Option<anyhow::Error> = None;
     while block_off + BLOCK_SIZE <= data.len() {
         let adr = u16::from_be_bytes([data[block_off], data[block_off + 1]]);
         if adr == 0 {
@@ -268,14 +269,17 @@ fn parse_emul_song(
                 let has_pt3_magic = block_data.starts_with(b"ProTracker 3.")
                     || block_data.starts_with(b"Vortex Tracker II");
                 if has_pt3_magic {
-                    if let Ok(mut module) = super::pt3::parse(block_data) {
-                        if !song_name.is_empty() {
-                            module.title = song_name;
+                    match super::pt3::parse(block_data) {
+                        Ok(mut module) => {
+                            if !song_name.is_empty() {
+                                module.title = song_name;
+                            }
+                            if !author.is_empty() {
+                                module.author = author;
+                            }
+                            return Ok(module);
                         }
-                        if !author.is_empty() {
-                            module.author = author;
-                        }
-                        return Ok(module);
+                        Err(e) => pt3_parse_err = Some(e),
                     }
                 }
             }
@@ -283,7 +287,10 @@ fn parse_emul_song(
         block_off += BLOCK_SIZE;
     }
 
-    bail!("AY/EMUL: no parseable PT3 module found in address blocks")
+    match pt3_parse_err {
+        Some(e) => bail!("AY/EMUL: PT3 block found but failed to parse: {e}"),
+        None => bail!("AY/EMUL: no parseable PT3 module found in address blocks"),
+    }
 }
 
 /// Parse the ZXAY header.  Returns `(type_id, author, songs_base, num_songs)`.
@@ -997,7 +1004,11 @@ mod tests {
         // Overwrite the TypeID with EMUL (already EMUL; just confirm it parses the
         // address blocks).  Then corrupt the Offs field of the only PT3 block so
         // it points past the end of the file — parse should fail gracefully.
-        // The Offs2 field is self-relative at byte 54 in a standard EMUL export.
+        //
+        // Byte 54 is the Offs2 field of the second TAddresses block in a standard
+        // single-song EMUL export (TPoints at 38: Stek+Init+Inter=6, Adr1+Len1+Offs1=6,
+        // Adr2+Len2=4 → Offs2 at 38+6+6+4 = 54).  This is the offset fixed by the
+        // exporter change from `pt3_file_pos - 52` to `pt3_file_pos - 54`.
         data[54] = 0xFF;
         data[55] = 0xFF;
         assert!(parse(&data, 0).is_err(), "corrupted EMUL Offs should fail");
