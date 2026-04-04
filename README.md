@@ -51,14 +51,15 @@ playable on real ZX Spectrum hardware and by many emulators.
 | 4 | Sound Tracker / Super Sonic (compiled) | `.stc` | ✅ Implemented |
 | 5 | Sound Tracker Pro (compiled) | `.stp` | ✅ Implemented |
 | 6 | VTM text format | `.vtm` | ✅ Implemented |
-| 7 | Flash Tracker | `.fls` | ⏳ Planned |
-| 8 | Fast Tracker | `.ftc` | ⏳ Planned |
-| 9 | Global Tracker 1.x | `.gtr` | ⏳ Planned |
-| 10 | Pro Sound Creator 1.xx | `.psc` | ⏳ Planned |
-| 11 | Pro Sound Maker (compiled) | `.psm` | ⏳ Planned |
-| 12 | ASC Sound Master (compiled) | `.asc` | ⏳ Planned |
-| 13 | SQ-Tracker (compiled) | `.sqt` | ⏳ Planned |
-| 14 | Amadeus / Fuxoft AY Language | `.fxm`, `.ay` | ⏳ Planned |
+| 7 | ZXAY container (ST11 sub-format) | `.ay` | ✅ Implemented |
+| 8 | Flash Tracker | `.fls` | ⏳ Planned |
+| 9 | Fast Tracker | `.ftc` | ⏳ Planned |
+| 10 | Global Tracker 1.x | `.gtr` | ⏳ Planned |
+| 11 | Pro Sound Creator 1.xx | `.psc` | ⏳ Planned |
+| 12 | Pro Sound Maker (compiled) | `.psm` | ⏳ Planned |
+| 13 | ASC Sound Master (compiled) | `.asc` | ⏳ Planned |
+| 14 | SQ-Tracker (compiled) | `.sqt` | ⏳ Planned |
+| 15 | Amadeus / Fuxoft AY Language | `.fxm` | ⏳ Planned |
 
 ---
 
@@ -79,8 +80,9 @@ source. See [`PLAN.md`](PLAN.md) for a detailed, checked-off task list.
 - ✅ PT3 binary parser + writer (full round-trip tested)
 - ✅ PT2, PT1, STC, STP binary parsers (all round-trip tested via PT3)
 - ✅ VTM text format read + write (full round-trip tested)
+- ✅ ZXAY `.ay` container parser (ST11 sub-format, first sub-song import)
 - ✅ ZX Spectrum export — `.tap`, `.scl`, `.ay`, `.hobeta` (player binary embedded)
-- ✅ 151 integration + Pascal-parity tests, 0 failing
+- ✅ 169 integration + Pascal-parity tests, 0 failing
 
 ### Still in progress
 - All other 7 format parsers (ASC, SQT, GTR, FTC, FLS, PSC, PSM/FXM)

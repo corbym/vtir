@@ -129,12 +129,17 @@
 #### 2.5.13 FXM (`formats/fxm.rs`) — `FXM2VTM`
 - [ ] Full parser
 
+#### 2.5.14 ZXAY (`formats/ay.rs`) — `.ay` container (ST11 sub-format)
+- [x] Full parser (ZXAY magic, sub-song headers, ST11 sub-format only, first sub-song import)
+- [x] Integration tests + `minimal.ay` fixture
+- [x] `load()` dispatch registered for `.ay` extension
+
 #### 2.5.14 VTM text format
 - [x] `VTM2TextFile()` — save as text (`vtm::write`)
 - [x] `LoadModuleFromText()` — parse text format (`vtm::parse`)
 
 #### 2.5.15 Format auto-detection
-- [x] `load()` — detect file type from extension, dispatch to correct parser (vtm, pt3, pt2, pt1, stc, stp)
+- [x] `load()` — detect file type from extension, dispatch to correct parser (vtm, pt3, pt2, pt1, stc, stp, ay)
 - [ ] `LoadAndDetect()` — ZX Spectrum binary magic-number detection
 - [ ] `PrepareZXModule()` — ZX Spectrum memory layout handling
 
@@ -559,6 +564,7 @@ should be treated as regressions and investigated before merging.
 | **STP format parser** | ✅ complete | round-trip tested |
 | **VTM text format** | ✅ complete | read + write, round-trip tested |
 | **ZX Spectrum export** | ✅ complete | `.tap` / `.scl` / `.ay` / `.hobeta`, player embedded |
+| **ZXAY `.ay` parser** | ✅ complete | ST11 sub-format, first sub-song import |
 | Remaining format parsers (7×) | 0% | ASC, SQT, GTR, FTC, FLS, PSC, PSM, FXM |
 | `vti-ay` chip emulator | ~85% | perf-mode paths, channel presets |
 | `vti-ay` synthesizer | ~75% | channel allocation presets, Turbo Sound |
@@ -566,7 +572,7 @@ should be treated as regressions and investigated before merging.
 | `vti-app` GUI skeleton | ~35% | all editing interaction, dialogs |
 | Build pipeline | ✅ complete | CI (build + test + WASM), Pages deploy, release workflow |
 | README | ✅ complete | — |
-| **Integration tests** | ✅ 151 passing | — |
+| **Integration tests** | ✅ 169 passing | — |
 | **Pascal parity baselines** | ✅ all passing | 4 previously known bugs fixed |
 | **Web target (eframe WASM)** | ✅ ~95% | file-dialog fallback done via File System Access API |
 | **Web target (KMP/Compose)** | 0% | `vti-ffi` WASM bindings, Kotlin/Wasm UI (long-term) |
