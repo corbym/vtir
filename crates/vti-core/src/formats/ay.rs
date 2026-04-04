@@ -20,6 +20,46 @@ use anyhow::{bail, ensure, Result};
 use super::{pt1, pt2, pt3, stc, stp};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
+// ── EMUL embedded-module scan limits ─────────────────────────────────────────
+//
+// The EMUL extraction loop scans every byte offset of the song payload looking
+// for a recognisable tracker binary.  On native targets that run in a background
+// thread this is acceptable.  On WASM the entire scan runs synchronously on the
+// JS main thread, and each `catch_unwind` call involves JS-exception machinery
+// that can cost tens of microseconds — enough to freeze the browser for several
+// seconds on a modest-sized file.
+//
+// To keep WASM responsive:
+//   • Formats that have an unambiguous magic prefix (PT3, STP) are located by
+//     searching for the magic bytes across the full payload instead of trying
+//     every offset.
+//   • Formats without magic bytes (STC, PT2, PT1) use structural pre-checks to
+//     filter out most offsets cheaply, and the scan is capped at
+//     `EMUL_MAX_SCAN_BYTES` on WASM so the JS main thread is never blocked for
+//     more than a few milliseconds.
+//
+// The 64 KiB limit is generous: real embedded tracker modules (STC, PT2, PT1)
+// are never preceded by more than a few hundred bytes of Z80 player code, so
+// legitimate files are not affected.
+
+/// Maximum number of bytes to scan when searching for formats without magic
+/// bytes (STC, PT2, PT1) inside an EMUL payload.
+///
+/// Only enforced on `wasm32` targets to keep the JS main thread responsive.
+/// On native the full payload is always searched.
+#[cfg(target_arch = "wasm32")]
+const EMUL_MAX_SCAN_BYTES: usize = 64 * 1024;
+#[cfg(not(target_arch = "wasm32"))]
+const EMUL_MAX_SCAN_BYTES: usize = usize::MAX;
+
+/// Known magic-byte prefixes for formats that embed a recognisable header.
+const PT3_MAGIC_1: &[u8] = b"ProTracker 3.";
+const PT3_MAGIC_2: &[u8] = b"Vortex Tracker II";
+/// `KSA_ID` from `stp.rs` — used here to locate STP binaries inside EMUL payloads.
+/// The trailing spaces are part of the fixed-width field in the original Sound Tracker Pro
+/// header and must be matched exactly (28 bytes total, padded with spaces to the right).
+const STP_MAGIC:   &[u8] = b"KSA SOFTWARE COMPILER V2.0  ";
+
 // ── ZXAY magic / TypeID constants ────────────────────────────────────────────
 
 const ZXAY_MAGIC: &[u8; 4] = b"ZXAY";
@@ -223,30 +263,87 @@ fn parse_emul_song(data: &[u8], song_struct_off: usize, song_name: &str, author:
 }
 
 fn extract_embedded_module(payload: &[u8]) -> Result<Module> {
-    for start in 0..payload.len() {
-        let slice = &payload[start..];
-        if let Some(module) = try_parse_known_tracker_binary(slice) {
-            return Ok(module);
+    // ── 1. Formats with unambiguous magic bytes ───────────────────────────────
+    //
+    // Search for the magic prefix across the *entire* payload in one O(n) pass,
+    // then call the parser only at the (typically 1) matching offset.  This
+    // avoids invoking `catch_unwind` at every byte position, which is expensive
+    // on WASM because each call goes through JS-exception machinery.
+
+    // PT3 / Vortex Tracker II
+    for magic in &[PT3_MAGIC_1, PT3_MAGIC_2] {
+        for start in find_magic(payload, magic) {
+            if let Some(m) = try_parse_no_panic(|| pt3::parse(&payload[start..])) {
+                if is_playable_tracker_module(&m) {
+                    return Ok(m);
+                }
+            }
         }
     }
+
+    // STP (KSA SOFTWARE COMPILER V2.0)
+    for start in find_magic(payload, STP_MAGIC) {
+        if let Some(m) = try_parse_no_panic(|| stp::parse(&payload[start..])) {
+            if is_playable_tracker_module(&m) {
+                return Ok(m);
+            }
+        }
+    }
+
+    // ── 2. Formats without magic bytes: structural-pre-check scan ────────────
+    //
+    // STC, PT2, and PT1 have no fixed magic prefix.  We scan byte-by-byte but
+    // guard every parser call with cheap structural pre-checks so `catch_unwind`
+    // is invoked only when the data actually looks like the target format.
+    //
+    // `EMUL_MAX_SCAN_BYTES` caps the scan on WASM to prevent blocking the JS
+    // main thread for more than a few milliseconds.  Real embedded modules are
+    // never located more than a few hundred bytes into the Z80 player code, so
+    // the limit does not affect correctly-formed files.
+    let scan_len = payload.len().min(EMUL_MAX_SCAN_BYTES);
+    #[cfg(target_arch = "wasm32")]
+    if payload.len() > EMUL_MAX_SCAN_BYTES {
+        log::debug!(
+            "AY: EMUL payload is {} bytes; structural scan capped at {} bytes on WASM \
+             (magic-byte search already covered the full payload for PT3/STP)",
+            payload.len(),
+            EMUL_MAX_SCAN_BYTES,
+        );
+    }
+    for start in 0..scan_len {
+        let slice = &payload[start..];
+
+        if let Some(m) = maybe_parse_stc(slice) {
+            if is_playable_tracker_module(&m) {
+                return Ok(m);
+            }
+        }
+
+        if let Some(m) = maybe_parse_pt2(slice) {
+            if is_playable_tracker_module(&m) {
+                return Ok(m);
+            }
+        }
+
+        if let Some(m) = maybe_parse_pt1(slice) {
+            if is_playable_tracker_module(&m) {
+                return Ok(m);
+            }
+        }
+    }
+
     bail!("AY: EMUL song payload does not contain a supported embedded tracker module")
 }
 
-fn try_parse_known_tracker_binary(data: &[u8]) -> Option<Module> {
-    // STC-first because many EMUL bundles embed ST modules; then other binary formats.
-    // Some parsers still panic on malformed bytes, so probe each format behind
-    // catch_unwind while scanning arbitrary payload offsets.
-    let parsed = maybe_parse_stc(data)
-        .or_else(|| try_parse_no_panic(|| pt3::parse(data)))
-        .or_else(|| try_parse_no_panic(|| pt2::parse(data)))
-        .or_else(|| try_parse_no_panic(|| pt1::parse(data)))
-        .or_else(|| try_parse_no_panic(|| stp::parse(data)))?;
-
-    if !is_playable_tracker_module(&parsed) {
-        return None;
-    }
-
-    Some(parsed)
+/// Return an iterator over all start positions in `haystack` where `needle`
+/// begins.  Used to locate format magic bytes without calling the full parser
+/// at every byte offset.
+fn find_magic<'a>(haystack: &'a [u8], needle: &'a [u8]) -> impl Iterator<Item = usize> + 'a {
+    haystack
+        .windows(needle.len())
+        .enumerate()
+        .filter(move |(_, w)| *w == needle)
+        .map(|(i, _)| i)
 }
 
 fn is_playable_tracker_module(module: &Module) -> bool {
@@ -313,6 +410,40 @@ fn maybe_parse_stc(data: &[u8]) -> Option<Module> {
         return None;
     }
     try_parse_no_panic(|| stc::parse(data))
+}
+
+fn maybe_parse_pt2(data: &[u8]) -> Option<Module> {
+    // PT2: minimum 132 bytes; sample/orn/pattern pointers at specific offsets.
+    // `OFF_PAT_PTR` is at byte 99; it holds a LE u16 absolute file offset.
+    const PT2_MIN: usize = 132;
+    const PT2_OFF_PAT_PTR: usize = 99;
+    if data.len() < PT2_MIN {
+        return None;
+    }
+    let pat_ptr = read_u16_le(data, PT2_OFF_PAT_PTR)? as usize;
+    if pat_ptr == 0 || pat_ptr >= data.len() {
+        return None;
+    }
+    try_parse_no_panic(|| pt2::parse(data))
+}
+
+fn maybe_parse_pt1(data: &[u8]) -> Option<Module> {
+    // PT1: minimum 100 bytes; pattern pointer at byte 67, position count at byte 1.
+    const PT1_MIN: usize = 100;
+    const PT1_OFF_PAT_PTR: usize = 67;
+    const PT1_OFF_NUM_POS: usize = 1;
+    if data.len() < PT1_MIN {
+        return None;
+    }
+    let num_pos = *data.get(PT1_OFF_NUM_POS)? as usize;
+    if num_pos == 0 || num_pos > crate::MAX_NUM_OF_PATS {
+        return None;
+    }
+    let pat_ptr = read_u16_le(data, PT1_OFF_PAT_PTR)? as usize;
+    if pat_ptr == 0 || pat_ptr >= data.len() {
+        return None;
+    }
+    try_parse_no_panic(|| pt1::parse(data))
 }
 
 fn read_u16_le(data: &[u8], off: usize) -> Option<u16> {
