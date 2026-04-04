@@ -430,9 +430,9 @@ fn build_ay_file(
     let adr2 = opts.load_addr as usize + zxplsz + zxdtsz;
     out.extend_from_slice(&be16(adr2 as u16));            // Adr2
     out.extend_from_slice(&be16(pt3.len() as u16));       // Len2
-    // Offs2 (at file offset 52): relative to 52 → pt3 file position
+    // Offs2 (at file offset 54): relative to 54 → pt3 file position
     let pt3_file_pos = player_file_pos + zxplsz + zxdtsz;
-    let offs2 = (pt3_file_pos - 52) as u16;
+    let offs2 = (pt3_file_pos - 54) as u16;
     out.extend_from_slice(&be16(offs2));                  // Offs2
     out.extend_from_slice(&be16(0));                      // Zero (terminator)
     // total TPoints: 20 bytes ✓

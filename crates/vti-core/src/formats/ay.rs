@@ -1,11 +1,15 @@
 //! ZXAY (*.ay) container format parser.
 //!
 //! The ZXAY container wraps one or more AY sub-songs identified by a 4-byte
-//! magic `"ZXAY"` and a 4-byte TypeID.  Two TypeID variants are handled:
+//! magic `"ZXAY"` and a 4-byte TypeID.  Three TypeID variants are handled:
 //!
 //! - **ST11** (`b"ST11"`) — embeds a Sound Tracker 1 binary module.  The
 //!   module data is converted to STC format via [`st1_to_stc`] and then parsed
 //!   by [`super::stc::parse`].
+//! - **EMUL** (`b"EMUL"`) — the Ay_Emul player format.  The song data block
+//!   contains a TAddresses table of {Adr, Len, Offs} load-block entries; the
+//!   data block containing the PT3 module is located by iterating those entries
+//!   and parsed by [`super::pt3::parse`].
 //! - **AMAD** (`b"AMAD"`) — contains raw Z80 machine code plus a custom player
 //!   routine.  Playback requires a Z80 emulator which is out of scope; metadata
 //!   is extracted but an error is returned when song data is requested.
@@ -21,6 +25,7 @@ use anyhow::{bail, ensure, Result};
 const ZXAY_MAGIC: &[u8; 4] = b"ZXAY";
 const TYPE_ST11: &[u8; 4] = b"ST11";
 const TYPE_AMAD: &[u8; 4] = b"AMAD";
+const TYPE_EMUL: &[u8; 4] = b"EMUL";
 
 // ── ZXAY header field offsets (all 2-byte offsets are big-endian signed) ─────
 //
@@ -31,7 +36,7 @@ const TYPE_AMAD: &[u8; 4] = b"AMAD";
 //  10: PSpecialPlayer  (i16 BE, relative from byte 10)
 //  12: PAuthor         (i16 BE, relative from byte 12)
 //  14: PMisc           (i16 BE, relative from byte 14)
-//  16: NumOfSongs      (1 byte)
+//  16: NumOfSongs      (1 byte, 0-based max index: actual count = value + 1)
 //  17: FirstSong       (1 byte, 0-based index of preferred first song)
 //  18: PSongsStructure (i16 BE, relative from byte 18)
 
@@ -152,6 +157,12 @@ pub fn parse(data: &[u8], song_index: usize) -> Result<Module> {
     let song_data_field = song_struct_off + 2;
     let song_data_abs = resolve_offset(data, song_data_field)?;
 
+    // EMUL: song data contains a TAddresses table pointing to load blocks.
+    // Iterate the blocks to find the embedded PT3 module.
+    if type_id == *TYPE_EMUL {
+        return parse_emul_song(data, song_data_abs, song_name, author);
+    }
+
     // ST11: the raw ST1 binary starts 8 bytes into the TSongData block.
     // The first 8 bytes (ChanA, ChanB, ChanC, Noise, SongLength, FadeLength)
     // are player configuration used only by the AMAD player; they are skipped.
@@ -196,6 +207,85 @@ pub fn parse(data: &[u8], song_index: usize) -> Result<Module> {
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
+/// Parse an EMUL-subtype ZXAY sub-song.
+///
+/// Navigates from `song_data_abs` (start of the `TSongData` block) to the
+/// `TAddresses` table, iterates the load blocks, and parses the first block
+/// whose content is a valid PT3 module.
+///
+/// ## TSongData layout
+/// ```text
+/// +0:  ChanA   (1)
+/// +1:  ChanB   (1)
+/// +2:  ChanC   (1)
+/// +3:  Noise   (1)
+/// +4:  SongLength  (BE u16)
+/// +6:  FadeLength  (BE u16)
+/// +8:  HiReg   (1)
+/// +9:  LoReg   (1)
+/// +10: PPoints    (BE i16, relative from +10)
+/// +12: PAddresses (BE i16, relative from +12) → first TAddresses entry
+/// ```
+///
+/// ## TAddresses entry layout (6 bytes, terminated by Adr == 0)
+/// ```text
+/// +0: Adr  (BE u16) — ZX RAM load address; 0 = terminator
+/// +2: Len  (BE u16) — block size
+/// +4: Offs (BE i16) — self-relative file offset: abs = field_pos + value
+/// ```
+fn parse_emul_song(
+    data: &[u8],
+    song_data_abs: usize,
+    song_name: String,
+    author: String,
+) -> Result<Module> {
+    // PAddresses is at TSongData + 12.
+    const P_ADDRESSES: usize = 12;
+    ensure!(
+        song_data_abs + P_ADDRESSES + 2 <= data.len(),
+        "AY/EMUL: TSongData truncated at song data offset {}",
+        song_data_abs
+    );
+    let addr_base = resolve_offset(data, song_data_abs + P_ADDRESSES)?;
+
+    // Each TAddresses entry: Adr(2) + Len(2) + Offs(2) = 6 bytes.
+    // Adr == 0 marks the end of the list.
+    const BLOCK_SIZE: usize = 6;
+    let mut block_off = addr_base;
+    while block_off + BLOCK_SIZE <= data.len() {
+        let adr = u16::from_be_bytes([data[block_off], data[block_off + 1]]);
+        if adr == 0 {
+            break;
+        }
+        let len = u16::from_be_bytes([data[block_off + 2], data[block_off + 3]]) as usize;
+        // Offs is self-relative: absolute file pos = Offs field position + Offs value.
+        let offs_field = block_off + 4;
+        if let Ok(file_pos) = resolve_offset(data, offs_field) {
+            if len > 0 && file_pos + len <= data.len() {
+                let block_data = &data[file_pos..file_pos + len];
+                // Only attempt PT3 parse on blocks with a recognisable PT3 header;
+                // the player code block does not carry one and must be skipped.
+                let has_pt3_magic = block_data.starts_with(b"ProTracker 3.")
+                    || block_data.starts_with(b"Vortex Tracker II");
+                if has_pt3_magic {
+                    if let Ok(mut module) = super::pt3::parse(block_data) {
+                        if !song_name.is_empty() {
+                            module.title = song_name;
+                        }
+                        if !author.is_empty() {
+                            module.author = author;
+                        }
+                        return Ok(module);
+                    }
+                }
+            }
+        }
+        block_off += BLOCK_SIZE;
+    }
+
+    bail!("AY/EMUL: no parseable PT3 module found in address blocks")
+}
+
 /// Parse the ZXAY header.  Returns `(type_id, author, songs_base, num_songs)`.
 fn parse_header(data: &[u8]) -> Result<([u8; 4], String, usize, usize)> {
     ensure!(
@@ -212,7 +302,7 @@ fn parse_header(data: &[u8]) -> Result<([u8; 4], String, usize, usize)> {
 
     let type_id: [u8; 4] = data[OFF_TYPE_ID..OFF_TYPE_ID + 4].try_into().unwrap();
     ensure!(
-        &type_id == TYPE_ST11 || &type_id == TYPE_AMAD,
+        &type_id == TYPE_ST11 || &type_id == TYPE_AMAD || &type_id == TYPE_EMUL,
         "AY: unsupported ZXAY sub-format \"{}\"",
         String::from_utf8_lossy(&type_id)
     );
@@ -224,8 +314,8 @@ fn parse_header(data: &[u8]) -> Result<([u8; 4], String, usize, usize)> {
         String::new()
     };
 
-    let num_songs = data[OFF_NUM_SONGS] as usize;
-    ensure!(num_songs > 0, "AY: file contains no sub-songs");
+    // NumOfSongs is a 0-based max index (ZXAY spec), so the actual count is +1.
+    let num_songs = data[OFF_NUM_SONGS] as usize + 1;
 
     let songs_base = resolve_offset(data, OFF_P_SONGS)?;
 
@@ -697,7 +787,7 @@ mod tests {
         // PAuthor (field at 12): relative offset 10 → author at 12+10 = 22
         data[12..14].copy_from_slice(&[0x00, 0x0A]);
         // data[14..16] = PMisc = 0 (unused)
-        data[16] = 1; // NumOfSongs
+        data[16] = 0; // NumOfSongs (0-based max index: 0 = 1 song)
         data[17] = 0; // FirstSong
         // PSongsStructure (field at 18): relative offset 12 → songs at 18+12 = 30
         data[18..20].copy_from_slice(&[0x00, 0x0C]);
@@ -841,5 +931,75 @@ mod tests {
         }
         data[ST1_PAT_LEN] = 1;
         assert!(st1_to_stc(&data).is_err());
+    }
+
+    // ── EMUL sub-format ───────────────────────────────────────────────────────
+
+    /// Build a minimal EMUL .ay file by exporting a simple Module and returning
+    /// the raw bytes.  Used by the EMUL tests below.
+    fn build_emul_ay() -> Vec<u8> {
+        use crate::formats::zx_export::{export_zx, ZxExportOptions, ZxFormat};
+        use crate::types::{ChannelLine, Module, Pattern, Sample, SampleTick};
+
+        let mut m = Module::default();
+        m.initial_delay = 6;
+        m.title = "EmulTest".to_string();
+        m.author = "EmulAuthor".to_string();
+
+        let mut s = Sample::default();
+        s.length = 1;
+        s.items[0] = SampleTick { amplitude: 12, mixer_ton: true, ..SampleTick::default() };
+        m.samples[1] = Some(Box::new(s));
+
+        let mut pat = Pattern::default();
+        pat.length = 2;
+        pat.items[0].channel[0] = ChannelLine { note: 36, sample: 1, ..ChannelLine::default() };
+        m.patterns[0] = Some(Box::new(pat));
+        m.positions.length = 1;
+        m.positions.value[0] = 0;
+
+        let opts = ZxExportOptions {
+            format: ZxFormat::AyFile,
+            load_addr: 0xC000,
+            looping: false,
+            name: "emultest".to_string(),
+            title: m.title.clone(),
+            author: m.author.clone(),
+        };
+        export_zx(&m, &opts).expect("EMUL export must succeed")
+    }
+
+    #[test]
+    fn emul_list_songs_marks_supported() {
+        let data = build_emul_ay();
+        let songs = list_songs(&data).unwrap();
+        assert_eq!(songs.len(), 1);
+        assert!(songs[0].is_supported, "EMUL sub-song should be marked supported");
+        assert_eq!(songs[0].name, "EmulTest");
+    }
+
+    #[test]
+    fn emul_parse_roundtrip() {
+        let data = build_emul_ay();
+        let module = parse(&data, 0).expect("EMUL parse must succeed");
+        assert_eq!(module.title, "EmulTest", "title must survive round-trip");
+        assert_eq!(module.author, "EmulAuthor", "author must survive round-trip");
+        assert_eq!(module.initial_delay, 6, "delay must survive round-trip");
+        assert_eq!(module.positions.length, 1, "position count must survive round-trip");
+        let pat = module.patterns[0].as_deref().expect("pattern 0 must exist");
+        assert_eq!(pat.length, 2, "pattern length must survive round-trip");
+        assert_eq!(pat.items[0].channel[0].note, 36, "note must survive round-trip");
+    }
+
+    #[test]
+    fn emul_no_pt3_block_fails() {
+        let mut data = build_emul_ay();
+        // Overwrite the TypeID with EMUL (already EMUL; just confirm it parses the
+        // address blocks).  Then corrupt the Offs field of the only PT3 block so
+        // it points past the end of the file — parse should fail gracefully.
+        // The Offs2 field is self-relative at byte 54 in a standard EMUL export.
+        data[54] = 0xFF;
+        data[55] = 0xFF;
+        assert!(parse(&data, 0).is_err(), "corrupted EMUL Offs should fail");
     }
 }

@@ -2080,6 +2080,43 @@ fn zx_export_ay_file_signature() {
 }
 
 #[test]
+fn zx_export_ay_round_trip() {
+    use vti_core::formats::zx_export::{export_zx, ZxExportOptions, ZxFormat};
+    use vti_core::formats::ay;
+    let m = make_simple_module();
+    let opts = ZxExportOptions {
+        format: ZxFormat::AyFile,
+        load_addr: 0xC000,
+        looping: false,
+        name: "demo".to_string(),
+        title: m.title.clone(),
+        author: m.author.clone(),
+    };
+    let data = export_zx(&m, &opts).expect("ay export must succeed");
+
+    // list_songs should see exactly one supported song
+    let songs = ay::list_songs(&data).expect("list_songs must succeed");
+    assert_eq!(songs.len(), 1);
+    assert!(songs[0].is_supported, "EMUL song must be marked supported");
+    assert_eq!(songs[0].name, m.title, "song name must match module title");
+
+    // parse must recover the original module fields
+    let loaded = ay::parse(&data, 0).expect("ay::parse must succeed on exported EMUL file");
+    assert_eq!(loaded.title, m.title, "title must survive round-trip");
+    assert_eq!(loaded.author, m.author, "author must survive round-trip");
+    assert_eq!(loaded.initial_delay, m.initial_delay, "delay must survive round-trip");
+    assert_eq!(loaded.positions.length, m.positions.length, "position count must survive round-trip");
+    let orig_pat = m.patterns[0].as_deref().expect("original pattern 0 must exist");
+    let loaded_pat = loaded.patterns[0].as_deref().expect("loaded pattern 0 must exist");
+    assert_eq!(loaded_pat.length, orig_pat.length, "pattern length must survive round-trip");
+    assert_eq!(
+        loaded_pat.items[0].channel[0].note,
+        orig_pat.items[0].channel[0].note,
+        "first note must survive round-trip"
+    );
+}
+
+#[test]
 fn zx_export_hobeta_mem_no_player() {
     use vti_core::formats::zx_export::{export_zx, ZxExportOptions, ZxFormat};
     let m = make_simple_module();
