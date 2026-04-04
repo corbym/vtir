@@ -245,7 +245,10 @@ fn extract_embedded_module(payload: &[u8]) -> Result<Module> {
     // A byte-by-byte structural scan of Z80 machine code produces too many false
     // positives: arbitrary opcodes satisfy the numeric range checks and the parser
     // returns a module that "plays" as random noise.  Until a proper Z80 emulator
-    // is integrated (e.g. rustzx-z80), those formats are not supported inside EMUL.
+    // is integrated (rustzx-z80), those formats are not supported inside EMUL.
+    //
+    // See PLAN.md §2.5.16 "Post-port future feature — EMUL Z80 playback" for the
+    // planned implementation using `rustzx-z80`.
 
     // PT3 / Vortex Tracker II
     for magic in &[PT3_MAGIC_1, PT3_MAGIC_2] {

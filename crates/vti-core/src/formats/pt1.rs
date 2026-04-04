@@ -70,7 +70,7 @@ pub fn parse(data: &[u8]) -> Result<Module> {
         }
         let j = data[off] as usize; // pattern index
         // Guard: patterns has MAX_NUM_OF_PATS+1 slots (indices 0..MAX_NUM_OF_PATS).
-        // A direct stc::parse call with malformed data could supply j > MAX_NUM_OF_PATS,
+        // A direct pt1::parse call with malformed data could supply j > MAX_NUM_OF_PATS,
         // which would panic on the Vec index below.  Skip invalid entries instead.
         if j > crate::MAX_NUM_OF_PATS {
             pos += 1;
