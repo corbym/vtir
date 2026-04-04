@@ -1,9 +1,46 @@
 //! Integration tests for vti-ay: chip emulator, envelope shapes, synthesizer.
 
-use vti_ay::chip::{ChipType, EnvShape, SoundChip, noise_generator};
-use vti_ay::config::AyConfig;
+use vti_ay::chip::{ChipType, EnvShape, SoundChip, noise_generator, AMPLITUDES_AY, AMPLITUDES_YM};
+use vti_ay::config::{
+    AyConfig, AY_FREQ_DEF, INTERRUPT_FREQ_DEF, SAMPLE_RATE_DEF, SAMPLE_BIT_DEF,
+    NUMBER_OF_CHANNELS_DEF,
+};
 use vti_ay::synth::{Synthesizer, calculate_level_tables};
 use vti_core::AyRegisters;
+
+// ─── legacy-v1.0 parity enforcement ─────────────────────────────────────────
+
+#[test]
+fn amplitudes_tables_match_legacy_hacker_kay() {
+    // Keep the active AY/YM tables bit-identical to legacy/AY.pas (Hacker KAY).
+    assert_eq!(AMPLITUDES_AY, [
+        0, 836, 1212, 1773, 2619, 3875, 5397, 8823,
+        10392, 16706, 23339, 29292, 36969, 46421, 55195, 65535,
+    ]);
+    assert_eq!(AMPLITUDES_YM, [
+        0, 0, 0xF8, 0x1C2, 0x29E, 0x33A, 0x3F2, 0x4D7,
+        0x610, 0x77F, 0x90A, 0xA42, 0xC3B, 0xEC2, 0x1137, 0x13A7,
+        0x1750, 0x1BF9, 0x20DF, 0x2596, 0x2C9D, 0x3579, 0x3E55, 0x4768,
+        0x54FF, 0x6624, 0x773B, 0x883F, 0xA1DA, 0xC0FC, 0xE094, 0xFFFF,
+    ]);
+}
+
+#[test]
+fn default_config_matches_legacy_v1_0_timing() {
+    // Enforce legacy/AY.pas v1.0 defaults so timing stays faithful.
+    assert_eq!(AY_FREQ_DEF, 1_773_400);
+    assert_eq!(INTERRUPT_FREQ_DEF, 50_000);
+    assert_eq!(SAMPLE_RATE_DEF, 48_000);
+    assert_eq!(SAMPLE_BIT_DEF, 16);
+    assert_eq!(NUMBER_OF_CHANNELS_DEF, 2);
+
+    let cfg = AyConfig::default();
+    assert_eq!(cfg.ay_freq, AY_FREQ_DEF);
+    assert_eq!(cfg.interrupt_freq, INTERRUPT_FREQ_DEF);
+    assert_eq!(cfg.sample_rate, SAMPLE_RATE_DEF);
+    assert_eq!(cfg.sample_bit, SAMPLE_BIT_DEF);
+    assert_eq!(cfg.num_channels, NUMBER_OF_CHANNELS_DEF);
+}
 
 // ─── noise_generator ─────────────────────────────────────────────────────────
 

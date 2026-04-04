@@ -1,9 +1,9 @@
 //! AY/YM chip emulator configuration.
 
-pub const AY_FREQ_DEF: u32 = 1_750_000;
-pub const INTERRUPT_FREQ_DEF: u32 = 48_828;
+pub const AY_FREQ_DEF: u32 = 1_773_400;
+pub const INTERRUPT_FREQ_DEF: u32 = 50_000;
 pub const NUMBER_OF_CHANNELS_DEF: u8 = 2;
-pub const SAMPLE_RATE_DEF: u32 = 44_100;
+pub const SAMPLE_RATE_DEF: u32 = 48_000;
 pub const SAMPLE_BIT_DEF: u8 = 16;
 
 // Default channel-to-stereo panning indices (0..=255 per side).
