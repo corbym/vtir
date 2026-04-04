@@ -207,6 +207,15 @@ Violation of this rule causes the highlight to be one row ahead of the sound bei
 - Keyboard contract: arrows move row/channel, `PageUp/PageDown` move positions, `Space` toggles play, `s` single-steps one tick, `f` toggles follow-playhead, `Home/End` jump row bounds, `q` quits.
 - For deterministic CI/dev checks, run headless harness mode: `cargo run --bin vti-cli -- <module> --ticks <N>`. This prints PCM activity counters (`pcm_nonzero_total`) without opening an audio device.
 
+### **MUST: Keep CLI UX in parity with GUI UX**
+
+Whenever a new UX feature, interaction, or piece of functionality is added to the GUI (`src/ui/`), **you must update the CLI tool (`src/bin/vti-cli.rs`) to reflect the same capability** — either by exposing it via a new key binding, flag, or printed output as appropriate for a terminal context.
+
+- This is **not** optional. A GUI feature that has no CLI equivalent is considered incomplete.
+- The CLI is the primary tool for headless debugging and automated diagnostics; keeping it in sync ensures agents and developers can exercise new functionality without the GUI.
+- When adding or changing a GUI interaction, include a matching CLI update in the **same commit or PR**.
+- Document any new CLI key bindings or flags in the keyboard contract list above.
+
 ---
 
 ## Workflow Checklist
@@ -223,4 +232,5 @@ Before starting any new task:
 8. [ ] Commit only green, passing code.
 9. [ ] Update `PLAN.md` to tick off completed items and add any new ones discovered.
 10. [ ] Update `README.md` "What works today" / "Still in progress" sections to match `PLAN.md`.
-11. [ ] Update `Agents.md` with any new architecture decisions, conventions, or key contracts that future agents need to know.
+11. [ ] **If you added or changed GUI (`src/ui/`) UX or functionality: update `src/bin/vti-cli.rs` to match.** This is mandatory — see §CLI Diagnostics Tool above.
+12. [ ] Update `Agents.md` with any new architecture decisions, conventions, or key contracts that future agents need to know.
