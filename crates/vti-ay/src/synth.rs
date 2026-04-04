@@ -40,58 +40,85 @@ impl Default for LevelTables {
 
 /// Build amplitude→level tables from panning indices and chip type.
 ///
-/// Direct port of `Calculate_Level_Tables` in `AY.pas`.
+/// Direct port of `Calculate_Level_Tables` in `digsoundbuf.pas`.
+///
+/// ## Stereo vs mono
+///
+/// Pascal computes `l` as `max(sum_L, sum_R) * 2` (stereo) or
+/// `(sum_combined) * 2` (mono).  The `* 2` was previously missing,
+/// causing every level table entry to be 2× too large (potential
+/// clipping on loud passages).
+///
+/// In stereo mode the per-channel index used in the formula equals
+/// the left-panning index (`Index_AL/BL/CL`) for the left table and
+/// the raw right-panning index (`Index_AR/BR/CR`) for the right table.
+/// In mono mode the left tables use the combined `Index_AL + Index_AR`
+/// (and likewise for B and C), while the right tables still use the raw
+/// right-panning index — faithfully matching the Pascal original.
+///
+/// ## Formula
+///
+/// Pascal: `trunc(Index / l * Amplitudes[i] / 65535 * r * k + 0.5)`
+///
+/// One single floating-point rounding (trunc + 0.5 = round-half-up).
+/// The previous Rust code used an intermediate integer `scale` and two
+/// `round()` calls, introducing small quantisation errors.
 pub fn calculate_level_tables(cfg: &AyConfig, chip_type: ChipType) -> LevelTables {
     let mut t = LevelTables::default();
 
-    let ia = cfg.index_al as i32;
+    let ia   = cfg.index_al as i32;
     let ia_r = cfg.index_ar as i32;
-    let ib = cfg.index_bl as i32;
+    let ib   = cfg.index_bl as i32;
     let ib_r = cfg.index_br as i32;
-    let ic = cfg.index_cl as i32;
+    let ic   = cfg.index_cl as i32;
     let ic_r = cfg.index_cr as i32;
 
-    let mut l = if cfg.num_channels == 2 {
-        (ia + ib + ic).max(ia_r + ib_r + ic_r)
+    // Pascal stereo:  Index_A = Index_AL; l = max(sum_L, sum_R) * 2
+    // Pascal mono:    Index_A = Index_AL + Index_AR; l = sum_combined * 2
+    let (index_a, index_b, index_c, mut l) = if cfg.num_channels == 2 {
+        let l_left  = (ia   + ib   + ic)   * 2;
+        let l_right = (ia_r + ib_r + ic_r) * 2;
+        (ia, ib, ic, l_left.max(l_right))
     } else {
-        ia + ib + ic + ia_r + ib_r + ic_r
+        let index_a = ia   + ia_r;
+        let index_b = ib   + ib_r;
+        let index_c = ic   + ic_r;
+        let l       = (index_a + index_b + index_c) * 2;
+        (index_a, index_b, index_c, l)
     };
     if l == 0 { l = 1; }
 
     let max_out = if cfg.sample_bit == 8 { 127i32 } else { 32767i32 };
-    let scale = 255 * max_out / l;
 
     let k = (cfg.global_volume * 2_f64.ln() / cfg.global_volume_max).exp() - 1.0;
+
+    // Pascal: b := trunc(Index / l * Amplitudes[i] / 65535 * r * k + 0.5)
+    // Single rounding step; no intermediate integer scale.
+    let fill = |idx: i32, amp: f64| -> i32 {
+        (idx as f64 / l as f64 * amp / 65535.0 * max_out as f64 * k + 0.5).trunc() as i32
+    };
 
     match chip_type {
         ChipType::AY => {
             for i in 0..16usize {
                 let amp = AMPLITUDES_AY[i] as f64;
-                let fill = |idx: i32, amp: f64| -> i32 {
-                    let b = (idx as f64 / 255.0 * amp).round() as i32;
-                    (b as f64 / 65535.0 * scale as f64 * k).round() as i32
-                };
-                let v = fill(ia,   amp); t.al[i * 2] = v; t.al[i * 2 + 1] = v;
-                let v = fill(ia_r, amp); t.ar[i * 2] = v; t.ar[i * 2 + 1] = v;
-                let v = fill(ib,   amp); t.bl[i * 2] = v; t.bl[i * 2 + 1] = v;
-                let v = fill(ib_r, amp); t.br[i * 2] = v; t.br[i * 2 + 1] = v;
-                let v = fill(ic,   amp); t.cl[i * 2] = v; t.cl[i * 2 + 1] = v;
-                let v = fill(ic_r, amp); t.cr[i * 2] = v; t.cr[i * 2 + 1] = v;
+                let v = fill(index_a, amp); t.al[i * 2] = v; t.al[i * 2 + 1] = v;
+                let v = fill(ia_r,    amp); t.ar[i * 2] = v; t.ar[i * 2 + 1] = v;
+                let v = fill(index_b, amp); t.bl[i * 2] = v; t.bl[i * 2 + 1] = v;
+                let v = fill(ib_r,    amp); t.br[i * 2] = v; t.br[i * 2 + 1] = v;
+                let v = fill(index_c, amp); t.cl[i * 2] = v; t.cl[i * 2 + 1] = v;
+                let v = fill(ic_r,    amp); t.cr[i * 2] = v; t.cr[i * 2 + 1] = v;
             }
         }
         ChipType::YM => {
             for i in 0..32usize {
                 let amp = AMPLITUDES_YM[i] as f64;
-                let fill = |idx: i32, amp: f64| -> i32 {
-                    let b = (idx as f64 / 255.0 * amp).round() as i32;
-                    (b as f64 / 65535.0 * scale as f64 * k).round() as i32
-                };
-                t.al[i] = fill(ia,   amp);
-                t.ar[i] = fill(ia_r, amp);
-                t.bl[i] = fill(ib,   amp);
-                t.br[i] = fill(ib_r, amp);
-                t.cl[i] = fill(ic,   amp);
-                t.cr[i] = fill(ic_r, amp);
+                t.al[i] = fill(index_a, amp);
+                t.ar[i] = fill(ia_r,    amp);
+                t.bl[i] = fill(index_b, amp);
+                t.br[i] = fill(ib_r,    amp);
+                t.cl[i] = fill(index_c, amp);
+                t.cr[i] = fill(ic_r,    amp);
             }
         }
         ChipType::None => {}

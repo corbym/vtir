@@ -19,7 +19,9 @@
 //! source change is a regression — investigate before merging.
 
 use serde::Deserialize;
-use vti_ay::chip::{noise_generator, EnvShape, SoundChip};
+use vti_ay::chip::{noise_generator, ChipType, EnvShape, SoundChip};
+use vti_ay::config::AyConfig;
+use vti_ay::synth::calculate_level_tables;
 
 // ─── Fixture types ────────────────────────────────────────────────────────────
 
@@ -160,5 +162,85 @@ fn envelope_shape_from_register_matches_baseline() {
             "shape mismatch for register {}",
             reg
         );
+    }
+}
+
+// ─── Level tables ─────────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct LevelTablesFixture {
+    cases: Vec<LevelTableCase>,
+}
+
+#[derive(Deserialize)]
+struct LevelTableCase {
+    name: String,
+    chip: String,
+    index_al: u8,
+    index_ar: u8,
+    index_bl: u8,
+    index_br: u8,
+    index_cl: u8,
+    index_cr: u8,
+    al: Vec<i32>,
+    ar: Vec<i32>,
+    bl: Vec<i32>,
+    br: Vec<i32>,
+    cl: Vec<i32>,
+    cr: Vec<i32>,
+}
+
+/// Verify that `calculate_level_tables` produces bit-identical output to the
+/// Pascal `Calculate_Level_Tables` in `digsoundbuf.pas`.
+///
+/// This test covers:
+/// - Stereo AY with default panning (A=255/13, B=170/170, C=13/255)
+/// - Stereo YM with the same default panning
+///
+/// Regressions caught: missing `* 2` on the `l` normalisation denominator,
+/// and the two-step rounding that caused every entry to be ~2× too large.
+#[test]
+fn level_tables_match_pascal_baseline() {
+    let raw = load_ay_fixture("level_tables");
+    let fixture: LevelTablesFixture =
+        serde_json::from_str(&raw).expect("parse level_tables.json");
+
+    for case in &fixture.cases {
+        let chip_type = match case.chip.as_str() {
+            "AY" => ChipType::AY,
+            "YM" => ChipType::YM,
+            other => panic!("unknown chip type: {}", other),
+        };
+
+        let cfg = AyConfig {
+            index_al: case.index_al,
+            index_ar: case.index_ar,
+            index_bl: case.index_bl,
+            index_br: case.index_br,
+            index_cl: case.index_cl,
+            index_cr: case.index_cr,
+            global_volume: 1.0,
+            global_volume_max: 1.0,
+            ..AyConfig::default()
+        };
+
+        let t = calculate_level_tables(&cfg, chip_type);
+
+        let check = |table: &[i32; 32], expected: &Vec<i32>, name: &str| {
+            for (i, (&got, &want)) in table.iter().zip(expected.iter()).enumerate() {
+                assert_eq!(
+                    got, want,
+                    "case '{}' table '{}' index {}: got {}, want {}",
+                    case.name, name, i, got, want
+                );
+            }
+        };
+
+        check(&t.al, &case.al, "al");
+        check(&t.ar, &case.ar, "ar");
+        check(&t.bl, &case.bl, "bl");
+        check(&t.br, &case.br, "br");
+        check(&t.cl, &case.cl, "cl");
+        check(&t.cr, &case.cr, "cr");
     }
 }
