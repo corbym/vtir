@@ -56,6 +56,8 @@ const EMUL_MAX_SCAN_BYTES: usize = usize::MAX;
 const PT3_MAGIC_1: &[u8] = b"ProTracker 3.";
 const PT3_MAGIC_2: &[u8] = b"Vortex Tracker II";
 /// `KSA_ID` from `stp.rs` — used here to locate STP binaries inside EMUL payloads.
+/// The trailing spaces are part of the fixed-width field in the original Sound Tracker Pro
+/// header and must be matched exactly (28 bytes total, padded with spaces to the right).
 const STP_MAGIC:   &[u8] = b"KSA SOFTWARE COMPILER V2.0  ";
 
 // ── ZXAY magic / TypeID constants ────────────────────────────────────────────
@@ -299,6 +301,15 @@ fn extract_embedded_module(payload: &[u8]) -> Result<Module> {
     // never located more than a few hundred bytes into the Z80 player code, so
     // the limit does not affect correctly-formed files.
     let scan_len = payload.len().min(EMUL_MAX_SCAN_BYTES);
+    #[cfg(target_arch = "wasm32")]
+    if payload.len() > EMUL_MAX_SCAN_BYTES {
+        log::debug!(
+            "AY: EMUL payload is {} bytes; structural scan capped at {} bytes on WASM \
+             (magic-byte search already covered the full payload for PT3/STP)",
+            payload.len(),
+            EMUL_MAX_SCAN_BYTES,
+        );
+    }
     for start in 0..scan_len {
         let slice = &payload[start..];
 
@@ -331,7 +342,8 @@ fn find_magic<'a>(haystack: &'a [u8], needle: &'a [u8]) -> impl Iterator<Item = 
     haystack
         .windows(needle.len())
         .enumerate()
-        .filter_map(move |(i, w)| if w == needle { Some(i) } else { None })
+        .filter(move |(_, w)| *w == needle)
+        .map(|(i, _)| i)
 }
 
 fn is_playable_tracker_module(module: &Module) -> bool {
