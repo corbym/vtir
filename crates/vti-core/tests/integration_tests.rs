@@ -1184,6 +1184,23 @@ fn pt3_smoke_parse_madness_descent() {
     assert!(m.patterns[1].is_some(), "pattern 1 must be present");
 }
 
+#[test]
+fn pt3_load_space_crusade_loader_via_dispatch_contains_expected_data() {
+    let bytes = read_fixture("Space Crusade Loader.pt3");
+    let m = format_load(&bytes, "Space Crusade Loader.pt3")
+        .expect("Space Crusade Loader.pt3 must parse via formats::load");
+
+    assert_eq!(m.title.trim(), "GO! GO! GO!", "title");
+    assert_eq!(m.author.trim(), "3VC'98", "author");
+    assert_eq!(m.ton_table, 1, "ton_table");
+    assert_eq!(m.initial_delay, 3, "delay");
+    assert_eq!(m.positions.length, 31, "positions length");
+    assert_eq!(m.positions.loop_pos, 2, "loop pos");
+    assert_eq!(m.positions.value[0], 0, "position 0 pattern index");
+    assert_eq!(m.positions.value[2], 1, "position 2 pattern index");
+    assert!(m.patterns[0].is_some(), "pattern 0 must exist");
+}
+
 /// Load madness_descent.pt3, write → re-parse and verify the first note of
 /// pattern 0 is preserved exactly.
 #[test]
@@ -1717,6 +1734,27 @@ fn pt1_smoke_parse_minimal() {
     let p0 = m.patterns[0].as_deref().expect("pattern 0 must exist");
     assert_eq!(p0.items[0].channel[0].note, 36, "note C-4");
     assert!(m.samples[1].is_some(), "sample 1 exists");
+}
+
+#[test]
+fn pt1_load_minimal_fixture_via_dispatch_contains_expected_data() {
+    let bytes = read_fixture("minimal_roundtrip.pt1");
+    let m = format_load(&bytes, "minimal_roundtrip.pt1")
+        .expect("minimal_roundtrip.pt1 must parse via formats::load");
+
+    assert_eq!(m.title.trim(), "PT1 minimal fixture", "title");
+    assert_eq!(m.initial_delay, 6, "delay");
+    assert_eq!(m.positions.length, 1, "positions length");
+    assert_eq!(m.positions.loop_pos, 0, "loop pos");
+
+    let p0 = m.patterns[0].as_deref().expect("pattern 0 must exist");
+    assert_eq!(p0.length, 1, "pattern 0 length");
+    assert_eq!(p0.items[0].channel[0].note, 36, "row 0 ch A note");
+    assert_eq!(p0.items[0].channel[0].sample, 1, "row 0 ch A sample");
+
+    let s1 = m.samples[1].as_deref().expect("sample 1 must exist");
+    assert_eq!(s1.length, 1, "sample 1 length");
+    assert_eq!(s1.loop_pos, 0, "sample 1 loop");
 }
 
 #[test]
