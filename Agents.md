@@ -200,6 +200,15 @@ Violation of this rule causes the highlight to be one row ahead of the sound bei
 
 ---
 
+## CLI Diagnostics Tool
+
+- A native terminal diagnostics binary now exists at `src/bin/vti-cli.rs` (`cargo run --bin vti-cli -- <module>`).
+- Use this when debugging parser/playback paths without the GUI. It renders tracker rows and AY register snapshots.
+- Keyboard contract: arrows move row/channel, `PageUp/PageDown` move positions, `Space` toggles play, `s` single-steps one tick, `f` toggles follow-playhead, `Home/End` jump row bounds, `q` quits.
+- For deterministic CI/dev checks, run headless harness mode: `cargo run --bin vti-cli -- <module> --ticks <N>`. This prints PCM activity counters (`pcm_nonzero_total`) without opening an audio device.
+
+---
+
 ## Workflow Checklist
 
 Before starting any new task:

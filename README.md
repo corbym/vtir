@@ -74,6 +74,7 @@ source. See [`PLAN.md`](PLAN.md) for a detailed, checked-off task list.
 - ✅ Tracker playback engine (note entry, all 11 effect commands, ornaments)
 - ✅ Cross-platform audio output via `cpal`
 - ✅ egui-based GUI skeleton (pattern view, sample view, ornament view, toolbar)
+- ✅ Terminal CLI tracker diagnostics tool (`vti-cli`) with keyboard navigation + headless tick harness
 - ✅ Playback cursor follow — pattern editor highlights and scrolls to the playing row in real time
 - ✅ 77 integration tests, 0 failing
 
@@ -106,7 +107,24 @@ sudo apt install libasound2-dev pkg-config
 # All platforms
 cargo build --release
 cargo run --release
+
+# Build CLI binary
+cargo build --bin vti-cli
+
+# Run CLI directly from build output (debug)
+target/debug/vti-cli crates/vti-core/tests/fixtures/tunes/ADDAMS2.ay
+
+# Run CLI via helper script (uses release/debug binary if present, else cargo run)
+./scripts/vti-cli crates/vti-core/tests/fixtures/tunes/ADDAMS2.ay
+
+# Start interactive mode with playback enabled immediately
+./scripts/vti-cli crates/vti-core/tests/fixtures/tunes/ADDAMS2.ay --play=true
+
+# Headless diagnostics (no real audio device needed)
+./scripts/vti-cli crates/vti-core/tests/fixtures/tunes/ADDAMS2.ay --ticks 512
 ```
+
+`vti-cli` starts with playback off by default. Use `--play`, `--play=true`, or `--play=false` to control startup playback. Keyboard controls: arrows move row/channel, `PageUp`/`PageDown` move positions, `Space` play/pause, `s` step one tick, `f` toggle follow-playhead, `Home`/`End` jump top/bottom, `q` quit.
 
 ### Running the tests
 
@@ -116,6 +134,9 @@ cargo test -p vti-core -p vti-ay -p vti-audio
 
 # Device-dependent audio tests (requires a real output device)
 cargo test -p vti-audio -- --ignored
+
+# Focused device diagnostics around cpal start/callback/fill path
+cargo test -p vti-audio audio_player_diagnostics_show_callback_activity -- --ignored
 
 # Pascal parity / approval baseline tests
 cargo test -p vti-core -p vti-ay --test pascal_baseline_tests
@@ -180,7 +201,10 @@ trunk build --release
 Cargo.toml                 ← workspace root + binary crate
 src/
   main.rs                  ← eframe entry-point
+  bin/vti-cli.rs           ← terminal CLI tracker + diagnostics harness
   app.rs                   ← top-level application state
+scripts/
+  vti-cli                  ← helper launcher for CLI from build output or cargo run
   ui/                      ← egui panels
     pattern_editor.rs
     sample_editor.rs

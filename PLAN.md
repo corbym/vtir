@@ -242,6 +242,7 @@
 - [x] `StereoSample` default silence and Copy
 - [x] `AudioPlayer::start` + push (device-dependent, `#[ignore]`)
 - [x] Fill level decreases over time (device-dependent, `#[ignore]`)
+- [x] Diagnostics snapshot shows callback/push/pop activity after `AudioPlayer::start` (device-dependent, `#[ignore]`)
 
 ---
 
@@ -312,6 +313,11 @@
 - [ ] Channel panning (custom indices)
 - [ ] Chip type (AY / YM)
 - [ ] FIR filter on/off
+
+### 5.8 CLI Diagnostics Tool (`src/bin/vti-cli.rs`)
+- [x] Terminal tracker viewer with keyboard navigation (rows/channels/positions)
+- [x] Headless harness mode (`--ticks N`) for deterministic parser/playback/synth diagnostics
+- [x] Integration test invokes CLI binary on `ADDAMS2.ay` and asserts non-zero PCM activity
 
 ---
 

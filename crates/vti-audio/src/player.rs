@@ -16,6 +16,7 @@
 use anyhow::{Context, Result};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleRate, StreamConfig};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use vti_ay::synth::StereoSample;
 
@@ -25,6 +26,34 @@ pub enum PlayerCommand {
     Play,
     Pause,
     Stop,
+}
+
+/// Snapshot of audio callback and ring-buffer activity.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct AudioDiagnostics {
+    pub pushed_samples: u64,
+    pub popped_samples: u64,
+    pub underrun_frames: u64,
+    pub callback_count: u64,
+}
+
+#[derive(Default)]
+struct AudioDiagnosticsInner {
+    pushed_samples: AtomicU64,
+    popped_samples: AtomicU64,
+    underrun_frames: AtomicU64,
+    callback_count: AtomicU64,
+}
+
+impl AudioDiagnosticsInner {
+    fn snapshot(&self) -> AudioDiagnostics {
+        AudioDiagnostics {
+            pushed_samples: self.pushed_samples.load(Ordering::Relaxed),
+            popped_samples: self.popped_samples.load(Ordering::Relaxed),
+            underrun_frames: self.underrun_frames.load(Ordering::Relaxed),
+            callback_count: self.callback_count.load(Ordering::Relaxed),
+        }
+    }
 }
 
 /// Shared ring buffer between the render thread and the cpal callback.
@@ -70,6 +99,7 @@ impl RingBuf {
 pub struct AudioPlayer {
     _stream: cpal::Stream,
     buf: Arc<Mutex<RingBuf>>,
+    diagnostics: Arc<AudioDiagnosticsInner>,
 }
 
 impl AudioPlayer {
@@ -93,14 +123,23 @@ impl AudioPlayer {
         let ring_capacity = (sample_rate as usize) / 2 + 1;
         let buf = Arc::new(Mutex::new(RingBuf::new(ring_capacity)));
         let buf_cb = Arc::clone(&buf);
+        let diagnostics = Arc::new(AudioDiagnosticsInner::default());
+        let diagnostics_cb = Arc::clone(&diagnostics);
 
         let stream = device
             .build_output_stream(
                 &config,
                 move |output: &mut [f32], _| {
                     let mut ring = buf_cb.lock().unwrap();
+                    diagnostics_cb.callback_count.fetch_add(1, Ordering::Relaxed);
                     for frame in output.chunks_exact_mut(2) {
-                        let s = ring.pop().unwrap_or(StereoSample::default());
+                        let s = if let Some(s) = ring.pop() {
+                            diagnostics_cb.popped_samples.fetch_add(1, Ordering::Relaxed);
+                            s
+                        } else {
+                            diagnostics_cb.underrun_frames.fetch_add(1, Ordering::Relaxed);
+                            StereoSample::default()
+                        };
                         frame[0] = s.left  as f32 / 32768.0;
                         frame[1] = s.right as f32 / 32768.0;
                     }
@@ -112,7 +151,11 @@ impl AudioPlayer {
 
         stream.play().context("failed to start audio stream")?;
 
-        Ok(Self { _stream: stream, buf })
+        Ok(Self {
+            _stream: stream,
+            buf,
+            diagnostics,
+        })
     }
 
     /// Push a batch of rendered samples into the ring buffer.
@@ -121,6 +164,9 @@ impl AudioPlayer {
         for &s in samples {
             ring.push(s);
         }
+        self.diagnostics
+            .pushed_samples
+            .fetch_add(samples.len() as u64, Ordering::Relaxed);
     }
 
     /// Return approximate fill level of the ring buffer (0.0 – 1.0).
@@ -128,5 +174,10 @@ impl AudioPlayer {
         let ring = self.buf.lock().unwrap();
         let used = (ring.write + ring.capacity - ring.read) % ring.capacity;
         used as f32 / ring.capacity as f32
+    }
+
+    /// Return a snapshot of callback and ring-buffer counters for diagnostics.
+    pub fn diagnostics_snapshot(&self) -> AudioDiagnostics {
+        self.diagnostics.snapshot()
     }
 }

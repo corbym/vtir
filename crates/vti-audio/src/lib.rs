@@ -6,4 +6,4 @@
 
 pub mod player;
 
-pub use player::{AudioPlayer, PlayerCommand};
+pub use player::{AudioDiagnostics, AudioPlayer, PlayerCommand};

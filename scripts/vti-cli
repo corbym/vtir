@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+if [[ -x "$ROOT_DIR/target/release/vti-cli" ]]; then
+  exec "$ROOT_DIR/target/release/vti-cli" "$@"
+fi
+
+if [[ -x "$ROOT_DIR/target/debug/vti-cli" ]]; then
+  exec "$ROOT_DIR/target/debug/vti-cli" "$@"
+fi
+
+exec cargo run --manifest-path "$ROOT_DIR/Cargo.toml" --bin vti-cli -- "$@"
+
