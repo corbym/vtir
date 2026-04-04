@@ -2243,131 +2243,40 @@ fn ay_smoke_play_first_line() {
     engine.module_play_current_line(&mut ay_regs);
 }
 
-/// Smoke-test: ADDAMS2.ay loads through the extension dispatcher and can be
-/// advanced by one playback tick without panicking.
+/// ADDAMS2.ay is a ZXAY EMUL file whose Z80 player uses a custom music format.
+/// Playback requires running the Z80 code in an emulated ZX Spectrum and
+/// capturing the AY register writes — a feature not yet implemented.
+/// The parser must return a clear error rather than producing a junk module.
 #[test]
-fn ay_smoke_parse_addams2_and_play_one_tick() {
+fn ay_emul_without_embedded_pt3_returns_unsupported_error() {
     let bytes = read_fixture("ADDAMS2.ay");
-    let mut module = format_load(&bytes, "ADDAMS2.ay")
-        .expect("ADDAMS2.ay must load via formats::load");
-
-    assert!(module.positions.length > 0, "AY module should contain at least one position");
-    assert!(module.initial_delay > 0, "AY module should have non-zero playback delay");
-    let first_pat = module.positions.value[0] as usize;
-    assert!(module.patterns[first_pat].is_some(), "first pattern from position list must exist");
-
-    let mut vars = PlayVars::default();
-    init_tracker_parameters(&mut module, &mut vars, true);
-    vars.delay = module.initial_delay as i8;
-    vars.current_pattern = module.positions.value[0] as i32;
-    vars.current_line = 0;
-    vars.delay_counter = 1;
-
-    let mut regs = vti_core::AyRegisters::default();
-    let mut engine = Engine { module: &mut module, vars: &mut vars };
-    let _ = engine.module_play_current_line(&mut regs);
-}
-
-#[test]
-fn ay_addams2_parse_contains_tracker_note_data() {
-    let bytes = read_fixture("ADDAMS2.ay");
-    let module = format_load(&bytes, "ADDAMS2.ay")
-        .expect("ADDAMS2.ay must load via formats::load");
-
-    let mut note_events = 0usize;
-    for pos in 0..module.positions.length {
-        let pat_idx = module.positions.value[pos];
-        let pat = module.patterns[pat_idx]
-            .as_deref()
-            .unwrap_or_else(|| panic!("missing pattern {pat_idx} referenced by positions[{pos}]"));
-        for row in 0..pat.length {
-            for ch in 0..3 {
-                if pat.items[row].channel[ch].note >= 0 {
-                    note_events += 1;
-                }
-            }
-        }
-    }
-
-    assert!(note_events > 0, "ADDAMS2.ay should contain note events, parser likely selected an empty false-positive payload");
-}
-
-#[test]
-fn ay_addams2_parse_contains_playable_rows_in_order_list() {
-    let bytes = read_fixture("ADDAMS2.ay");
-    let module = format_load(&bytes, "ADDAMS2.ay")
-        .expect("ADDAMS2.ay must load via formats::load");
-
-    let sample_count = module.samples.iter().filter(|s| s.is_some()).count();
-    let mut note_events = 0usize;
-    let mut playable_events = 0usize;
-    for pos in 0..module.positions.length {
-        let pat_idx = module.positions.value[pos];
-        let pat = module.patterns[pat_idx]
-            .as_deref()
-            .unwrap_or_else(|| panic!("missing pattern {pat_idx} referenced by positions[{pos}]"));
-        for row in 0..pat.length {
-            for ch in 0..3 {
-                let line = &pat.items[row].channel[ch];
-                if line.note >= 0 {
-                    note_events += 1;
-                }
-                if line.note >= 0 && line.sample > 0 && module.samples[line.sample as usize].is_some() {
-                    playable_events += 1;
-                }
-            }
-        }
-    }
-
+    let result = format_load(&bytes, "ADDAMS2.ay");
     assert!(
-        playable_events > 0,
-        "ADDAMS2.ay should contain note rows referencing existing samples (sample_count={sample_count}, note_events={note_events})"
+        result.is_err(),
+        "ADDAMS2.ay (EMUL with custom Z80 player) should return an error, not a junk module"
+    );
+    let msg = result.unwrap_err().to_string();
+    assert!(
+        msg.contains("Z80 emulation") || msg.contains("emulation"),
+        "error message should mention Z80 emulation, got: {msg}"
     );
 }
 
+/// Megapartydemo92_1.ay is also a ZXAY EMUL file with a custom Z80 player.
+/// Loading it must return a clean error quickly — it must never crash or hang
+/// the caller (regression test for the WASM browser-freeze bug).
 #[test]
-fn ay_addams2_generates_nonzero_pcm_with_harnessed_synth() {
-    let bytes = read_fixture("ADDAMS2.ay");
-    let mut module = format_load(&bytes, "ADDAMS2.ay")
-        .expect("ADDAMS2.ay must load via formats::load");
-
-    let mut vars = PlayVars::default();
-    init_tracker_parameters(&mut module, &mut vars, true);
-    vars.delay = module.initial_delay as i8;
-    vars.current_pattern = module.positions.value[0] as i32;
-    vars.current_line = 0;
-    vars.delay_counter = 1;
-
-    let cfg = vti_ay::AyConfig::default();
-    let samples_per_tick = cfg.ay_tiks_in_interrupt();
-    let mut synth = vti_ay::Synthesizer::new(cfg, 1, vti_ay::ChipType::AY);
-
-    let mut voiced_ticks = 0usize;
-    let mut nonzero_pcm_samples = 0usize;
-
-    // Bounded playback window so the test remains fast and deterministic.
-    for _ in 0..512 {
-        let mut regs = vti_core::AyRegisters::default();
-        let mut engine = Engine { module: &mut module, vars: &mut vars };
-        let _ = engine.module_play_current_line(&mut regs);
-
-        if regs.amplitude_a > 0 || regs.amplitude_b > 0 || regs.amplitude_c > 0 {
-            voiced_ticks += 1;
-        }
-
-        synth.apply_registers(0, &regs);
-        synth.render_frame(samples_per_tick);
-        let rendered = synth.drain(samples_per_tick as usize);
-        nonzero_pcm_samples += rendered
-            .iter()
-            .filter(|s| s.left != 0 || s.right != 0)
-            .count();
-    }
-
-    assert!(voiced_ticks > 0, "playback should produce non-zero AY amplitudes on at least one tick");
+fn ay_emul_megaparty_returns_error_without_hanging() {
+    let bytes = read_fixture("Megapartydemo92_1.ay");
+    let result = format_load(&bytes, "Megapartydemo92_1.ay");
     assert!(
-        nonzero_pcm_samples > 0,
-        "harnessed synthesizer should output non-zero PCM samples for ADDAMS2.ay"
+        result.is_err(),
+        "Megapartydemo92_1.ay (EMUL with custom Z80 player) should return an error"
+    );
+    let msg = result.unwrap_err().to_string();
+    assert!(
+        msg.contains("Z80 emulation") || msg.contains("emulation"),
+        "error message should mention Z80 emulation, got: {msg}"
     );
 }
 

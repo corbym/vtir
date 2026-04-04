@@ -147,6 +147,11 @@ pub fn parse(data: &[u8]) -> Result<Module> {
             break;
         }
         let j = b as usize; // pattern index
+        // Guard: positions.value has MAX_NUM_OF_PATS slots; patterns has MAX_NUM_OF_PATS+1.
+        // Pattern index bytes 85–127 are invalid — skip them rather than panicking.
+        if pos >= crate::MAX_NUM_OF_PATS || j > crate::MAX_NUM_OF_PATS {
+            break;
+        }
         module.positions.value[pos] = j;
         pos += 1;
 

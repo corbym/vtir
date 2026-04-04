@@ -129,7 +129,49 @@
 #### 2.5.13 FXM (`formats/fxm.rs`) — `FXM2VTM`
 - [ ] Full parser
 
-#### 2.5.14 VTM text format
+#### 2.5.16 AY (`formats/ay.rs`) — ZXAY container — ST11 / AMAD / EMUL variants
+
+**ST11** (Sound Tracker 1 binary, e.g. `minimal.ay`)
+- [x] Parse ZXAY header — magic, TypeID, author, song list
+- [x] `list_songs()` — enumerate sub-songs with name and supported flag
+- [x] ST1→STC conversion (`st1_to_stc`) — translate raw Sound Tracker 1 binary to STC data
+- [x] `parse()` — load first sub-song as a `Module` via ST1→STC path
+- [x] Multi-song support (NumSongs field)
+
+**AMAD** (raw Z80 player; requires Z80 emulation — not yet supported)
+- [x] Detected and reported as unsupported with a clear error
+
+**EMUL** (Z80 interrupt-driven player; music data is custom-format per file)
+- [x] PT3 / STP magic-byte search — if an embedded PT3 or STP module is found inside
+      the EMUL payload it is extracted and returned
+- [x] Return clear "requires Z80 emulation" error when no magic-byte module is found;
+      never return a false-positive junk module decoded from Z80 opcode bytes
+
+> **Post-port future feature — EMUL Z80 playback (rustzx-z80)**
+>
+> The `EMUL` sub-format wraps a Z80 player whose interrupt handler writes AY
+> register values at 50 Hz.  Correct playback requires executing that Z80 code
+> in an emulated ZX Spectrum environment.  The original Delphi/Pascal VT2 never
+> supported EMUL loading (see `trfuncs.pas` line 7414 — `TypeID = "EMUL"` exits
+> as `Unknown`); it is out of scope for the initial port.
+>
+> Planned implementation once the base port is complete:
+> - Add `rustzx-z80` (standalone `no_std` Z80 CPU crate from the
+>   [rustzx](https://github.com/rustzx/rustzx) workspace) as a dependency of
+>   `vti-core`.  It has no runtime dependencies and is fully WASM-compatible.
+> - Parse the EMUL `TStSong` header to extract `InitPC`, `InterruptPC`, and the
+>   `TMemBlock[]` array that describes which bytes to load at which Z80 addresses.
+> - Set up a 64 KB Z80 address space, load the memory blocks, and initialise
+>   registers from the header fields.
+> - Run the Z80 CPU, intercepting OUT writes to AY ports `0xBFFD` (register
+>   value) and `0xFFFD` (register select); convert the captured writes into
+>   `AyRegisters` frames.
+> - The AY chip emulator already exists in `crates/vti-ay` — no new sound library
+>   is needed; only the Z80 CPU is the missing piece.
+> - Drive interrupts at the file's specified rate (typically 50 Hz for ZX
+>   Spectrum) to produce one `AyRegisters` frame per interrupt.
+
+
 - [ ] `VTM2TextFile()` — save as text
 - [ ] `LoadModuleFromText()` — parse text format
 
