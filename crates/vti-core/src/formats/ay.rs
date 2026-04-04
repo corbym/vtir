@@ -70,6 +70,9 @@ const ST1_POS_BASE: usize = 1950;
 const ST1_POS_ENTRY: usize = 2; // { PNum(1), PTrans(1) }
 const ST1_POS_LEN: usize = 2462;
 
+/// Semitones per octave, used when converting ST1 note encoding to VTM note index.
+const SEMITONES_PER_OCTAVE: usize = 12;
+
 const ST1_ORN_BASE: usize = 2463;
 const ST1_ORN_SIZE: usize = 32;
 
@@ -484,8 +487,8 @@ fn st1_to_stc(data: &[u8]) -> Result<Vec<u8>> {
     // plus the $FF terminator.
     let bytecode_start = stc.len() + chan_ofs.len() * 7 + 1;
 
-    for &(pat_i, ref ofs) in &chan_ofs {
-        stc.push((pat_i + 1) as u8); // 1-indexed pattern number
+    for (pat_i, ofs) in &chan_ofs {
+        stc.push((*pat_i + 1) as u8); // 1-indexed pattern number
         for c in 0..3usize {
             let abs_ofs = (bytecode_start + ofs[c]) as u16;
             stc.push(abs_ofs as u8);
@@ -603,7 +606,7 @@ fn build_channel_bytecode(
                     j,
                     c
                 );
-                let vtm_note = ST1_NTS[note_name] as usize + octave * 12 + sharp;
+                let vtm_note = ST1_NTS[note_name] as usize + octave * SEMITONES_PER_OCTAVE + sharp;
                 ensure!(
                     vtm_note <= 0x5F,
                     "ST1: note value {} out of range at pattern {}, row {}, ch {}",
