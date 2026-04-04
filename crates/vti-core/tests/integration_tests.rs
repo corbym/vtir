@@ -2325,3 +2325,49 @@ fn ay_addams2_parse_contains_playable_rows_in_order_list() {
     );
 }
 
+#[test]
+fn ay_addams2_generates_nonzero_pcm_with_harnessed_synth() {
+    let bytes = read_fixture("ADDAMS2.ay");
+    let mut module = format_load(&bytes, "ADDAMS2.ay")
+        .expect("ADDAMS2.ay must load via formats::load");
+
+    let mut vars = PlayVars::default();
+    init_tracker_parameters(&mut module, &mut vars, true);
+    vars.delay = module.initial_delay as i8;
+    vars.current_pattern = module.positions.value[0] as i32;
+    vars.current_line = 0;
+    vars.delay_counter = 1;
+
+    let cfg = vti_ay::AyConfig::default();
+    let samples_per_tick = cfg.ay_tiks_in_interrupt();
+    let mut synth = vti_ay::Synthesizer::new(cfg, 1, vti_ay::ChipType::AY);
+
+    let mut voiced_ticks = 0usize;
+    let mut nonzero_pcm_samples = 0usize;
+
+    // Bounded playback window so the test remains fast and deterministic.
+    for _ in 0..512 {
+        let mut regs = vti_core::AyRegisters::default();
+        let mut engine = Engine { module: &mut module, vars: &mut vars };
+        let _ = engine.module_play_current_line(&mut regs);
+
+        if regs.amplitude_a > 0 || regs.amplitude_b > 0 || regs.amplitude_c > 0 {
+            voiced_ticks += 1;
+        }
+
+        synth.apply_registers(0, &regs);
+        synth.render_frame(samples_per_tick);
+        let rendered = synth.drain(samples_per_tick as usize);
+        nonzero_pcm_samples += rendered
+            .iter()
+            .filter(|s| s.left != 0 || s.right != 0)
+            .count();
+    }
+
+    assert!(voiced_ticks > 0, "playback should produce non-zero AY amplitudes on at least one tick");
+    assert!(
+        nonzero_pcm_samples > 0,
+        "harnessed synthesizer should output non-zero PCM samples for ADDAMS2.ay"
+    );
+}
+
