@@ -333,6 +333,11 @@
   - [ ] Windows job: `cargo build --release --target x86_64-pc-windows-msvc`, upload `.exe` as artifact
   - [ ] Linux job: `cargo build --release`, upload binary as artifact
   - [ ] Create GitHub Release with all three artifacts
+- **[OUT OF SCOPE]** `cli-release.yml` — cross-platform build and deploy of `vti-cli`:
+  - Build `--features cli --bin vti-cli` on macOS, Windows, and Linux
+  - Upload platform binaries as GitHub Release artifacts alongside the GUI app
+  - Note: `src/bin/vti-cli.rs` is intentionally not committed to the repository;
+    this workflow is deferred until the CLI is stable and ready for distribution.
 
 ---
 

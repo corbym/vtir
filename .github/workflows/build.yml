@@ -38,6 +38,9 @@ jobs:
       - name: Run library + integration tests
         run: cargo test -p vti-core -p vti-ay -p vti-audio
 
+      - name: Build CLI binary (vti-cli)
+        run: cargo build --bin vti-cli --features cli
+
   # ── Web / WASM check ────────────────────────────────────────────────────────
   # Verifies that the web (wasm32-unknown-unknown) target still compiles on
   # every push and PR.  Actual Pages deployment is handled by pages.yml and
