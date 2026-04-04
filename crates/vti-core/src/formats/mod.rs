@@ -9,8 +9,10 @@
 //! - `pt1`  — parser (Pro Tracker 1 binary)
 //! - `stc`  — parser (Sound Tracker Compiled binary)
 //! - `stp`  — parser (Sound Tracker Pro binary)
+//! - `ay`   — parser (ZXAY container, ST11 sub-format only)
 //! - All others — **TODO** stubs; see PLAN.md
 
+pub mod ay;
 pub mod pt1;
 pub mod pt2;
 pub mod pt3;
@@ -32,6 +34,7 @@ use anyhow::{bail, Result};
 /// - `.pt1` — Pro Tracker 1 binary
 /// - `.stc` — Sound Tracker Compiled binary
 /// - `.stp` — Sound Tracker Pro binary
+/// - `.ay`  — ZXAY container (ST11 sub-format; imports the first sub-song)
 pub fn load(data: &[u8], filename: &str) -> Result<Module> {
     let ext = filename.rsplit('.').next().unwrap_or("").to_lowercase();
     match ext.as_str() {
@@ -45,6 +48,7 @@ pub fn load(data: &[u8], filename: &str) -> Result<Module> {
         "pt1" => pt1::parse(data),
         "stc" => stc::parse(data),
         "stp" => stp::parse(data),
+        "ay" => ay::parse(data, 0),
         _ => bail!("Unsupported file format: .{}", ext),
     }
 }
