@@ -195,7 +195,8 @@
 - [x] `Synthesizer` struct (chips array, ring buffer, FIR state)
 - [x] `Synthesizer::new()` — initialise with chip type
 - [x] `Synthesizer::apply_registers()` — push AY register snapshot to chip
-- [x] `Synthesizer::render_frame()` — produce N stereo-16 PCM samples
+- [x] `Synthesizer::render_frame()` — produce N stereo-16 PCM samples (performance / test mode)
+- [x] `Synthesizer::render_frame_quality()` — **quality mode**: runs AY chip at correct clock rate (`ay_tiks_in_interrupt` ≈ 4434 ticks / 50 Hz frame), Bresenham upsampler decimates to `sample_tiks_in_interrupt` ≈ 960 audio samples. FIR runs at AY rate. Fixes all-tones-2.2-octaves-too-low bug. (Ports `TBufferMaker.Synthesizer_Stereo16` from `digsoundbuf.pas`)
 - [x] `Synthesizer::drain()` — pull samples from output buffer
 - [x] FIR low-pass filter (windowed-sinc, Hanning window)
 - [x] `calculate_level_tables()` global-volume scaling (`k = exp(vol*ln2/max) - 1`)
@@ -219,6 +220,9 @@
 - [x] Silent chip produces zero output
 - [x] Active tone produces non-zero output
 - [x] Two chips produce ≥ signal of one chip
+- [x] `render_frame_quality` produces correct sample count (~960 ± 1)
+- [x] `render_frame_quality` produces non-zero output with active tone
+- [x] `render_frame_quality` phase is continuous across 3 consecutive frames
 - [ ] Envelope shapes produce correct waveforms end-to-end
 - [ ] `SetStdChannelsAllocation` panning preset values
 

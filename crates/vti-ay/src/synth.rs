@@ -147,6 +147,13 @@ pub struct Synthesizer {
     filt_x_r: Vec<i32>,
     filt_k:   Vec<i32>,
     filt_i:   usize,
+
+    // Bresenham upsampler state for quality mode (persists across frames)
+    // Matches Pascal's Tick_Counter.Re / Tik.Re fields in TBufferMaker.
+    filt_tick_counter: i32, // AY ticks accumulated × 65536 (reset to 0 after each output batch)
+    filt_tik:          i32, // next output trigger point (starts at delay_in_tiks, +delay each sample)
+    filt_last_l:       i32, // last FIR-filtered left value (used as the output sample value)
+    filt_last_r:       i32, // last FIR-filtered right value
 }
 
 impl Synthesizer {
@@ -164,6 +171,10 @@ impl Synthesizer {
             filt_x_r: vec![0; filt_m + 1],
             filt_k: vec![0; filt_m + 1],
             filt_i: 0,
+            filt_tick_counter: 0,
+            filt_tik: 0, // overwritten below after delay is computed
+            filt_last_l: 0,
+            filt_last_r: 0,
         };
         let delay = s.cfg.delay_in_tiks();
         for chip in &mut s.chips {
@@ -171,6 +182,7 @@ impl Synthesizer {
             chip.ay_tiks_in_interrupt = s.cfg.ay_tiks_in_interrupt();
             chip.sample_tiks_in_interrupt = s.cfg.sample_tiks_in_interrupt();
         }
+        s.filt_tik = delay as i32; // Tik.Re starts at Delay_In_Tiks
         s.calc_fir_coefficients();
         s
     }
@@ -192,10 +204,18 @@ impl Synthesizer {
         }
     }
 
-    /// Render one interrupt frame (~1/50 s) of stereo-16 PCM into `output_buf`.
+    // ─── Performance-mode render loop ────────────────────────────────────────
+
+    /// Render `n_samples` audio samples in **performance** (audio-rate) mode.
     ///
-    /// `n_samples` = how many samples to generate (= `ay_tiks_in_interrupt` in
-    /// quality mode, or `sample_tiks_in_interrupt` in performance mode).
+    /// Each call advances the AY chip exactly `n_samples` counter-clock ticks and
+    /// pushes `n_samples` stereo samples to `output_buf`.  This is intentionally
+    /// simpler than quality mode: the chip runs at audio sample rate rather than
+    /// at the correct AY clock rate, which means tones are at the wrong pitch.
+    ///
+    /// Use [`render_frame_quality`](Synthesizer::render_frame_quality) for correct
+    /// audio output.  This method exists for unit tests and the future
+    /// performance-mode path.
     pub fn render_frame(&mut self, n_samples: u32) {
         // Copy level tables locally so the borrow checker allows &mut self
         // calls to apply_filter within the same loop body.
@@ -238,7 +258,81 @@ impl Synthesizer {
         self.output_buf.drain(..n).collect()
     }
 
-    // ─── FIR filter ──────────────────────────────────────────────────────────
+    // ─── Quality-mode render loop ─────────────────────────────────────────────
+
+    /// Render one interrupt frame in **quality** mode.
+    ///
+    /// Faithfully ports `TBufferMaker.Synthesizer_Stereo16` from `digsoundbuf.pas`:
+    ///
+    /// * Runs the AY chip at the correct clock rate (`ay_tiks_in_interrupt` ≈ 4434
+    ///   counter-clock ticks per 50 Hz frame at 1.77 MHz).
+    /// * Uses a Bresenham integer upsampler (`Tick_Counter` / `Tik` mechanism) to
+    ///   decimate the AY-rate output to audio sample rate, producing approximately
+    ///   `sample_tiks_in_interrupt` ≈ 960 samples @ 48 kHz.
+    /// * Upsampler state (`filt_tick_counter`, `filt_tik`) persists across calls so
+    ///   phase is preserved across interrupt boundaries.
+    ///
+    /// The FIR anti-aliasing filter runs at AY clock rate (not audio rate), which
+    /// gives correct alias suppression before the 4.6× decimation step.
+    ///
+    /// Compare with [`render_frame`] which runs at audio rate and is used for tests
+    /// and the (unimplemented) performance mode.
+    pub fn render_frame_quality(&mut self) {
+        let al = self.levels.al;
+        let ar = self.levels.ar;
+        let bl = self.levels.bl;
+        let br = self.levels.br;
+        let cl = self.levels.cl;
+        let cr = self.levels.cr;
+
+        let n_ay = self.chips[0].ay_tiks_in_interrupt;
+        let delay = self.cfg.delay_in_tiks() as i32; // Delay_In_Tiks = 302460
+
+        for _ in 0..n_ay {
+            // ── Bresenham upsampler: output audio sample(s) when due ─────────
+            // Pascal: if Tick_Counter.Re >= Tik.Re then begin
+            //           repeat output; Inc(Tik.Re, Delay); until Tick_Counter.Re < Tik.Re;
+            //           Dec(Tik.Re, Tick_Counter.Re); Tick_Counter.Re := 0; end;
+            if self.filt_tick_counter >= self.filt_tik {
+                loop {
+                    self.output_buf.push(StereoSample {
+                        left:  self.filt_last_l.clamp(-32768, 32767) as i16,
+                        right: self.filt_last_r.clamp(-32768, 32767) as i16,
+                    });
+                    self.filt_tik += delay;
+                    if self.filt_tick_counter < self.filt_tik { break; }
+                }
+                // Pascal: Dec(Tik.Re, Tick_Counter.Re); Tick_Counter.Re := 0;
+                self.filt_tik -= self.filt_tick_counter;
+                self.filt_tick_counter = 0;
+            }
+
+            // ── Advance all chips one AY counter-clock tick ──────────────────
+            let mut lev_l = 0i32;
+            let mut lev_r = 0i32;
+            for c in 0..self.num_chips {
+                self.chips[c].synthesizer_logic_q();
+                self.chips[c].synthesizer_mixer_q(
+                    &al, &ar, &bl, &br, &cl, &cr,
+                    &mut lev_l, &mut lev_r,
+                );
+            }
+
+            // ── FIR anti-aliasing filter (runs at AY clock rate) ─────────────
+            if self.cfg.is_filt {
+                lev_l = self.apply_filter(lev_l, true);
+                lev_r = self.apply_filter(lev_r, false);
+            }
+
+            // Store for output on the next upsampler trigger
+            self.filt_last_l = lev_l;
+            self.filt_last_r = lev_r;
+
+            // Pascal: Inc(Tick_Counter.Hi) → adds 65536 to the 32-bit Tick_Counter
+            self.filt_tick_counter = self.filt_tick_counter.wrapping_add(65536);
+        }
+    }
+
 
     /// Compute windowed-sinc FIR coefficients (Hanning window, cutoff ~0.45 Nyquist).
     fn calc_fir_coefficients(&mut self) {
