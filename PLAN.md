@@ -138,6 +138,26 @@
 - [ ] `LoadAndDetect()` — ZX Spectrum binary magic-number detection
 - [ ] `PrepareZXModule()` — ZX Spectrum memory layout handling
 
+#### 2.5.16 ZXAY container (`formats/ay.rs`) — AY emulator file format
+- [x] `list_songs()` — parse header, enumerate sub-songs with name + `is_supported` flag
+- [x] `parse(data, song_index)` — dispatch to correct sub-format handler
+- [x] **ST11 sub-format** — ST1 binary embedded; convert via `st1_to_stc` then `stc::parse`
+- [x] **EMUL sub-format** — Ay_Emul player format; walk `TAddresses` blocks, identify PT3 block by magic header, parse via `pt3::parse`
+- [x] **AMAD sub-format** — raw Z80 player; metadata extracted but parse returns error (requires Z80 emulator)
+- [x] `NumOfSongs` correctly interpreted as 0-based max index (ZXAY spec: value+1 = actual count)
+- [x] Integration tests: `emul_list_songs_marks_supported`, `emul_parse_roundtrip`, `emul_no_pt3_block_fails`
+
+#### 2.5.17 ZX Spectrum export (`formats/zx_export.rs`) — `ExportZX.pas` port
+- [x] `export_zx()` — dispatch to format-specific builder
+- [x] **EMUL `.ay`** — ZXAY/EMUL container with relocatable PT3 player and PT3 data block
+  - [x] `Offs2` self-relative field computed correctly at byte 54 (was off-by-2)
+- [x] **Hobeta `.$C`** — code block with embedded ZX player
+- [x] **Hobeta `.$M`** — memory block, data only
+- [x] **SCL** — Sinclair disc image (two-file container)
+- [x] **TAP** — ZX Spectrum tape image (two-block pair)
+- [x] Player relocation (word-patch, byte-lo-patch, hi-byte-patch tables)
+- [x] Integration tests: `zx_export_ay_round_trip`, `zx_export_ay_file_signature`, `zx_export_tap_basic_structure`, `zx_export_hobeta_code_header_signature`, `zx_export_scl_header_signature`
+
 ### 2.6 Tests (`tests/integration_tests.rs`)
 - [x] Note table size and value checks
 - [x] `get_note_freq` clamping and fallback
@@ -161,6 +181,7 @@
 - [ ] Sample position jump (command 4)
 - [ ] Ornament position jump (command 5)
 - [ ] PT3 binary round-trip (parse → write → parse)  ← **done, 5 tests passing**
+- [x] ZXAY/EMUL export→parse round-trip (`zx_export_ay_round_trip`)
 
 ---
 
@@ -256,7 +277,7 @@
 - [x] `File → Save as VTM…` — rfd save dialog (native) / File System Access API (WASM) → VTM text output
 - [x] `File → Save as PT3…` — rfd save dialog (native) / File System Access API (WASM) → PT3 binary output
 - [ ] `File → Open` / `File → Save` — show load/save errors and parse failures in an egui modal error dialog (currently only reported in the status bar)
-- [ ] `File → Export ZX` — PT3 to .tap/.tzx (ported from `ExportZX.pas`)
+- [x] `File → Export ZX` — export to `.ay` / `.tap` / `.scl` / `.$c` / `.$m` via `zx_export.rs` (save dialog dispatches by file extension)
 - [ ] Turbo Sound second-chip slot management
 - [ ] Module properties dialog (title, author, delay, tone table)
 - [ ] About dialog (credits to S.V.Bulba)
@@ -557,14 +578,16 @@ should be treated as regressions and investigated before merging.
 | `vti-core` playback engine | ~80% | timing helpers, some effect edge cases |
 | `vti-core` util | ~70% | `get_pattern_line_string`, `get_sample_string` |
 | **PT3 format parser** | ✅ complete | full parse + write (round-trip tested) |
+| **ZXAY (`.ay`) container parser** | ✅ complete | ST11 + EMUL + AMAD sub-formats; round-trip tested |
+| **ZX Spectrum export** | ✅ complete | `.ay`/`.tap`/`.scl`/`.$c`/`.$m`; all formats integration-tested |
 | All other format parsers (12×) | 0% | ~3000 lines of Pascal to port |
 | `vti-ay` chip emulator | ~85% | perf-mode paths, channel presets |
 | `vti-ay` synthesizer | ~75% | channel allocation presets, Turbo Sound |
 | `vti-audio` player | ~60% | render thread, command channel, WAV export |
 | `vti-app` GUI skeleton | ~30% | all editing interaction, dialogs |
 | Build pipeline | ~50% | GitHub Actions release workflow |
-| README | 0% | full write-up |
-| **Integration tests** | ✅ 52 passing | effect-command edge cases, PT3 load/save round-trip |
+| README | ~40% | project description done; format table, full write-up pending |
+| **Integration tests** | ✅ 99 passing | effect-command edge cases, PT3/ZXAY load/save round-trips |
 | **Pascal parity baselines** | ✅ infrastructure done | Fix 4 known bugs (see §9.4) |
 | **Web target (eframe WASM)** | ✅ ~95% | file-dialog fallback done via File System Access API |
 | **Web target (KMP/Compose)** | 0% | `vti-ffi` WASM bindings, Kotlin/Wasm UI (long-term) |

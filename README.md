@@ -58,6 +58,21 @@ playable on real ZX Spectrum hardware and by many emulators.
 | 11 | Sound Tracker Pro (compiled) | `.stp` |
 | 12 | SQ-Tracker (compiled) | `.sqt` |
 | 13 | Amadeus / Fuxoft AY Language | `.fxm`, `.ay` |
+| 14 | ZXAY container (ST11 + EMUL sub-formats) | `.ay` |
+
+---
+
+## Supported Export Formats
+
+| Format | Extension | Description |
+|--------|-----------|-------------|
+| Pro Tracker 3 | `.pt3` | Native format; full round-trip |
+| VTM text | `.vtm` | Human-readable text representation |
+| ZXAY/EMUL | `.ay` | Emulator-compatible container with PT3 player |
+| ZX Tape | `.tap` | ZX Spectrum tape image |
+| Sinclair disc | `.scl` | Sinclair disc image |
+| Hobeta code | `.$c` | Hobeta code block (with player) |
+| Hobeta memory | `.$m` | Hobeta memory block (data only) |
 
 ---
 
@@ -75,11 +90,12 @@ source. See [`PLAN.md`](PLAN.md) for a detailed, checked-off task list.
 - ✅ Cross-platform audio output via `cpal`
 - ✅ egui-based GUI skeleton (pattern view, sample view, ornament view, toolbar)
 - ✅ Playback cursor follow — pattern editor highlights and scrolls to the playing row in real time
-- ✅ 77 integration tests, 0 failing
+- ✅ ZXAY (`.ay`) container parser — ST11 and EMUL sub-formats fully parsed; AMAD metadata-only
+- ✅ ZX Spectrum export — `.ay` (EMUL), `.tap`, `.scl`, `.$c`, `.$m` all working with correct PT3 player embedding
+- ✅ 99 integration tests, 0 failing
 
 ### Still in progress
-- PT3 binary channel decoder / writer
-- All other 12 format parsers
+- All other 12 format parsers (ASC, SQT, GTR, FTC, FLS, PSC, PSM, FXM, …)
 - Full keyboard note-entry in the pattern editor
 - Editable sample / ornament fields
 - Position list editor

@@ -206,6 +206,10 @@ Before starting any new task:
 6. [ ] Run `cargo test -p vti-core -p vti-ay -p vti-audio` — all tests must be green.
 7. [ ] Run `cargo build` — must compile cleanly.
 8. [ ] Commit only green, passing code.
-9. [ ] Update `PLAN.md` to tick off completed items and add any new ones discovered.
-10. [ ] Update `README.md` "What works today" / "Still in progress" sections to match `PLAN.md`.
-11. [ ] Update `Agents.md` with any new architecture decisions, conventions, or key contracts that future agents need to know.
+9. [ ] **Update `PLAN.md`** — tick off every completed item; add any new items discovered during the work.
+10. [ ] **Update `README.md`** — keep "What works today" / "Still in progress" and the test count in sync with `PLAN.md`.
+11. [ ] **Update `Agents.md`** — record any new architecture decisions, contracts, or conventions that future agents must know.
+
+> **These doc updates (steps 9–11) are mandatory for every PR commit, not optional.**
+> A PR that ships code changes without updating `PLAN.md` and `README.md` is incomplete.
+
