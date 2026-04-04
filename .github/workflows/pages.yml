@@ -42,7 +42,7 @@ jobs:
 
       # Verify the WASM target compiles before invoking trunk
       - name: Check WASM build
-        run: cargo check --target wasm32-unknown-unknown
+        run: cargo check --target wasm32-unknown-unknown --bin vortex-tracker
 
       - name: Install trunk
         uses: jetli/trunk-action@v0.5.0

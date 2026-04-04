@@ -63,4 +63,4 @@ jobs:
           key: wasm-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: cargo check (wasm32-unknown-unknown)
-        run: cargo check --target wasm32-unknown-unknown
+        run: cargo check --target wasm32-unknown-unknown --bin vortex-tracker
