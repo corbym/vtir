@@ -2124,3 +2124,80 @@ fn zx_export_duplicate_heavy_module_fits_in_zx_ram() {
         assert!(result.is_ok(), "export {:?} must succeed: {:?}", fmt, result);
     }
 }
+
+// ─── ZXAY / AY format ────────────────────────────────────────────────────────
+
+#[test]
+fn ay_load_minimal_fixture_via_dispatch() {
+    let bytes = include_bytes!("fixtures/tunes/minimal.ay");
+    let module = vti_core::formats::load(bytes, "minimal.ay")
+        .expect("formats::load should parse minimal.ay");
+    assert_eq!(module.title, "Tst");
+    assert_eq!(module.author, "Tst");
+    assert_eq!(module.initial_delay, 6);
+    assert_eq!(module.positions.length, 1);
+}
+
+#[test]
+fn ay_list_songs_minimal_fixture() {
+    let bytes = include_bytes!("fixtures/tunes/minimal.ay");
+    let songs = vti_core::formats::ay::list_songs(bytes)
+        .expect("list_songs should succeed on minimal.ay");
+    assert_eq!(songs.len(), 1);
+    assert!(songs[0].is_supported, "ST11 song should be marked supported");
+    assert_eq!(songs[0].name, "Tst");
+}
+
+#[test]
+fn ay_parse_first_song_has_one_empty_row() {
+    let bytes = include_bytes!("fixtures/tunes/minimal.ay");
+    let module = vti_core::formats::ay::parse(bytes, 0)
+        .expect("ay::parse should succeed");
+    let pat = module.patterns[0].as_deref().expect("pattern 0 must exist");
+    assert_eq!(pat.length, 1);
+    for ch in 0..3 {
+        assert_eq!(
+            pat.items[0].channel[ch].note, NOTE_NONE,
+            "channel {ch} should have no note"
+        );
+    }
+}
+
+#[test]
+fn ay_reject_unknown_extension_unchanged() {
+    let bytes = include_bytes!("fixtures/tunes/minimal.ay");
+    // Loading an .ay file as .xyz should fail (unsupported extension)
+    let result = vti_core::formats::load(bytes, "test.xyz");
+    assert!(result.is_err());
+}
+
+#[test]
+fn ay_reject_invalid_magic() {
+    let mut bytes = include_bytes!("fixtures/tunes/minimal.ay").to_vec();
+    bytes[0..4].copy_from_slice(b"NOPE");
+    let result = vti_core::formats::ay::parse(&bytes, 0);
+    assert!(result.is_err());
+}
+
+#[test]
+fn ay_reject_song_index_out_of_range() {
+    let bytes = include_bytes!("fixtures/tunes/minimal.ay");
+    let result = vti_core::formats::ay::parse(bytes, 99);
+    assert!(result.is_err());
+}
+
+#[test]
+fn ay_smoke_play_first_line() {
+    use vti_core::playback::{Engine, PlayVars, init_tracker_parameters};
+    let bytes = include_bytes!("fixtures/tunes/minimal.ay");
+    let mut module = vti_core::formats::ay::parse(bytes, 0)
+        .expect("ay::parse should succeed");
+    let mut vars = PlayVars::default();
+    init_tracker_parameters(&mut module, &mut vars, true);
+    vars.delay = module.initial_delay as i8;
+    vars.current_pattern = module.positions.value[0] as i32;
+    let mut ay_regs = vti_core::AyRegisters::default();
+    let mut engine = Engine { module: &mut module, vars: &mut vars };
+    // Must not panic
+    engine.module_play_current_line(&mut ay_regs);
+}
