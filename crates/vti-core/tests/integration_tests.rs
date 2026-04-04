@@ -2358,11 +2358,15 @@ fn disabled_channel_does_not_corrupt_mixer_register() {
     //  - Bit 4 = noise ch B → ch B is silent, contributes nothing → 0
     //  - Bits 6,7 = unused by AY → must be 0
 
-    // With the old rotation bug:  ch A contributes bit 3 (noise disable).
-    // When ch B is processed (disabled), the rotation shifts all accumulated bits
-    // right by 1 AND wraps bit 0 to bit 7.  Bit 3 lands at bit 2, and bit 7 is
-    // set to whatever was in bit 0.  The final mixer byte is 0xA0 (bits 5+7)
-    // instead of the correct 0x28 (bits 3+5).
+    // With the old rotation bug:  ch A contributes bit 3 (noise-disable → 0x08).
+    // When ch B is processed (disabled), the rotation right-shifts the byte:
+    //   0x08 >> 1 = 0x04  (bit 3 shifts to bit 2)
+    //   (0x08 << 7) & 0x80 = 0x00  (bit 0 was 0, so bit 7 stays 0)
+    //   → temp_mixer = 0x04 after rotation.
+    // Then ch C adds bit 5: 0x04 | 0x20 = 0x24 (bits 2 and 5).
+    // Correct value should be 0x28 (bits 3 and 5).
+    // The bug moves bit 3 (noise ch A) to bit 2 (noise ch C), corrupting
+    // the channel-to-bit mapping.
 
     // Verify no bits leaked into the upper 2 bits (the rotation bug's signature)
     assert_eq!(

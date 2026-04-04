@@ -135,8 +135,15 @@ pub fn calculate_level_tables(cfg: &AyConfig, chip_type: ChipType) -> LevelTable
 /// begin
 ///   Result := (l1 - l0) * ofs div 65536 + l0;
 /// ```
-/// `ofs` is in the range `[0, 65536]`.  `ofs = 65536` selects `l1` (current);
-/// `ofs = 0` selects `l0` (previous).  The result is clamped to `i16` range.
+/// `ofs` is in the range `[0, 65536]`:
+/// * `ofs = 65536` selects `l1` (current value, exact trigger point).
+/// * `ofs < 65536` blends towards `l0` (previous value) when the output sample
+///   falls between AY clock ticks.
+///
+/// In the Bresenham upsampler the caller guarantees `filt_tick_counter >= filt_tik`
+/// before computing `i = filt_tik − filt_tick_counter + 65536`, which means
+/// `filt_tik − filt_tick_counter ∈ (−65536, 0]` (at most one AY tick of overshoot),
+/// so `i ∈ (0, 65536]`.  The result is clamped to `i16` range.
 #[inline]
 fn interpolate16(l1: i32, l0: i32, ofs: i32) -> i16 {
     let result = (l1 - l0) * ofs / 65536 + l0;
