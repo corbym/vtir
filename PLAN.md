@@ -130,8 +130,8 @@
 - [ ] Full parser
 
 #### 2.5.14 VTM text format
-- [ ] `VTM2TextFile()` — save as text
-- [ ] `LoadModuleFromText()` — parse text format
+- [x] `VTM2TextFile()` — save as text (`vtm::write`)
+- [x] `LoadModuleFromText()` — parse text format (`vtm::parse`)
 
 #### 2.5.15 Format auto-detection
 - [x] `load()` — detect file type from extension, dispatch to correct parser (vtm, pt3, pt2, pt1, stc, stp)
@@ -154,13 +154,13 @@
 - [x] Noise drum decays to silence after 8 ticks (loop on silent tick)
 - [x] Arpeggio module loops after full 16-row pattern
 - [x] Channels A and B both active (non-zero amplitude, tone enabled) after first row
-- [ ] Glide-up / glide-down effect commands
-- [ ] Tone-slide (command 3) target arrival
-- [ ] On/off toggle (command 6)
-- [ ] Envelope-slide (commands 9 and 10)
-- [ ] Sample position jump (command 4)
-- [ ] Ornament position jump (command 5)
-- [ ] PT3 binary round-trip (parse → write → parse)  ← **done, 5 tests passing**
+- [x] Glide-up / glide-down effect commands
+- [x] Tone-slide (command 3) target arrival
+- [x] On/off toggle (command 6)
+- [x] Envelope-slide (commands 9 and 10)
+- [x] Sample position jump (command 4)
+- [x] Ornament position jump (command 5)
+- [x] PT3 binary round-trip (parse → write → parse) — 5 tests passing
 
 ---
 
@@ -256,7 +256,7 @@
 - [x] `File → Save as VTM…` — rfd save dialog (native) / File System Access API (WASM) → VTM text output
 - [x] `File → Save as PT3…` — rfd save dialog (native) / File System Access API (WASM) → PT3 binary output
 - [ ] `File → Open` / `File → Save` — show load/save errors and parse failures in an egui modal error dialog (currently only reported in the status bar)
-- [ ] `File → Export ZX` — PT3 to .tap/.tzx (ported from `ExportZX.pas`)
+- [x] `File → Export ZX` — PT3 to `.tap` / `.scl` / `.ay` / `.hobeta` (ported from `ExportZX.pas`; full ZX player embed)
 - [ ] Turbo Sound second-chip slot management
 - [ ] Module properties dialog (title, author, delay, tone table)
 - [ ] About dialog (credits to S.V.Bulba)
@@ -321,23 +321,19 @@
 - [x] `pascal-baselines.yml` — **manual-only** (`workflow_dispatch`): install `fpc`,
       run `pascal-tests/run_harness.sh`, open a PR with updated fixture files if changed.
       Run this when adding new Pascal test cases or investigating parity regressions.
-- [ ] `release.yml` — triggered on `v*` tags:
-  - [ ] macOS job: `cargo build --release`, create `.app` bundle, package as `.dmg` (using `create-dmg`)
-  - [ ] Windows job: `cargo build --release --target x86_64-pc-windows-msvc`, upload `.exe` as artifact
-  - [ ] Linux job: `cargo build --release`, upload binary as artifact
-  - [ ] Create GitHub Release with all three artifacts
+- [x] `release.yml` — triggered manually (`workflow_dispatch`); builds on all three platforms and creates a draft GitHub Release:
+  - [x] macOS job: universal binary (arm64 + x86_64), `.app` bundle, `.dmg` via `create-dmg`
+  - [x] Windows job: `cargo build --release --target x86_64-pc-windows-msvc`, uploads `.exe` as artifact
+  - [x] Linux job: `cargo build --release`, uploads binary as artifact
+  - [x] Create draft GitHub Release with all three artifacts
 
 ---
 
 ## 7. Documentation
 
-- [ ] Update `README.md`:
-  - [ ] Project description (AY/YM music tracker for ZX Spectrum)
-  - [ ] Original author attribution and thanks (S.V.Bulba)
-  - [ ] Supported file formats
-  - [ ] Build instructions (Rust, ALSA headers on Linux)
-  - [ ] Running the tests
-  - [ ] Screenshots / demo
+- [x] `README.md` — project description, attribution, format table, build instructions, test commands, Pascal parity section, WASM section, crate layout
+- [~] `README.md` — "What works today" / "Still in progress" sections (kept in sync with PLAN.md)
+- [ ] Screenshots / demo GIF in README
 
 ---
 
@@ -516,23 +512,23 @@ truth as committed JSON fixtures and asserts that the Rust code matches them.
 
 ### 9.3 Rust tests (`tests/pascal_baseline_tests.rs` in each crate)
 
-- [x] `vti-ay::noise_lfsr_matches_pascal_baseline` — **currently FAILING** (exposes wrong LFSR taps: Rust bit16⊕19 vs Pascal bit13⊕16, and wrong `noise_val` extraction)
+- [x] `vti-ay::noise_lfsr_matches_pascal_baseline` — passing (fixed: taps corrected to bit13⊕16, `noise_val = (seed >> 16) & 1`)
 - [x] `vti-ay::envelope_shapes_match_pascal_baseline` — passing
 - [x] `vti-ay::envelope_shape_from_register_matches_baseline` — passing
 - [x] `vti-core::pt3_vol_matches_pascal_baseline` — passing
 - [x] `vti-core::note_tables_match_pascal_baseline` — passing
 - [x] `vti-core::pattern_play_basic_matches_pascal_baseline` — passing
-- [x] `vti-core::pattern_play_envelope_matches_pascal_baseline` — **currently FAILING** (exposes missing `env_base` write from pattern row: Rust gives `envelope=0`, Pascal gives `2048`)
+- [x] `vti-core::pattern_play_envelope_matches_pascal_baseline` — passing (fixed: `env_base` now written from `pattern_row.envelope`)
 - [x] `vti-core::pattern_play_arpeggio_matches_pascal_baseline` — passing (covers ornament stepping and noise mixer path)
 
-### 9.4 Known bugs exposed by baselines
+### 9.4 Previously known bugs (all fixed)
 
-| Bug | Test that fails | Rust behaviour | Pascal (correct) behaviour |
-|-----|----------------|----------------|---------------------------|
-| Wrong LFSR taps | `noise_lfsr_matches_pascal_baseline` | Uses bit16⊕19 | Uses bit13⊕16 |
-| Wrong `noise_val` extraction | `noise_lfsr_matches_pascal_baseline` | `seed & 1` (bit0) | `(seed >> 16) & 1` (bit16, union layout) |
-| `env_base` not written from pattern row | `pattern_play_envelope_matches_pascal_baseline` | `envelope = 0` | `envelope = pattern_row.envelope` |
-| `PatternEnd` renders extra frame | (observable with non-stable registers) | Calls `PlayOnly` before return | Exits without calling `PlayOnly` |
+| Bug | Fix |
+|-----|-----|
+| Wrong LFSR taps | Corrected to bit13⊕16 |
+| Wrong `noise_val` extraction | Fixed to `(seed >> 16) & 1` (bit16) |
+| `env_base` not written from pattern row | Now writes `pattern_row.envelope` to `env_base` |
+| `PatternEnd` renders extra frame | Fixed: exits without calling `PlayOnly` on pattern end |
 
 ### 9.5 Workflow for updating baselines (`pascal-baselines.yml`)
 
@@ -554,18 +550,24 @@ should be treated as regressions and investigated before merging.
 | Project setup | ✅ complete | — |
 | `vti-core` data types | ✅ complete | — |
 | `vti-core` note tables | ✅ complete | — |
-| `vti-core` playback engine | ~80% | timing helpers, some effect edge cases |
+| `vti-core` playback engine | ~85% | timing helpers (`GetModuleTime`, `GetPositionTime`) |
 | `vti-core` util | ~70% | `get_pattern_line_string`, `get_sample_string` |
-| **PT3 format parser** | ✅ complete | full parse + write (round-trip tested) |
-| All other format parsers (12×) | 0% | ~3000 lines of Pascal to port |
+| **PT3 format parser + writer** | ✅ complete | round-trip tested |
+| **PT2 format parser** | ✅ complete | round-trip tested |
+| **PT1 format parser** | ✅ complete | round-trip tested |
+| **STC format parser** | ✅ complete | round-trip tested |
+| **STP format parser** | ✅ complete | round-trip tested |
+| **VTM text format** | ✅ complete | read + write, round-trip tested |
+| **ZX Spectrum export** | ✅ complete | `.tap` / `.scl` / `.ay` / `.hobeta`, player embedded |
+| Remaining format parsers (7×) | 0% | ASC, SQT, GTR, FTC, FLS, PSC, PSM, FXM |
 | `vti-ay` chip emulator | ~85% | perf-mode paths, channel presets |
 | `vti-ay` synthesizer | ~75% | channel allocation presets, Turbo Sound |
 | `vti-audio` player | ~60% | render thread, command channel, WAV export |
-| `vti-app` GUI skeleton | ~30% | all editing interaction, dialogs |
-| Build pipeline | ~50% | GitHub Actions release workflow |
-| README | 0% | full write-up |
-| **Integration tests** | ✅ 52 passing | effect-command edge cases, PT3 load/save round-trip |
-| **Pascal parity baselines** | ✅ infrastructure done | Fix 4 known bugs (see §9.4) |
+| `vti-app` GUI skeleton | ~35% | all editing interaction, dialogs |
+| Build pipeline | ✅ complete | CI (build + test + WASM), Pages deploy, release workflow |
+| README | ✅ complete | — |
+| **Integration tests** | ✅ 151 passing | — |
+| **Pascal parity baselines** | ✅ all passing | 4 previously known bugs fixed |
 | **Web target (eframe WASM)** | ✅ ~95% | file-dialog fallback done via File System Access API |
 | **Web target (KMP/Compose)** | 0% | `vti-ffi` WASM bindings, Kotlin/Wasm UI (long-term) |
 | **Android target (KMP/Compose)** | 0% | `vti-ffi` cdylib, UniFFI bindings, Compose UI, `cargo-ndk` pipeline |
