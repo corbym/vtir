@@ -1,0 +1,3852 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+#: languages.mes_allfiles
+msgid "All files"
+msgstr "Все файлы"
+
+#: languages.mes_and
+msgid "and"
+msgstr "и"
+
+#: languages.mes_autparfull
+msgid "Auto Parameters"
+msgstr "Авто параметры"
+
+#: languages.mes_autparmid
+msgid "AutoParams"
+msgstr "АвтоПарам"
+
+#: languages.mes_autparsmall
+msgid "AutoPrms"
+msgstr "АвтоПрм"
+
+#: languages.mes_averager
+msgid "Averager"
+msgstr "Усреднение"
+
+#: languages.mes_badfilestruct
+msgid "Bad file structure"
+msgstr "Неверная структура файла"
+
+#: languages.mes_cantcompiletoobig
+msgid "Cannot compile module due 65536 size limit for PT3-modules. You can save it in text yet."
+msgstr "Не удалось компилировать модуль из-за ограничения размера 65536 для PT3-модулей. Вы ещё можете сохранить его как текст."
+
+#: languages.mes_cantexport
+msgid "Cannot export"
+msgstr "Не удалось экспортировать"
+
+#: languages.mes_cantinitdigsnd
+msgid "Can't initialize digital sound playback"
+msgstr "Не удается инициализировать воспроизведение цифрового звука"
+
+#: languages.mes_cantopen
+msgid "Can't open"
+msgstr "Не могу открыть"
+
+#: languages.mes_chanfull
+msgid "Channel"
+msgstr "Канал"
+
+#: languages.mes_chanmid
+msgid "Chan"
+msgstr "Кнл"
+
+#: languages.mes_conflict
+msgid "conflict"
+msgstr "конфликта"
+
+#: languages.mes_conflicts
+msgid "conflicts"
+msgstr "конфликтов"
+
+#: languages.mes_conflictwith
+msgid "Conflict with"
+msgstr "Конфликт с"
+
+#: languages.mes_conflictwithnote
+msgid "Conflict with note key"
+msgstr "Конфликт с нотной клавишей"
+
+#: languages.mes_convaborted
+msgid "Converted partially (aborted by user)"
+msgstr "Конвертировано частично (прервано пользователем)"
+
+#: languages.mes_convinprogress
+msgid "Conversion in progress, try later..."
+msgstr "Идёт конвертирование, попробуйте позже..."
+
+#: languages.mes_convto
+msgid "Converting to"
+msgstr "Конвертирование в"
+
+#: languages.mes_dueconflict
+msgid "cannot be selected due conflict with value inputting/control keys"
+msgstr "нельзя выбрать из-за конфликта с клавишами управления/ввода значения"
+
+#: languages.mes_edition
+msgid "Edition"
+msgstr "Работа"
+
+#: languages.mes_erremptysam
+msgid "Error: empty sample"
+msgstr "Ошибка: пустой сэмпл"
+
+#: languages.mes_existovr
+msgid "exists. Overwrite?"
+msgstr "существует. Перезаписать?"
+
+#: languages.mes_exppatnotice1
+msgid "To expand pattern size twice original size must be"
+msgstr "Чтобы разредить паттерн в 2 раза исходный размер должен быть"
+
+#: languages.mes_exppatnotice2
+msgid "or smaller."
+msgstr "или меньше."
+
+#: languages.mes_file
+msgctxt "languages.mes_file"
+msgid "File"
+msgstr "Файл"
+
+#: languages.mes_findcapt
+msgid "Find module"
+msgstr "Найти модуль"
+
+#: languages.mes_findcont
+msgid "Continue searching?"
+msgstr "Продолжить поиск?"
+
+#: languages.mes_findintro
+msgid "Please type in some information"
+msgstr "Пожалуйста, введите какую-либо информацию"
+
+#: languages.mes_fir
+msgid "FIR"
+msgstr "КИХ"
+
+#: languages.mes_for
+msgid "for"
+msgstr "для"
+
+#: languages.mes_hintmousewheel
+msgid "Mouse Wheel"
+msgstr "колесо мыши"
+
+#: languages.mes_hintorn1
+msgid "Either note keys in Ornament as notes mode,"
+msgstr "Или нотные клавиши в режиме Орнамент как ноты,"
+
+#: languages.mes_hintorn2
+msgctxt "languages.mes_hintorn2"
+msgid "or range from -96 to +96 in semitones."
+msgstr "или диапазон от -96 до +96 в полутонах."
+
+#: languages.mes_hintorn3
+msgctxt "languages.mes_hintorn3"
+msgid "Use -96 to get C-1 for any base note"
+msgstr "Смещение -96 для любой базовой ноты даст С-1"
+
+#: languages.mes_hintorn4
+msgctxt "languages.mes_hintorn4"
+msgid "(useful for note independent drums, etc.)."
+msgstr "(для барабанов, звучащих одинаково с любой нотой, и т.п.)."
+
+#: languages.mes_hintpatautenv
+msgctxt "languages.mes_hintpatautenv"
+msgid "autoenv."
+msgstr "автоогиб."
+
+#: languages.mes_hintpatautprm
+msgctxt "languages.mes_hintpatautprm"
+msgid "autoparams."
+msgstr "автопарам."
+
+#: languages.mes_hintpatautstp
+msgctxt "languages.mes_hintpatautstp"
+msgid "autostep."
+msgstr "автошага."
+
+#: languages.mes_hintpatautstpval
+msgid "Ctrl+0-9 (by default) for autostep value."
+msgstr "Ctrl+0-9 (по умолчанию) - величина автошага."
+
+#: languages.mes_hintpatenvpasnote1
+msgid "Note keys when envelope period as note."
+msgstr "Нотные клавиши (огибающая как нота)."
+
+#: languages.mes_hintpatenvpasnote2
+msgid "Hold Ctrl+Shift to reach 0th octave."
+msgstr "0-я октава достижима: удерживайте Ctrl+Shift."
+
+#: languages.mes_hintpatenvpcommon
+msgid "Set envelope type to 1-E."
+msgstr "Установите тип огибающей в 1-E."
+
+#: languages.mes_hintpatenvpusual
+msgid "Envelope generator period (0-FFFF)."
+msgstr "Период генератора огибающей (0-FFFF)."
+
+#: languages.mes_hintpatenvt1
+msgid "Envelope type (1-E) or envelope off (F)."
+msgstr "Тип огибающей (1-E) или её отключение (F)."
+
+#: languages.mes_hintpatenvt2
+msgid "0th ornament can be set only with 1-F."
+msgstr "0-й орнамент можно включить только с 1-F."
+
+#: languages.mes_hintpatlen1
+msgid "Pattern length (Up/Down to change by 1"
+msgstr "Длина паттерна (Up/Down для изменения на 1"
+
+#: languages.mes_hintpatlen2
+msgid "by highlight step)"
+msgstr "на величину шага подсветки)"
+
+#: languages.mes_hintpatnsp
+msgid "Noise generator period base (0-1F)."
+msgstr "База периода генератора шума (0-1F)."
+
+#: languages.mes_hintpatnt1
+msgid "Note (from C-1 to B-8)."
+msgstr "Нота (от C-1 до B-8)."
+
+#: languages.mes_hintpatnt2
+msgid "Num1-8 (by default) for octave."
+msgstr "Num1-8 (по умолчанию) для октавы."
+
+#: languages.mes_hintpatnt3
+msgid "R-- (release)."
+msgstr "R-- (отжать)."
+
+#: languages.mes_hintpatorn1
+msgid "Ornament (0-F). Double click to edit."
+msgstr "Орнамент (0-F). Двойной щелчок - редактор."
+
+#: languages.mes_hintpatorn2
+msgid "0th can be set only with envtype or off (1-F)."
+msgstr "0-й - только с типом или отключением огибающей (1-F)."
+
+#: languages.mes_hintpatsam1
+msgid "Sample (1-9,A-V). Double click to edit."
+msgstr "Сэмпл (1-9,A-V). Двойной щелчок - редактор."
+
+#: languages.mes_hintpatsam2
+msgctxt "languages.mes_hintpatsam2"
+msgid "Use with Note or R--."
+msgstr "Используйте с нотой или с R--."
+
+#: languages.mes_hintpatspeccmd1_1
+msgctxt "languages.mes_hintpatspeccmd1_1"
+msgid "Spec. command (1/2 tone down/up,"
+msgstr "Спец. команда (1/2 тон вниз/вверх,"
+
+#: languages.mes_hintpatspeccmd1_2
+msgctxt "languages.mes_hintpatspeccmd1_2"
+msgid "3 porto, 4 sam offset, 5 orn offset,"
+msgstr "3 порто, 4 смещ. сэмпла, 5 смещ. орн.,"
+
+#: languages.mes_hintpatspeccmd1_3
+msgctxt "languages.mes_hintpatspeccmd1_3"
+msgid "6 vibrato, 9/A env down/up, B speed)."
+msgstr "6 вибрато, 9/A огиб. вниз/вверх, B скорость)."
+
+#: languages.mes_hintpatspeccmd2_1
+msgctxt "languages.mes_hintpatspeccmd2_1"
+msgid "Delay for spec. commands 1-3/9-A"
+msgstr "Период для спец. команд 1-3/9-A"
+
+#: languages.mes_hintpatspeccmd2_2
+msgctxt "languages.mes_hintpatspeccmd2_2"
+msgid "(1-F for change period, 0 to stop)."
+msgstr "(1-F - период изменений, 0 - стоп)."
+
+#: languages.mes_hintpatspeccmd3_1
+msgctxt "languages.mes_hintpatspeccmd3_1"
+msgid "High digit of parameter (0-F)"
+msgstr "Старшая цифра параметра (0-F)"
+
+#: languages.mes_hintpatspeccmd3_2
+msgctxt "languages.mes_hintpatspeccmd3_2"
+msgid "for spec. commands 1-5/9-B"
+msgstr "для спец. команд 1-5/9-B"
+
+#: languages.mes_hintpatspeccmd3_3
+msgctxt "languages.mes_hintpatspeccmd3_3"
+msgid "or 1st parameter for command 6"
+msgstr "или 1-й параметр команды 6"
+
+#: languages.mes_hintpatspeccmd3_4
+msgctxt "languages.mes_hintpatspeccmd3_4"
+msgid "(1-F for sound on period, 0 to stop)."
+msgstr "(1-F период со звуком, 0 - стоп)."
+
+#: languages.mes_hintpatspeccmd4_1
+msgctxt "languages.mes_hintpatspeccmd4_1"
+msgid "Low digit of parameter (0-F)"
+msgstr "Младшая цифра параметра (0-F)"
+
+#: languages.mes_hintpatspeccmd4_2
+msgctxt "languages.mes_hintpatspeccmd4_2"
+msgid "for spec. commands 1-5/9-B"
+msgstr "для спец. команд 1-5/9-B"
+
+#: languages.mes_hintpatspeccmd4_3
+msgctxt "languages.mes_hintpatspeccmd4_3"
+msgid "or 2nd parameter for command 6"
+msgstr "или 2-й параметр команды 6"
+
+#: languages.mes_hintpatspeccmd4_4
+msgctxt "languages.mes_hintpatspeccmd4_4"
+msgid "(1-F for sound off period,"
+msgstr "(1-F период без звука,"
+
+#: languages.mes_hintpatspeccmd4_5
+msgctxt "languages.mes_hintpatspeccmd4_5"
+msgid "0 to stop after sound on period)."
+msgstr "0 - стоп после периода со звуком)."
+
+#: languages.mes_hintpatvol
+msgctxt "languages.mes_hintpatvol"
+msgid "Volume (1-F). Use R-- instead of 0."
+msgstr "Громкость (1-F). Вместо 0 ставьте R--."
+
+#: languages.mes_hintsamamp1
+msgid "Absolute amplitude (1-F)."
+msgstr "Исходная амплитуда (1-F)."
+
+#: languages.mes_hintsamamp2
+msgid "Actual one depends on sample volume."
+msgstr "Реальная зависит от громкости сэмпла."
+
+#: languages.mes_hintsame
+msgid "Envelope using (E for enabling)."
+msgstr "Использование огибающей (E - разрешено)."
+
+#: languages.mes_hintsamend1
+msgid "MMB or (MIDI) keyboard to edit,"
+msgstr "СКМ или (MIDI-)клавиатура - редактировать,"
+
+#: languages.mes_hintsamend2
+msgid "RMB for menu or to draw amplitude."
+msgstr "ПКМ для меню или рисования амплитуды."
+
+#: languages.mes_hintsamend3
+msgid "RMB for menu, LMB to draw amplitude."
+msgstr "ПКМ - меню, ЛКМ - рисовать амплитуду."
+
+#: languages.mes_hintsamn
+msgid "Noise generator mask (N to turn on)."
+msgstr "Маска генератора шума (N - включить)."
+
+#: languages.mes_hintsamnshift1
+msgid "Shift for noise/envelope period (-10...+F)."
+msgstr "Сдвиг периода шума/огибающей (-10...+F)."
+
+#: languages.mes_hintsamnshift2
+msgid "For noise if mask is N, for envelope otherwise."
+msgstr "Для шума, если маска N, иначе для огибающей."
+
+#: languages.mes_hintsamnshiftabs1
+msgid "Absolute 5-bit value of noise/envelope shift (0-1F)."
+msgstr "Беззнаковое 5-битное представление сдвига шума/огибающей (0-1F)."
+
+#: languages.mes_hintsamnshiftabs2
+msgid "Can be treated as final value"
+msgstr "Можно считать конечным значением"
+
+#: languages.mes_hintsamnshiftabs3
+msgid "if used with 0 noise base in tracks."
+msgstr "если используется с нулевой базой шума в треках."
+
+#: languages.mes_hintsamnshiftacc
+msgid "Noise/envelope slide mark (^ to use, _ to non)."
+msgstr "Отметка слайда шума/огибащей (^ - есть, _ - нет)."
+
+#: languages.mes_hintsamnshifts
+msgid "Sign of shift for noise/envelope generator period."
+msgstr "Знак сдвига периода генератора шума/огибающей."
+
+#: languages.mes_hintsamt
+msgid "Tone generator mask (T to turn on)."
+msgstr "Маска генератора тона (T - включить)."
+
+#: languages.mes_hintsamtshift
+msgid "Shift for tone generator period (-FFF...+FFF)."
+msgstr "Сдвиг периода генератора тона (-FFF...+FFF)."
+
+#: languages.mes_hintsamtshiftacc
+msgctxt "languages.mes_hintsamtshiftacc"
+msgid "Tone slide mark (^ to use, _ to non)."
+msgstr "Отметка слайда тона (^ - есть, _ - нет)."
+
+#: languages.mes_hintsamtshiftasnote1
+msgid "Note of final tone period for base in test line"
+msgstr "Слышимая нота относительно базы в тестовой строке"
+
+#: languages.mes_hintsamtshiftasnote2
+msgid "(= exact, >< no more than a quarter tone)."
+msgstr "(= точно, >< не более четверти тона)."
+
+#: languages.mes_hintsamtshifts
+msgid "Sign of shift for tone generator period."
+msgstr "Знак сдвига периода генератора тона."
+
+#: languages.mes_hintsamvolacc1
+msgid "Sample volume slide mark"
+msgstr "Знак изменения громкости сэмпла"
+
+#: languages.mes_hintsamvolacc2
+msgid "(+ to increase, - to decrease, _ to keep)."
+msgstr "(+ увеличить, - уменьшить, _ не менять)."
+
+#: languages.mes_hintsamvolacc3
+msgid "Initially 0 (amplitude kept),"
+msgstr "Изначально 0 (амплитуда не меняется),"
+
+#: languages.mes_hintsamvolacc4
+msgid "range -F...+F (from muted to maximized)."
+msgstr "диапазон -F...+F (от тишины до максимума)."
+
+#: languages.mes_hinttestorn
+msgid "Test line for ornament"
+msgstr "Тестовая строка орнамента"
+
+#: languages.mes_hinttestpat
+msgctxt "languages.mes_hinttestpat"
+msgid "Test line and Auto Parameters' values"
+msgstr "Тестовая строка и значения автопараметров"
+
+#: languages.mes_hinttestsam
+msgid "Test line for sample"
+msgstr "Тестовая строка сэмпла"
+
+#: languages.mes_hinttglautenv
+msgid "Toggle autoenvelope"
+msgstr "Включить автоогибающую"
+
+#: languages.mes_hinttglautstp
+msgid "Toggle autostep"
+msgstr "Включить автошаг"
+
+#: languages.mes_hinttglprm
+msgid "Toggle auto fill parameters while inputting note"
+msgstr "Включить автозаполнение параметров во время ввода ноты"
+
+#: languages.mes_hintvolctrl
+msgid "Volume control"
+msgstr "Управление громкостью"
+
+#: languages.mes_hintwhenedit
+msgid "when editing tracks"
+msgstr "во время редактирования треков"
+
+#: languages.mes_hobetasizetoobig
+msgid "Size of hobeta file exceeds 255 sectors."
+msgstr "Размер файла hobeta превышает 255 секторов."
+
+#: languages.mes_iceerr
+msgid "Error while packing"
+msgstr "Ошибка во время сжатия"
+
+#: languages.mes_iceerrbufsmall
+msgid "destination buffer too small, error at source offset"
+msgstr "буфер назначения слишком мал, ошибка по адресу источника"
+
+#: languages.mes_iceerrempty
+msgid "empty archive."
+msgstr "пустой архив."
+
+#: languages.mes_iceerrunpkbl
+msgid "too many unpackable bytes found before source offset"
+msgstr "слишком много несжимаемых байтов найдено перед адресом источника"
+
+#: languages.mes_ignoring
+msgid "ignoring"
+msgstr "игнорированием"
+
+#: languages.mes_inputpatlen
+msgid "Input length from 1 to 256:"
+msgstr "Введите размер от 1 до 256:"
+
+#: languages.mes_ischangedsave
+msgid "is changed. Save it now?"
+msgstr "изменена. Сохранить её сейчас?"
+
+#: languages.mes_loaderrbadpat
+msgid "Bad pattern structure"
+msgstr "Неверная структура паттерна"
+
+#: languages.mes_loaderrbadsam
+msgid "Bad sample structure"
+msgstr "Неверная структура сэмпла"
+
+#: languages.mes_loaderrcapt
+msgid "Text module loader error"
+msgstr "Ошибка загрузки текстового модуля"
+
+#: languages.mes_loaderrline
+msgid "line"
+msgstr "строка"
+
+#: languages.mes_loaderrmodnotfound
+msgid "Module not found"
+msgstr "Модуль не найден"
+
+#: languages.mes_loaderrrange
+msgid "Parameter out of range"
+msgstr "Параметр вне диапазона"
+
+#: languages.mes_loaderrsyntax
+msgid "Syntax error"
+msgstr "Синтаксическая ошибка"
+
+#: languages.mes_loaderrunend
+msgid "Unexpected end of file"
+msgstr "Неожиданный конец файла"
+
+#: languages.mes_loadorn
+msgid "Load ornament from text file"
+msgstr "Загрузить орнамент из текстового файла"
+
+#: languages.mes_loadpat
+msgid "Load pattern from text file"
+msgstr "Загрузить паттерн из текстового файла"
+
+#: languages.mes_loadsam
+msgid "Load sample from text file"
+msgstr "Загрузить сэмпл из текстового файла"
+
+#: languages.mes_midihint1
+msgid "MIDI Keyboard"
+msgstr "MIDI-клавиатура"
+
+#: languages.mes_midihint2
+msgid "Waiting for MIDI input device appearance, click to switch off"
+msgstr "Ожидание появления устройства ввода MIDI, нажмите для отключения"
+
+#: languages.mes_midihint3
+msgid "Manually switched off, click to switch on or to start waiting"
+msgstr "Отключено вручную, нажмите для включения или для перехода в режим ожидания"
+
+#: languages.mes_midihint4
+msgid "opened, click to toggle next or to switch off"
+msgstr "используется, нажмите для переключения на другую или для выключения"
+
+#: languages.mes_ms
+msgid "ms"
+msgstr "мс"
+
+#: languages.mes_newmod
+msgid "new module"
+msgstr "новый модуль"
+
+#: languages.mes_nk_do
+msgid "Do"
+msgstr "До"
+
+#: languages.mes_nk_do2
+msgid "Do +1"
+msgstr "До +1"
+
+#: languages.mes_nk_do3
+msgid "Do +2"
+msgstr "До +2"
+
+#: languages.mes_nk_dodiesis
+msgid "Do Diesis"
+msgstr "До диез"
+
+#: languages.mes_nk_dodiesis2
+msgid "Do Diesis +1"
+msgstr "До диез +1"
+
+#: languages.mes_nk_dodiesis3
+msgid "Do Diesis +2"
+msgstr "До диез +2"
+
+#: languages.mes_nk_empty
+msgid "Empty"
+msgstr "Пусто"
+
+#: languages.mes_nk_fa
+msgid "Fa"
+msgstr "Фа"
+
+#: languages.mes_nk_fa2
+msgid "Fa +1"
+msgstr "Фа +1"
+
+#: languages.mes_nk_fa3
+msgid "Fa +2"
+msgstr "Фа +2"
+
+#: languages.mes_nk_fadiesis
+msgid "Fa Diesis"
+msgstr "Фа диез"
+
+#: languages.mes_nk_fadiesis2
+msgid "Fa Diesis +1"
+msgstr "Фа диез +1"
+
+#: languages.mes_nk_fadiesis3
+msgid "Fa Diesis +2"
+msgstr "Фа диез +2"
+
+#: languages.mes_nk_la
+msgid "La"
+msgstr "Ля"
+
+#: languages.mes_nk_la2
+msgid "La +1"
+msgstr "Ля +1"
+
+#: languages.mes_nk_ladiesis
+msgid "La Diesis"
+msgstr "Ля диез"
+
+#: languages.mes_nk_ladiesis2
+msgid "La Diesis +1"
+msgstr "Ля диез +1"
+
+#: languages.mes_nk_mi
+msgid "Mi"
+msgstr "Ми"
+
+#: languages.mes_nk_mi2
+msgid "Mi +1"
+msgstr "Ми +1"
+
+#: languages.mes_nk_mi3
+msgid "Mi +2"
+msgstr "Ми +2"
+
+#: languages.mes_nk_no
+msgid "Not defined"
+msgstr "Не задано"
+
+#: languages.mes_nk_octave1
+msgid "Octave 1"
+msgstr "Октава 1"
+
+#: languages.mes_nk_octave2
+msgid "Octave 2"
+msgstr "Октава 2"
+
+#: languages.mes_nk_octave3
+msgid "Octave 3"
+msgstr "Октава 3"
+
+#: languages.mes_nk_octave4
+msgid "Octave 4"
+msgstr "Октава 4"
+
+#: languages.mes_nk_octave5
+msgid "Octave 5"
+msgstr "Октава 5"
+
+#: languages.mes_nk_octave6
+msgid "Octave 6"
+msgstr "Октава 6"
+
+#: languages.mes_nk_octave7
+msgid "Octave 7"
+msgstr "Октава 7"
+
+#: languages.mes_nk_octave8
+msgid "Octave 8"
+msgstr "Октава 8"
+
+#: languages.mes_nk_re
+msgid "Re"
+msgstr "Ре"
+
+#: languages.mes_nk_re2
+msgid "Re +1"
+msgstr "Ре +1"
+
+#: languages.mes_nk_re3
+msgid "Re +2"
+msgstr "Ре +2"
+
+#: languages.mes_nk_rediesis
+msgid "Re Diesis"
+msgstr "Ре диез"
+
+#: languages.mes_nk_rediesis2
+msgid "Re Diesis +1"
+msgstr "Ре диез +1"
+
+#: languages.mes_nk_rediesis3
+msgid "Re Diesis +2"
+msgstr "Ре диез +2"
+
+#: languages.mes_nk_release
+msgid "Release"
+msgstr "Отжать"
+
+#: languages.mes_nk_si
+msgid "Si"
+msgstr "Си"
+
+#: languages.mes_nk_si2
+msgid "Si +1"
+msgstr "Си +1"
+
+#: languages.mes_nk_sol
+msgid "Sol"
+msgstr "Соль"
+
+#: languages.mes_nk_sol2
+msgid "Sol +1"
+msgstr "Соль +1"
+
+#: languages.mes_nk_sol3
+msgid "Sol +2"
+msgstr "Соль +2"
+
+#: languages.mes_nk_soldiesis
+msgid "Sol Diesis"
+msgstr "Соль диез"
+
+#: languages.mes_nk_soldiesis2
+msgid "Sol Diesis +1"
+msgstr "Соль диез +1"
+
+#: languages.mes_no2ndchip
+msgid "2nd soundchip is disabled"
+msgstr "2-й звуковой чип отключён"
+
+#: languages.mes_notekeys
+msgid "Note keys"
+msgstr "Нотные клавиши"
+
+#: languages.mes_or
+msgid "or"
+msgstr "или"
+
+#: languages.mes_orgenerror
+msgid "Plug-in communication error: cannot delete file."
+msgstr "Ошибка работы с плагином: не удалось удалить файл."
+
+#: languages.mes_ornnotfound
+msgid "Ornament data not found"
+msgstr "Не найдены данные орнамента"
+
+#: languages.mes_packcant
+msgid "Can't pack it, sorry..."
+msgstr "Не могу запаковать, простите..."
+
+#: languages.mes_packnoneed
+msgid "No reason to pack empty pattern."
+msgstr "Нет смысла паковать пустой паттерн."
+
+#: languages.mes_patnotfound
+msgid "Pattern data not found"
+msgstr "Не найдены данные паттерна"
+
+#: languages.mes_patternsinorder
+msgid "Nothing to do: patterns already in order"
+msgstr "Без изменений: паттерны уже по порядку"
+
+#: languages.mes_poslstnoroomtopaste
+msgid "No room in position list to paste selected patterns"
+msgstr "Нет места в списке позиций для вставки выбранных паттернов"
+
+#: languages.mes_pt36tryts
+msgid "This PT 3.6 module can contain Turbo Sound data. Try to import?"
+msgstr "Этот модуль PT 3.6 может содержать данные для Turbo Sound. Попробовать импортировать?"
+
+#: languages.mes_pts
+msgid "pts"
+msgstr "тчк"
+
+#: languages.mes_removeing
+msgid "removing"
+msgstr "удалением"
+
+#: languages.mes_samewith
+msgid "Same with"
+msgstr "Совпадает с"
+
+#: languages.mes_samewithnote
+msgid "Same with note key"
+msgstr "Совпадает с нотной клавишей"
+
+#: languages.mes_samnotfound
+msgid "Sample data not found"
+msgstr "Не найдены данные сэмпла"
+
+#: languages.mes_saveorn
+msgid "Save ornament in text file"
+msgstr "Сохранить орнамент в текстовом файле"
+
+#: languages.mes_savepat
+msgid "Save pattern in text file"
+msgstr "Сохранить паттерн в текстовом файле"
+
+#: languages.mes_savesam
+msgid "Save sample in text file"
+msgstr "Сохранить сэмпл в текстовом файле"
+
+#: languages.mes_sca_chipchans
+msgid "Toggle chip channels"
+msgstr "Перебор каналов микросхемы"
+
+#: languages.mes_sca_chiptype
+msgid "Toggle chip type"
+msgstr "Перебор типа микросхемы"
+
+#: languages.mes_sca_editcopy
+msgid "Menu Edit->Copy"
+msgstr "Меню Правка->Копировать"
+
+#: languages.mes_sca_editcut
+msgid "Menu Edit->Cut"
+msgstr "Меню Правка->Вырезать"
+
+#: languages.mes_sca_editglobaltransposition
+msgid "Menu Edit->Global transposition"
+msgstr "Меню Правка->Глобальное транспонирование"
+
+#: languages.mes_sca_editorautoenv
+msgctxt "languages.mes_sca_editorautoenv"
+msgid "Toggle auto envelope"
+msgstr "Включение авто огибающей"
+
+#: languages.mes_sca_editorautoenvstd
+msgid "Toggle envelope standard combinations"
+msgstr "Перебор стандартных комбинаций огибающей"
+
+#: languages.mes_sca_editorautoprms
+msgctxt "languages.mes_sca_editorautoprms"
+msgid "Toggle auto parameters"
+msgstr "Включение авто параметров"
+
+#: languages.mes_sca_editorautostep
+msgctxt "languages.mes_sca_editorautostep"
+msgid "Toggle auto step"
+msgstr "Включение авто шага"
+
+#: languages.mes_sca_editpaste
+msgid "Menu Edit->Paste"
+msgstr "Меню Правка->Вставить"
+
+#: languages.mes_sca_editredo
+msgid "Menu Edit->Redo"
+msgstr "Меню Правка->Вернуть"
+
+#: languages.mes_sca_edittracksmanager
+msgid "Menu Edit->Tracks manager"
+msgstr "Меню Правка->Управление треками"
+
+#: languages.mes_sca_editundo
+msgid "Menu Edit->Undo"
+msgstr "Меню Правка->Отменить"
+
+#: languages.mes_sca_fileclose
+msgid "Menu File->Close"
+msgstr "Меню Файл->Закрыть"
+
+#: languages.mes_sca_fileclose2
+msgid "Menu File->Close alternative"
+msgstr "Меню Файл->Закрыть альтернатива"
+
+#: languages.mes_sca_fileexit
+msgid "Menu File->Exit"
+msgstr "Меню Файл->Выйти"
+
+#: languages.mes_sca_fileexportpsg
+msgid "Menu File->Exports->PSG"
+msgstr "Меню Файл->Экспорт->PSG"
+
+#: languages.mes_sca_fileexportsndh
+msgid "Menu File->Exports->SNDH"
+msgstr "Меню Файл->Экспорт->SNDH"
+
+#: languages.mes_sca_fileexportwav
+msgid "Menu File->Exports->WAV"
+msgstr "Меню Файл->Экспорт->WAV"
+
+#: languages.mes_sca_fileexportzx
+msgid "Menu File->Exports->ZX"
+msgstr "Меню Файл->Экспорт->ZX"
+
+#: languages.mes_sca_filenew
+msgid "Menu File->New"
+msgstr "Меню Файл->Создать"
+
+#: languages.mes_sca_fileopen
+msgid "Menu File->Open"
+msgstr "Меню Файл->Открыть"
+
+#: languages.mes_sca_fileoptions
+msgid "Menu File->Options"
+msgstr "Меню Файл->Настройки"
+
+#: languages.mes_sca_filesave
+msgid "Menu File->Save"
+msgstr "Меню Файл->Сохранить"
+
+#: languages.mes_sca_filesaveas
+msgid "Menu File->Save As..."
+msgstr "Меню Файл->Сохранить как..."
+
+#: languages.mes_sca_helpabout
+msgid "Menu Help->About"
+msgstr "Меню Помощь->О программе"
+
+#: languages.mes_sca_helpguide
+msgid "Menu Help->Quick guide"
+msgstr "Меню Помощь->Краткое руководство"
+
+#: languages.mes_sca_helpmanual
+msgid "Menu Help->Manual"
+msgstr "Меню Помощь->Руководство"
+
+#: languages.mes_sca_miditoggle
+msgid "Switch/toggle MIDI keyboards"
+msgstr "Включение/перебор MIDI-клавиатур"
+
+#: languages.mes_sca_midivolume
+msgid "Use MIDI NoteOn's volume"
+msgstr "Использовать громкость из MIDI-события NoteOn"
+
+#: languages.mes_sca_octave1
+msgid "Select octave 1"
+msgstr "Выбрать октаву 1"
+
+#: languages.mes_sca_octave2
+msgid "Select octave 2"
+msgstr "Выбрать октаву 2"
+
+#: languages.mes_sca_octave3
+msgid "Select octave 3"
+msgstr "Выбрать октаву 3"
+
+#: languages.mes_sca_octave4
+msgid "Select octave 4"
+msgstr "Выбрать октаву 4"
+
+#: languages.mes_sca_octave5
+msgid "Select octave 5"
+msgstr "Выбрать октаву 5"
+
+#: languages.mes_sca_octave6
+msgid "Select octave 6"
+msgstr "Выбрать октаву 6"
+
+#: languages.mes_sca_octave7
+msgid "Select octave 7"
+msgstr "Выбрать октаву 7"
+
+#: languages.mes_sca_octave8
+msgid "Select octave 8"
+msgstr "Выбрать октаву 8"
+
+#: languages.mes_sca_ornamentbegin
+msgid "Cursor to first value"
+msgstr "Курсор к первому значению"
+
+#: languages.mes_sca_ornamentbegin2
+msgid "Cursor to first value alternative"
+msgstr "Курсор к первому значению альтернатива"
+
+#: languages.mes_sca_ornamentcolumnleft
+msgctxt "languages.mes_sca_ornamentcolumnleft"
+msgid "Cursor left"
+msgstr "Курсор влево"
+
+#: languages.mes_sca_ornamentcolumnright
+msgctxt "languages.mes_sca_ornamentcolumnright"
+msgid "Cursor right"
+msgstr "Курсор вправо"
+
+#: languages.mes_sca_ornamentcolumnshownfirst
+msgid "Cursor to first shown column"
+msgstr "Курсор в первую отображённую колонку"
+
+#: languages.mes_sca_ornamentcolumnshownlast
+msgid "Cursor to last shown column"
+msgstr "Курсор в последнюю отображённую колонку"
+
+#: languages.mes_sca_ornamentdeleteline
+msgid "Delete ornament line"
+msgstr "Удалить строку из орнамента"
+
+#: languages.mes_sca_ornamentdeleteline2
+msgid "Delete ornament line alternative"
+msgstr "Удалить строку из орнамента альтернатива"
+
+#: languages.mes_sca_ornamentdown
+msgctxt "languages.mes_sca_ornamentdown"
+msgid "Cursor down"
+msgstr "Курсор вниз"
+
+#: languages.mes_sca_ornamentend
+msgid "Cursor to last value"
+msgstr "Курсор к последнему значению"
+
+#: languages.mes_sca_ornamentend2
+msgid "Cursor to last value alternative"
+msgstr "Курсор к последнему значению альтернатива"
+
+#: languages.mes_sca_ornamentinsertline
+msgid "Insert ornament line"
+msgstr "Вставить строку в орнамент"
+
+#: languages.mes_sca_ornamentinsertline2
+msgid "Insert ornament line alternative"
+msgstr "Вставить строку в орнамент альтернатива"
+
+#: languages.mes_sca_ornamentjumptotest
+msgctxt "languages.mes_sca_ornamentjumptotest"
+msgid "Jump to test line"
+msgstr "Перейти к тестовой строке"
+
+#: languages.mes_sca_ornamentminus
+msgctxt "languages.mes_sca_ornamentminus"
+msgid "Set minus sign"
+msgstr "Установить знак минус"
+
+#: languages.mes_sca_ornamentminus2
+msgctxt "languages.mes_sca_ornamentminus2"
+msgid "Set minus sign alternative"
+msgstr "Установить знак минус альтернатива"
+
+#: languages.mes_sca_ornamentpagedown
+msgctxt "languages.mes_sca_ornamentpagedown"
+msgid "Cursor page down"
+msgstr "Курсор на страницу вниз"
+
+#: languages.mes_sca_ornamentpageup
+msgctxt "languages.mes_sca_ornamentpageup"
+msgid "Cursor page up"
+msgstr "Курсор на страницу вверх"
+
+#: languages.mes_sca_ornamentplus
+msgctxt "languages.mes_sca_ornamentplus"
+msgid "Set plus sign"
+msgstr "Установить знак плюс"
+
+#: languages.mes_sca_ornamentplus2
+msgctxt "languages.mes_sca_ornamentplus2"
+msgid "Set plus sign alternative"
+msgstr "Установить знак плюс альтернатива"
+
+#: languages.mes_sca_ornamentplus3
+msgctxt "languages.mes_sca_ornamentplus3"
+msgid "Set plus sign alternative"
+msgstr "Установить знак плюс альтернатива"
+
+#: languages.mes_sca_ornamentselectall
+msgctxt "languages.mes_sca_ornamentselectall"
+msgid "Select all"
+msgstr "Выделить всё"
+
+#: languages.mes_sca_ornamentselectall2
+msgctxt "languages.mes_sca_ornamentselectall2"
+msgid "Select all alternative"
+msgstr "Выделить всё альтернатива"
+
+#: languages.mes_sca_ornamentselectionclear
+msgctxt "languages.mes_sca_ornamentselectionclear"
+msgid "Clear selection"
+msgstr "Очистить выделение"
+
+#: languages.mes_sca_ornamentselectioncut
+msgctxt "languages.mes_sca_ornamentselectioncut"
+msgid "Cut selection to clipboard"
+msgstr "Вырезать выделение в буфер обмена"
+
+#: languages.mes_sca_ornamenttoggle
+msgid "Toggle sign"
+msgstr "Изменить знак"
+
+#: languages.mes_sca_ornamentup
+msgctxt "languages.mes_sca_ornamentup"
+msgid "Cursor up"
+msgstr "Курсор вверх"
+
+#: languages.mes_sca_patlenstepdec
+msgid "Decrease by highlight step value"
+msgstr "Уменьшить на величину шага подсветки"
+
+#: languages.mes_sca_patlenstepinc
+msgid "Increase by highlight step value"
+msgstr "Увеличить на величину шага подсветки"
+
+#: languages.mes_sca_patternautoenv
+msgctxt "languages.mes_sca_patternautoenv"
+msgid "Toggle auto envelope"
+msgstr "Включение авто огибающей"
+
+#: languages.mes_sca_patternautoprms
+msgctxt "languages.mes_sca_patternautoprms"
+msgid "Toggle auto parameters"
+msgstr "Включение авто параметров"
+
+#: languages.mes_sca_patternautostep
+msgctxt "languages.mes_sca_patternautostep"
+msgid "Toggle auto step"
+msgstr "Включение авто шага"
+
+#: languages.mes_sca_patternclearline
+msgid "Clear pattern line"
+msgstr "Очистить строку в паттерне"
+
+#: languages.mes_sca_patterncopy
+msgid "Copy selection to clipboard"
+msgstr "Копировать выделение в буфер обмена"
+
+#: languages.mes_sca_patterncut
+msgctxt "languages.mes_sca_patterncut"
+msgid "Cut selection to clipboard"
+msgstr "Вырезать выделение в буфер обмена"
+
+#: languages.mes_sca_patterndeleteline
+msgid "Delete pattern line"
+msgstr "Удалить строку в паттерне"
+
+#: languages.mes_sca_patterndeleteline2
+msgid "Delete pattern line alternative"
+msgstr "Удалить строку в паттерне альтернатива"
+
+#: languages.mes_sca_patternexpand
+msgctxt "languages.mes_sca_patternexpand"
+msgid "Expand pattern"
+msgstr "Разредить паттерн"
+
+#: languages.mes_sca_patternfirstlinebegin
+msgctxt "languages.mes_sca_patternfirstlinebegin"
+msgid "Cursor first line begin"
+msgstr "Курсор в начало первой строки"
+
+#: languages.mes_sca_patterninsertline
+msgid "Insert pattern line"
+msgstr "Вставить строку в паттерн"
+
+#: languages.mes_sca_patternjumpquarter1
+msgid "Quick jump to 1st quarter"
+msgstr "Быстрый переход к 1-й четверти"
+
+#: languages.mes_sca_patternjumpquarter2
+msgid "Quick jump to 2nd quarter"
+msgstr "Быстрый переход к 2-й четверти"
+
+#: languages.mes_sca_patternjumpquarter3
+msgid "Quick jump to 3rd quarter"
+msgstr "Быстрый переход к 3-й четверти"
+
+#: languages.mes_sca_patternjumpquarter4
+msgid "Quick jump to 4th quarter"
+msgstr "Быстрый переход к 4-й четверти"
+
+#: languages.mes_sca_patternjumptoposlist
+msgid "Jump to position list"
+msgstr "Перейти к списку позиций"
+
+#: languages.mes_sca_patternlastlineend
+msgctxt "languages.mes_sca_patternlastlineend"
+msgid "Cursor last line end"
+msgstr "Курсор в конец последней строки"
+
+#: languages.mes_sca_patternlinebegin
+msgctxt "languages.mes_sca_patternlinebegin"
+msgid "Cursor line begin"
+msgstr "Курсор в начало строки"
+
+#: languages.mes_sca_patternlinecolumnleft
+msgctxt "languages.mes_sca_patternlinecolumnleft"
+msgid "Cursor column left"
+msgstr "Курсор в колонку левее"
+
+#: languages.mes_sca_patternlinecolumnright
+msgctxt "languages.mes_sca_patternlinecolumnright"
+msgid "Cursor column right"
+msgstr "Курсор в колонку правее"
+
+#: languages.mes_sca_patternlineend
+msgctxt "languages.mes_sca_patternlineend"
+msgid "Cursor line end"
+msgstr "Курсор в конец строки"
+
+#: languages.mes_sca_patternlineleft
+msgctxt "languages.mes_sca_patternlineleft"
+msgid "Cursor left"
+msgstr "Курсор влево"
+
+#: languages.mes_sca_patternlineright
+msgctxt "languages.mes_sca_patternlineright"
+msgid "Cursor right"
+msgstr "Курсор вправо"
+
+#: languages.mes_sca_patternmerge
+msgctxt "languages.mes_sca_patternmerge"
+msgid "Merge from clipboard"
+msgstr "Подмешать буфер обмена"
+
+#: languages.mes_sca_patternpack
+msgctxt "languages.mes_sca_patternpack"
+msgid "Pack pattern"
+msgstr "Упаковать паттерн"
+
+#: languages.mes_sca_patternpaste
+msgid "Paste from clipboard"
+msgstr "Вставить из буфера обмена"
+
+#: languages.mes_sca_patternplaytillup
+msgid "Play till the key up"
+msgstr "Играть пока нажата клавиша"
+
+#: languages.mes_sca_patternselectall
+msgctxt "languages.mes_sca_patternselectall"
+msgid "Select all"
+msgstr "Выделить всё"
+
+#: languages.mes_sca_patternselectall2
+msgctxt "languages.mes_sca_patternselectall2"
+msgid "Select all alternative"
+msgstr "Выделить всё альтернатива"
+
+#: languages.mes_sca_patternselectionclear
+msgctxt "languages.mes_sca_patternselectionclear"
+msgid "Clear selection"
+msgstr "Очистить выделение"
+
+#: languages.mes_sca_patternsetautostep0
+msgid "Set autostep to 0"
+msgstr "Установить автошаг в 0"
+
+#: languages.mes_sca_patternsetautostep1
+msgid "Set autostep to 1"
+msgstr "Установить автошаг в 1"
+
+#: languages.mes_sca_patternsetautostep2
+msgid "Set autostep to 2"
+msgstr "Установить автошаг в 2"
+
+#: languages.mes_sca_patternsetautostep3
+msgid "Set autostep to 3"
+msgstr "Установить автошаг в 3"
+
+#: languages.mes_sca_patternsetautostep4
+msgid "Set autostep to 4"
+msgstr "Установить автошаг в 4"
+
+#: languages.mes_sca_patternsetautostep5
+msgid "Set autostep to 5"
+msgstr "Установить автошаг в 5"
+
+#: languages.mes_sca_patternsetautostep6
+msgid "Set autostep to 6"
+msgstr "Установить автошаг в 6"
+
+#: languages.mes_sca_patternsetautostep7
+msgid "Set autostep to 7"
+msgstr "Установить автошаг в 7"
+
+#: languages.mes_sca_patternsetautostep8
+msgid "Set autostep to 8"
+msgstr "Установить автошаг в 8"
+
+#: languages.mes_sca_patternsetautostep9
+msgid "Set autostep to 9"
+msgstr "Установить автошаг в 9"
+
+#: languages.mes_sca_patternshrink
+msgctxt "languages.mes_sca_patternshrink"
+msgid "Shrink pattern"
+msgstr "Уплотнить паттерн"
+
+#: languages.mes_sca_patternsplit
+msgctxt "languages.mes_sca_patternsplit"
+msgid "Split pattern"
+msgstr "Разделить паттерн"
+
+#: languages.mes_sca_patternstepback
+msgid "Autostep backward"
+msgstr "Назад на автошаг"
+
+#: languages.mes_sca_patternswapleft
+msgctxt "languages.mes_sca_patternswapleft"
+msgid "Swap channels left"
+msgstr "Поменять с каналом левее"
+
+#: languages.mes_sca_patternswapright
+msgctxt "languages.mes_sca_patternswapright"
+msgid "Swap channels right"
+msgstr "Поменять с каналом правее"
+
+#: languages.mes_sca_patterntrackbegin
+msgctxt "languages.mes_sca_patterntrackbegin"
+msgid "Cursor track begin"
+msgstr "Курсор в начало трека"
+
+#: languages.mes_sca_patterntrackclearline
+msgid "Clear track line"
+msgstr "Очистить строку трека"
+
+#: languages.mes_sca_patterntrackdeleteline
+msgid "Delete track line"
+msgstr "Удалить строку трека"
+
+#: languages.mes_sca_patterntrackdown
+msgctxt "languages.mes_sca_patterntrackdown"
+msgid "Cursor down"
+msgstr "Курсор вниз"
+
+#: languages.mes_sca_patterntrackend
+msgctxt "languages.mes_sca_patterntrackend"
+msgid "Cursor track end"
+msgstr "Курсор в конец трека"
+
+#: languages.mes_sca_patterntrackinsertline
+msgid "Insert track line"
+msgstr "Вставить строку в трек"
+
+#: languages.mes_sca_patterntrackpagedown
+msgctxt "languages.mes_sca_patterntrackpagedown"
+msgid "Cursor page down"
+msgstr "Курсор на страницу вниз"
+
+#: languages.mes_sca_patterntrackpageup
+msgctxt "languages.mes_sca_patterntrackpageup"
+msgid "Cursor page up"
+msgstr "Курсор на страницу вверх"
+
+#: languages.mes_sca_patterntrackstepdown
+msgid "Cursor step down"
+msgstr "Курсор на шаг вниз"
+
+#: languages.mes_sca_patterntrackstepup
+msgid "Cursor step up"
+msgstr "Курсор на шаг вверх"
+
+#: languages.mes_sca_patterntrackup
+msgctxt "languages.mes_sca_patterntrackup"
+msgid "Cursor up"
+msgstr "Курсор вверх"
+
+#: languages.mes_sca_patterntransposedown1
+msgid "Transpose semitone down"
+msgstr "Транспонировать на полутон вниз"
+
+#: languages.mes_sca_patterntransposedown12
+msgid "Transpose octave down"
+msgstr "Транспонировать на октаву вниз"
+
+#: languages.mes_sca_patterntransposedown3
+msgid "Transpose 3 semitones down"
+msgstr "Транспонировать на 3 полутона вниз"
+
+#: languages.mes_sca_patterntransposedown5
+msgid "Transpose 5 semitones down"
+msgstr "Транспонировать на 5 полутонов вниз"
+
+#: languages.mes_sca_patterntransposeup1
+msgid "Transpose semitone up"
+msgstr "Транспонировать на полутон вверх"
+
+#: languages.mes_sca_patterntransposeup12
+msgid "Transpose octave up"
+msgstr "Транспонировать на октаву вверх"
+
+#: languages.mes_sca_patterntransposeup3
+msgid "Transpose 3 semitones up"
+msgstr "Транспонировать на 3 полутона вверх"
+
+#: languages.mes_sca_patterntransposeup5
+msgid "Transpose 5 semitones up"
+msgstr "Транспонировать на 5 полутонов вверх"
+
+#: languages.mes_sca_playfromstart
+msgid "Menu Play->Play from start"
+msgstr "Меню Проигрывание->Играть с начала"
+
+#: languages.mes_sca_playpattern
+msgid "Menu Play->Play patterm"
+msgstr "Меню Проигрывание->Играть паттерн"
+
+#: languages.mes_sca_playpatternfromstart
+msgid "Menu Play->Play pattern from start"
+msgstr "Меню Проигрывание->Играть паттерн с начала"
+
+#: languages.mes_sca_playplay
+msgid "Menu Play->Play"
+msgstr "Меню Проигрывание->Играть"
+
+#: languages.mes_sca_playstop
+msgid "Menu Play->Stop"
+msgstr "Меню Проигрывание->Остановить"
+
+#: languages.mes_sca_playtoggleloop
+msgid "Menu Play->Toggle looping"
+msgstr "Меню Проигрывание->Включить зацикливание"
+
+#: languages.mes_sca_playtoggleloopall
+msgid "Menu Play->Toggle looping all"
+msgstr "Меню Проигрывание->Включить зацикливание окон"
+
+#: languages.mes_sca_playtogglesamples
+msgid "Menu Play->Toggle samples"
+msgstr "Меню Проигрывание->Выключатели сэмплов"
+
+#: languages.mes_sca_poslistadd
+msgctxt "languages.mes_sca_poslistadd"
+msgid "Add positions"
+msgstr "Добавить позиции"
+
+#: languages.mes_sca_poslistclone
+msgctxt "languages.mes_sca_poslistclone"
+msgid "Clone positions"
+msgstr "Клонировать позиции"
+
+#: languages.mes_sca_poslistdelete
+msgctxt "languages.mes_sca_poslistdelete"
+msgid "Delete selected positions"
+msgstr "Удалить выделенные позиции"
+
+#: languages.mes_sca_poslistdup
+msgctxt "languages.mes_sca_poslistdup"
+msgid "Duplicate positions"
+msgstr "Дублировать позиции"
+
+#: languages.mes_sca_poslistend
+msgid "Cursor to the end of list"
+msgstr "Курсор в конец списка"
+
+#: languages.mes_sca_poslistjumptoeditor
+msgid "Jump to pattern editor"
+msgstr "Перейти к редактору паттерна"
+
+#: languages.mes_sca_poslistmerge
+msgctxt "languages.mes_sca_poslistmerge"
+msgid "Merge from clipboard"
+msgstr "Подмешать буфер обмена"
+
+#: languages.mes_sca_poslistpatlens
+msgid "Change patterns length"
+msgstr "Сменить размер паттернов"
+
+#: languages.mes_sca_poslistrenumpats
+msgctxt "languages.mes_sca_poslistrenumpats"
+msgid "Renumber patterns"
+msgstr "Перенумеровать паттерны"
+
+#: languages.mes_sca_poslistselectall
+msgctxt "languages.mes_sca_poslistselectall"
+msgid "Select all"
+msgstr "Выделить все"
+
+#: languages.mes_sca_poslistselectall2
+msgctxt "languages.mes_sca_poslistselectall2"
+msgid "Select all alternative"
+msgstr "Выделить все альтернатива"
+
+#: languages.mes_sca_poslistsetloop
+msgid "Mark position for looping"
+msgstr "Отметить позицию для цикла"
+
+#: languages.mes_sca_sampleacc
+msgid "Set accumulation marker"
+msgstr "Установить метку накопления"
+
+#: languages.mes_sca_sampleclearsignoracc
+msgid "Reset accumulation/sign"
+msgstr "Убрать накопление/знак"
+
+#: languages.mes_sca_sampledeleteline
+msgid "Delete sample line"
+msgstr "Удалить строку из сэмпла"
+
+#: languages.mes_sca_sampledeleteline2
+msgid "Delete sample line alternative"
+msgstr "Удалить строку из сэмпла альтернатива"
+
+#: languages.mes_sca_samplefirstlinebegin
+msgctxt "languages.mes_sca_samplefirstlinebegin"
+msgid "Cursor first line begin"
+msgstr "Курсор в начала первой строки"
+
+#: languages.mes_sca_sampleinsertline
+msgid "Insert sample line"
+msgstr "Вставить строку в сэмпл"
+
+#: languages.mes_sca_sampleinsertline2
+msgid "Insert sample line alternative"
+msgstr "Вставить строку в сэмпл альтернатива"
+
+#: languages.mes_sca_samplejumptotest
+msgctxt "languages.mes_sca_samplejumptotest"
+msgid "Jump to test line"
+msgstr "Перейти к тестовой строке"
+
+#: languages.mes_sca_samplelastlineend
+msgctxt "languages.mes_sca_samplelastlineend"
+msgid "Cursor last line end"
+msgstr "Курсор в конец последней строки"
+
+#: languages.mes_sca_samplelinebegin
+msgctxt "languages.mes_sca_samplelinebegin"
+msgid "Cursor line begin"
+msgstr "Курсор в начало строки"
+
+#: languages.mes_sca_samplelinecolumnleft
+msgctxt "languages.mes_sca_samplelinecolumnleft"
+msgid "Cursor column left"
+msgstr "Курсор в колонку левее"
+
+#: languages.mes_sca_samplelinecolumnright
+msgctxt "languages.mes_sca_samplelinecolumnright"
+msgid "Cursor column right"
+msgstr "Курсор в колонку правее"
+
+#: languages.mes_sca_samplelineend
+msgctxt "languages.mes_sca_samplelineend"
+msgid "Cursor line end"
+msgstr "Курсор в конец строки"
+
+#: languages.mes_sca_samplelineleft
+msgctxt "languages.mes_sca_samplelineleft"
+msgid "Cursor left"
+msgstr "Курсор влево"
+
+#: languages.mes_sca_samplelineright
+msgctxt "languages.mes_sca_samplelineright"
+msgid "Cursor right"
+msgstr "Курсор вправо"
+
+#: languages.mes_sca_sampleminus
+msgctxt "languages.mes_sca_sampleminus"
+msgid "Set minus sign"
+msgstr "Установить знак минус"
+
+#: languages.mes_sca_sampleminus2
+msgctxt "languages.mes_sca_sampleminus2"
+msgid "Set minus sign alternative"
+msgstr "Установить знак минус альтернатива"
+
+#: languages.mes_sca_sampleplus
+msgctxt "languages.mes_sca_sampleplus"
+msgid "Set plus sign"
+msgstr "Установить знак плюс"
+
+#: languages.mes_sca_sampleplus2
+msgctxt "languages.mes_sca_sampleplus2"
+msgid "Set plus sign alternative"
+msgstr "Установить знак плюс альтернатива"
+
+#: languages.mes_sca_sampleplus3
+msgctxt "languages.mes_sca_sampleplus3"
+msgid "Set plus sign alternative"
+msgstr "Установить знак плюс альтернатива"
+
+#: languages.mes_sca_sampleselectall
+msgctxt "languages.mes_sca_sampleselectall"
+msgid "Select all"
+msgstr "Выделить всё"
+
+#: languages.mes_sca_sampleselectall2
+msgctxt "languages.mes_sca_sampleselectall2"
+msgid "Select all alternative"
+msgstr "Выделить всё альтернатива"
+
+#: languages.mes_sca_sampleselectionclear
+msgctxt "languages.mes_sca_sampleselectionclear"
+msgid "Clear selection"
+msgstr "Очистить выделение"
+
+#: languages.mes_sca_sampleselectioncut
+msgctxt "languages.mes_sca_sampleselectioncut"
+msgid "Cut selection to clipboard"
+msgstr "Вырезать выделение в буфер обмена"
+
+#: languages.mes_sca_sampletoggle
+msgid "Toggle sign/value"
+msgstr "Переключение знака/значения"
+
+#: languages.mes_sca_sampletogglee
+msgid "Toggle envelope mask"
+msgstr "Изменение маски огибающей"
+
+#: languages.mes_sca_sampletogglen
+msgid "Toggle noise mask"
+msgstr "Изменение маски шума"
+
+#: languages.mes_sca_sampletogglet
+msgid "Toggle tone mask"
+msgstr "Изменение маски тона"
+
+#: languages.mes_sca_sampletrackbegin
+msgctxt "languages.mes_sca_sampletrackbegin"
+msgid "Cursor track begin"
+msgstr "Курсор в конец трека"
+
+#: languages.mes_sca_sampletrackdown
+msgctxt "languages.mes_sca_sampletrackdown"
+msgid "Cursor down"
+msgstr "Курсор вниз"
+
+#: languages.mes_sca_sampletrackend
+msgctxt "languages.mes_sca_sampletrackend"
+msgid "Cursor track end"
+msgstr "Курсор в конец трека"
+
+#: languages.mes_sca_sampletrackpagedown
+msgctxt "languages.mes_sca_sampletrackpagedown"
+msgid "Cursor page down"
+msgstr "Курсор на страницу вниз"
+
+#: languages.mes_sca_sampletrackpageup
+msgctxt "languages.mes_sca_sampletrackpageup"
+msgid "Cursor page up"
+msgstr "Курсор на страницу вверх"
+
+#: languages.mes_sca_sampletrackup
+msgctxt "languages.mes_sca_sampletrackup"
+msgid "Cursor up"
+msgstr "Курсор на вверх"
+
+#: languages.mes_sca_testlinebegin
+msgid "Cursor begin"
+msgstr "Курсор в начало"
+
+#: languages.mes_sca_testlinecolumnleft
+msgctxt "languages.mes_sca_testlinecolumnleft"
+msgid "Cursor column left"
+msgstr "Курсор в колонку левее"
+
+#: languages.mes_sca_testlinecolumnright
+msgctxt "languages.mes_sca_testlinecolumnright"
+msgid "Cursor column right"
+msgstr "Курсор в колонку правее"
+
+#: languages.mes_sca_testlineend
+msgid "Cursor end"
+msgstr "Курсор в конец"
+
+#: languages.mes_sca_testlinejumptoeditor
+msgid "Jump to associated editor"
+msgstr "Перейти к соответствующему редактору"
+
+#: languages.mes_sca_testlineleft
+msgctxt "languages.mes_sca_testlineleft"
+msgid "Cursor left"
+msgstr "Курсор влево"
+
+#: languages.mes_sca_testlineright
+msgctxt "languages.mes_sca_testlineright"
+msgid "Cursor right"
+msgstr "Курсор вправо"
+
+#: languages.mes_sca_testlineselectall
+msgctxt "languages.mes_sca_testlineselectall"
+msgid "Select all"
+msgstr "Выделить всё"
+
+#: languages.mes_sca_testlineselectall2
+msgctxt "languages.mes_sca_testlineselectall2"
+msgid "Select all alternative"
+msgstr "Выделить всё альтернатива"
+
+#: languages.mes_sca_testlineselectionclear
+msgctxt "languages.mes_sca_testlineselectionclear"
+msgid "Clear selection"
+msgstr "Очистить выделение"
+
+#: languages.mes_sca_testlineselectioncut
+msgctxt "languages.mes_sca_testlineselectioncut"
+msgid "Cut selection to clipboard"
+msgstr "Вырезать выделение в буфер обмена"
+
+#: languages.mes_sca_volumedown
+msgid "Volume -"
+msgstr "Громкость -"
+
+#: languages.mes_sca_volumeup
+msgid "Volume +"
+msgstr "Громкость +"
+
+#: languages.mes_sca_windowcascade
+msgid "Menu Window->Cascade"
+msgstr "Меню Окно->Каскадом"
+
+#: languages.mes_sca_windowcloseall
+msgid "Menu Window->Close All"
+msgstr "Меню Окно->Закрыть все"
+
+#: languages.mes_sca_windowfind
+msgid "Menu Window->Find Module"
+msgstr "Меню Окно->Найти модуль"
+
+#: languages.mes_sca_windowmaximized
+msgid "Menu Window->Maximized"
+msgstr "Меню Окно->Развёрнуто"
+
+#: languages.mes_sca_windownext
+msgid "Menu Window->Next"
+msgstr "Меню Окно->Следующее"
+
+#: languages.mes_sca_windownext2
+msgid "Menu Window->Next alternative"
+msgstr "Меню Окно->Следующее альтернатива"
+
+#: languages.mes_sca_windowprev
+msgid "Menu Window->Previous"
+msgstr "Меню Окно->Предыдущее"
+
+#: languages.mes_sca_windowprev2
+msgid "Menu Window->Previous alternative"
+msgstr "Меню Окно->Предыдущее альтернатива"
+
+#: languages.mes_sca_windowtileh
+msgid "Menu Window->Tile Horizontally"
+msgstr "Меню Окно->Замостить по горизонтали"
+
+#: languages.mes_sca_windowtilev
+msgid "Menu Window->Tile Vertically"
+msgstr "Меню Окно->Замостить по вертикали"
+
+#: languages.mes_scs_globalactions
+msgid "Global shortcuts"
+msgstr "Глобальные клавиши"
+
+#: languages.mes_scs_ornamenteditor
+msgid "Ornament editor"
+msgstr "Редактор орнамента"
+
+#: languages.mes_scs_patterneditor
+msgid "Pattern tracks editor"
+msgstr "Редактор треков паттерна"
+
+#: languages.mes_scs_patternlengtheditor
+msgid "Pattern length editor"
+msgstr "Редактор длины паттерна"
+
+#: languages.mes_scs_positionlisteditor
+msgid "Position list editor"
+msgstr "Редактор списка позиций"
+
+#: languages.mes_scs_sampleeditor
+msgid "Sample editor"
+msgstr "Редактор сэмпла"
+
+#: languages.mes_scs_testlineeditor
+msgid "Test line editor"
+msgstr "Редактор тестовой строки"
+
+#: languages.mes_selectedpatlen
+msgid "Selected patterns length"
+msgstr "Размер выделенных паттернов"
+
+#: languages.mes_shortcut
+msgid "Shortcut"
+msgstr "Сочетание клавиш"
+
+#: languages.mes_shrpatnotice
+msgid "To shrink pattern size twice original size must be 2 or bigger."
+msgstr "Для уплотнения паттерна в 2 раза исходный размер должен быть не менее 2."
+
+#: languages.mes_sizetoobig
+msgid "Size of module with player exceeds 65536 RAM size."
+msgstr "Размер модуля с плеером превышает размер ОЗУ 65536."
+
+#: languages.mes_splitcant
+msgid "To split pattern move cursor to 2nd line or further."
+msgstr "Для разделения паттерна переместите курсор во 2-ю строку или дальше."
+
+#: languages.mes_splitnoroom
+msgid "No free pattern to split this one."
+msgstr "Не осталось свободных паттернов чтобы разделить этот."
+
+#: languages.mes_textfiles
+msgid "Text files"
+msgstr "Текстовые файлы"
+
+#: languages.mes_tonetbl0
+msgid "1.625 MHz (not recommended)"
+msgstr "1,625 МГц (не рекомендуется)"
+
+#: languages.mes_tonetbl1
+msgid "1.7734 MHz -1 Tone (original ZX Spectrum 128K)"
+msgstr "1,7734 МГц -1 тон (фирменный ZX Spectrum 128K)"
+
+#: languages.mes_tonetbl2
+msgid "1.75 MHz (xUSSR clones of ZX Spectrum)"
+msgstr "1,75 МГц (клоны ZX Spectrum бывшего СССР)"
+
+#: languages.mes_tonetbl3
+msgid "1.625 MHz -1 Semitone (not recommended)"
+msgstr "1,625 МГц -1 полутон (не рекомендуется)"
+
+#: languages.mes_tonetblfor
+msgid "Tone Table for"
+msgstr "Тоновая таблица для"
+
+#: languages.mes_undocant
+msgid "cannot be undo. Are you sure you want to continue?"
+msgstr "невозможно отменить. Вы уверены, что хотите продолжить?"
+
+#: languages.mes_undothisop
+msgid "This operation"
+msgstr "Эту операцию"
+
+#: languages.mes_wantcont
+msgid "Do you want to continue with"
+msgstr "Хотите продолжить с"
+
+#: languages.mes_warning
+msgid "warning"
+msgstr "предупреждения"
+
+#: languages.mes_warnings
+msgid "warnings"
+msgstr "предупреждений"
+
+#: languages.mes_winversion
+msgid "Supported in Windows version only"
+msgstr "Только в Windows-версии"
+
+#: taboutbox.caption
+msgid "About Vortex Tracker II"
+msgstr "О Vortex Tracker II"
+
+#: tcatchscfrm.caption
+msgid "Shortcut catcher"
+msgstr "Захват клавиш"
+
+#: tcatchscfrm.label1.caption
+msgid "Press desired keys to create shortcut or Click to cancel"
+msgstr "Жмите клавиши для захвата или щёлкните мышкой для отмены"
+
+#: tchildform.edauthor.hint
+msgid "Author name"
+msgstr "Имя автора"
+
+#: tchildform.edautohl.hint
+msgctxt "tchildform.edautohl.hint"
+msgid "Highlight step"
+msgstr "Шаг подсветки"
+
+#: tchildform.edautostep.hint
+msgctxt "tchildform.edautostep.hint"
+msgid "Edit step (spacing)"
+msgstr "Шаг редактирования"
+
+#: tchildform.edoctave.hint
+msgctxt "tchildform.edoctave.hint"
+msgid "Octave number (hotkeys can be user defined, default are Num1-8 for that control where cursor in a note cell or Alt+1-8 for all)"
+msgstr "Номер октавы (горячие клавиши можно менять, по умолчанию Num1-8 для редактируемого элемента или Alt+1-8 для всех)"
+
+#: tchildform.edorn.hint
+msgctxt "tchildform.edorn.hint"
+msgid "Current ornament"
+msgstr "Текущий орнамент"
+
+#: tchildform.edornlen.hint
+msgctxt "tchildform.edornlen.hint"
+msgid "Ornament length"
+msgstr "Длина орнамента"
+
+#: tchildform.edornloop.hint
+msgctxt "tchildform.edornloop.hint"
+msgid "Ornament loop"
+msgstr "Цикл орнамента"
+
+#: tchildform.edornoctave.hint
+msgctxt "tchildform.edornoctave.hint"
+msgid "Octave number (hotkeys can be user defined, default are Num1-8 for that control where cursor in a note cell or Alt+1-8 for all)"
+msgstr "Номер октавы (горячие клавиши можно менять, по умолчанию Num1-8 для редактируемого элемента или Alt+1-8 для всех)"
+
+#: tchildform.edpat.hint
+msgctxt "tchildform.edpat.hint"
+msgid "Current pattern"
+msgstr "Текущий паттерн"
+
+#: tchildform.edsamlen.hint
+msgctxt "tchildform.edsamlen.hint"
+msgid "Sample length"
+msgstr "Длина сэмпла"
+
+#: tchildform.edsamloop.hint
+msgctxt "tchildform.edsamloop.hint"
+msgid "Sample loop"
+msgstr "Цикл сэмпла"
+
+#: tchildform.edsamoctave.hint
+msgctxt "tchildform.edsamoctave.hint"
+msgid "Octave number (hotkeys can be user defined, default are Num1-8 for that control where cursor in a note cell or Alt+1-8 for all)"
+msgstr "Номер октавы (горячие клавиши можно менять, по умолчанию Num1-8 для редактируемого элемента или Alt+1-8 для всех)"
+
+#: tchildform.edsample.hint
+msgctxt "tchildform.edsample.hint"
+msgid "Current sample"
+msgstr "Текущий сэмпл"
+
+#: tchildform.edspeed.hint
+msgctxt "tchildform.edspeed.hint"
+msgid "Initial speed"
+msgstr "Начальная скорость"
+
+#: tchildform.edtitle.hint
+msgid "Song title"
+msgstr "Заголовок песни"
+
+#: tchildform.gbfeatures.caption
+msgctxt "tchildform.gbfeatures.caption"
+msgid "Features level"
+msgstr "Уровень возможностей"
+
+#: tchildform.gbheader.caption
+msgctxt "tchildform.gbheader.caption"
+msgid "Save with нeader"
+msgstr "Сохранить с заголовком"
+
+#: tchildform.lbornlen.caption
+msgctxt "tchildform.lbornlen.caption"
+msgid "Length"
+msgstr "Длина"
+
+#: tchildform.lbornloop.caption
+msgctxt "tchildform.lbornloop.caption"
+msgid "Loop"
+msgstr "Цикл"
+
+#: tchildform.lbornoctave.caption
+msgctxt "tchildform.lbornoctave.caption"
+msgid "Octave"
+msgstr "Октава"
+
+#: tchildform.lbsamlen.caption
+msgctxt "tchildform.lbsamlen.caption"
+msgid "Length"
+msgstr "Длина"
+
+#: tchildform.lbsamloop.caption
+msgctxt "tchildform.lbsamloop.caption"
+msgid "Loop"
+msgstr "Цикл"
+
+#: tchildform.lbsamoctave.caption
+msgctxt "tchildform.lbsamoctave.caption"
+msgid "Octave"
+msgstr "Октава"
+
+#: tchildform.lbticks.hint
+msgid "Current tick"
+msgstr "Текущий тик"
+
+#: tchildform.lbtime.hint
+msgid "Current time"
+msgstr "Текущее время"
+
+#: tchildform.lbtotticks.hint
+msgid "Total ticks"
+msgstr "Всего тиков"
+
+#: tchildform.lbtottime.hint
+msgid "Total time"
+msgstr "Общее время"
+
+#: tchildform.opttab.caption
+msgctxt "tchildform.opttab.caption"
+msgid "Options"
+msgstr "Настройки"
+
+#: tchildform.ornamentssheet.caption
+msgctxt "tchildform.ornamentssheet.caption"
+msgid "Ornaments"
+msgstr "Орнаменты"
+
+#: tchildform.patternssheet.caption
+msgid "Patterns"
+msgstr "Паттерны"
+
+#: tchildform.samplessheet.caption
+msgctxt "tchildform.samplessheet.caption"
+msgid "Samples"
+msgstr "Сэмплы"
+
+#: tchildform.sbautocmd.hint
+msgid "Use special command when auto parameters is on"
+msgstr "Использовать спец. команду когда включены автопараметры"
+
+#: tchildform.sbautoenv.caption
+msgid "AutoEnv"
+msgstr "АвтоОгиб"
+
+#: tchildform.sbautoenvdigit1.hint
+msgid "Tone frequency"
+msgstr "Частота тона"
+
+#: tchildform.sbautoenvdigit2.hint
+msgid "Envelope frequency"
+msgstr "Частота огибающей"
+
+#: tchildform.sbautoenvt.hint
+msgid "Use envelope type/off when auto parameters is on"
+msgstr "Использовать тип огибающей/отключение когда включены автопараметры"
+
+#: tchildform.sbautohl.caption
+msgid "AutHlt"
+msgstr "Подсв."
+
+#: tchildform.sbautohl.hint
+msgid "Toggle auto highlight step"
+msgstr "Включить авторасчёт шага подсветки"
+
+#: tchildform.sbautoorn.hint
+msgid "Use ornament number when auto parameters is on"
+msgstr "Использовать номер орнамента когда включены автопараметры"
+
+#: tchildform.sbautosmp.hint
+msgid "Use sample number when auto parameters is on"
+msgstr "Использовать номер сэмпла когда включены автопараметры"
+
+#: tchildform.sbautostep.caption
+msgid "AutStp"
+msgstr "АвШаг"
+
+#: tchildform.sbautovol.hint
+msgid "Use volume when auto parameters is on"
+msgstr "Использовать громкость когда включены автопараметры"
+
+#: tchildform.sbdecnoise.hint
+msgid "Decimal noise"
+msgstr "Шум десятичными"
+
+#: tchildform.sbdectrlines.hint
+msgid "Decimal numbering"
+msgstr "Нумерация десятичными"
+
+#: tchildform.sbenvasnote.hint
+msgctxt "tchildform.sbenvasnote.hint"
+msgid "Envelope as note"
+msgstr "Огибающая как нота"
+
+#: tchildform.sbloadorn.caption
+msgctxt "tchildform.sbloadorn.caption"
+msgid "Load"
+msgstr "Загр"
+
+#: tchildform.sbloadorn.hint
+msgid "Load ornament"
+msgstr "Загрузить орнамент"
+
+#: tchildform.sbloadpat.caption
+msgctxt "tchildform.sbloadpat.caption"
+msgid "Load"
+msgstr "Загр"
+
+#: tchildform.sbloadpat.hint
+msgid "Load pattern"
+msgstr "Загрузить паттерн"
+
+#: tchildform.sbloadsam.caption
+msgctxt "tchildform.sbloadsam.caption"
+msgid "Load"
+msgstr "Загр"
+
+#: tchildform.sbloadsam.hint
+msgid "Load sample"
+msgstr "Загрузить сэмпл"
+
+#: tchildform.sbmutea.hint
+msgid "Toggle channel A sound"
+msgstr "Отключить звук в канале A"
+
+#: tchildform.sbmuteae.hint
+msgid "Toggle channel A envelope"
+msgstr "Отключить огибающую в канале A"
+
+#: tchildform.sbmutean.hint
+msgid "Toggle channel A noise"
+msgstr "Отключить шум в канале A"
+
+#: tchildform.sbmuteat.hint
+msgid "Toggle channel A tone"
+msgstr "Отключить тон в канале A"
+
+#: tchildform.sbmuteb.hint
+msgid "Toggle channel B sound"
+msgstr "Отключить звук в канале B"
+
+#: tchildform.sbmutebe.hint
+msgid "Toggle channel B envelope"
+msgstr "Отключить огибающую в канале B"
+
+#: tchildform.sbmutebn.hint
+msgid "Toggle channel B noise"
+msgstr "Отключить шум в канале B"
+
+#: tchildform.sbmutebt.hint
+msgid "Toggle channel B tone"
+msgstr "Отключить тон в канале B"
+
+#: tchildform.sbmutec.hint
+msgid "Toggle channel C sound"
+msgstr "Отключить звук в канале C"
+
+#: tchildform.sbmutece.hint
+msgid "Toggle channel C envelope"
+msgstr "Отключить огибающую в канале C"
+
+#: tchildform.sbmutecn.hint
+msgid "Toggle channel C noise"
+msgstr "Отключить шум в канале C"
+
+#: tchildform.sbmutect.hint
+msgid "Toggle channel C tone"
+msgstr "Отключить тон в канале C"
+
+#: tchildform.sborgen.hint
+msgid "External ornament generator plug-in"
+msgstr "Внешний плагин для генерирования орнамента"
+
+#: tchildform.sbornasnotes.hint
+msgctxt "tchildform.sbornasnotes.hint"
+msgid "Ornament as notes"
+msgstr "Орнамент как ноты"
+
+#: tchildform.sbpositions.hint
+msgctxt "tchildform.sbpositions.hint"
+msgid "Position list scroller"
+msgstr "Прокрутка списка позиций"
+
+#: tchildform.sbsamasnotes.hint
+msgid "Sample tone shifts as notes"
+msgstr "Сдвиги тона в сэмпле как ноты"
+
+#: tchildform.sbsamrecalc.hint
+msgid "Do recalcing sample tone shifts on changing base note"
+msgstr "Делать пересчёт сдвигов тона в сэмпле при смене базовой ноты"
+
+#: tchildform.sbsaveorn.caption
+msgctxt "tchildform.sbsaveorn.caption"
+msgid "Save"
+msgstr "Сохр"
+
+#: tchildform.sbsaveorn.hint
+msgid "Save ornament"
+msgstr "Сохранить орнамент"
+
+#: tchildform.sbsavepat.caption
+msgctxt "tchildform.sbsavepat.caption"
+msgid "Save"
+msgstr "Сохр"
+
+#: tchildform.sbsavepat.hint
+msgid "Save pattern"
+msgstr "Сохранить паттерн"
+
+#: tchildform.sbsavesam.caption
+msgctxt "tchildform.sbsavesam.caption"
+msgid "Save"
+msgstr "Сохр"
+
+#: tchildform.sbsavesam.hint
+msgid "Save sample"
+msgstr "Сохранить сэмпл"
+
+#: tchildform.sbsoloa.hint
+msgid "Toggle channel A solo mode"
+msgstr "Включить режим соло для канала A"
+
+#: tchildform.sbsolob.hint
+msgid "Toggle channel B solo mode"
+msgstr "Включить режим соло для канала B"
+
+#: tchildform.sbsoloc.hint
+msgid "Toggle channel C solo mode"
+msgstr "Включить режим соло для канала C"
+
+#: tchildform.sbtableasdec.caption
+msgid "Dec"
+msgstr "Дес"
+
+#: tchildform.sbtableasdec.hint
+msgid "Show as decimal numbers"
+msgstr "Показать как десятичные числа"
+
+#: tchildform.sbtableaslist.caption
+msgid "List"
+msgstr "Список"
+
+#: tchildform.sbtableaslist.hint
+msgid "Show as list of numbers"
+msgstr "Показать как список чисел"
+
+#: tchildform.sbts.hint
+msgid "Select 2nd module for Turbo Sound mode"
+msgstr "Выберите второй модуль для режима Turbo Sound"
+
+#: tchildform.sbunrollsample.caption
+msgid "Unroll"
+msgstr "Разв"
+
+#: tchildform.sbunrollsample.hint
+msgid "Unroll tone, noise and amplitude accumulations"
+msgstr "Развернуть накопления тона, шума и амплитуды"
+
+#: tchildform.sgpositions.hint
+msgctxt "tchildform.sgpositions.hint"
+msgid "Position list"
+msgstr "Список позиций"
+
+#: tchildform.tablestab.caption
+msgid "Tables"
+msgstr "Таблицы"
+
+#: tchildform.udautohl.hint
+msgctxt "tchildform.udautohl.hint"
+msgid "Highlight step"
+msgstr "Шаг подсветки"
+
+#: tchildform.udautostep.hint
+msgctxt "tchildform.udautostep.hint"
+msgid "Edit step (spacing)"
+msgstr "Шаг редактирования"
+
+#: tchildform.udoctave.hint
+msgctxt "tchildform.udoctave.hint"
+msgid "Octave number (hotkeys can be user defined, default are Num1-8 for that control where cursor in a note cell or Alt+1-8 for all)"
+msgstr "Номер октавы (горячие клавиши можно менять, по умолчанию Num1-8 для редактируемого элемента или Alt+1-8 для всех)"
+
+#: tchildform.udorn.hint
+msgctxt "tchildform.udorn.hint"
+msgid "Current ornament"
+msgstr "Текущий орнамент"
+
+#: tchildform.udornlen.hint
+msgctxt "tchildform.udornlen.hint"
+msgid "Ornament length"
+msgstr "Длина орнамента"
+
+#: tchildform.udornloop.hint
+msgctxt "tchildform.udornloop.hint"
+msgid "Ornament loop"
+msgstr "Цикл орнамента"
+
+#: tchildform.udornoctave.hint
+msgctxt "tchildform.udornoctave.hint"
+msgid "Octave number (hotkeys can be user defined, default are Num1-8 for that control where cursor in a note cell or Alt+1-8 for all)"
+msgstr "Номер октавы (горячие клавиши можно менять, по умолчанию Num1-8 для редактируемого элемента или Alt+1-8 для всех)"
+
+#: tchildform.udpat.hint
+msgctxt "tchildform.udpat.hint"
+msgid "Current pattern"
+msgstr "Текущий паттерн"
+
+#: tchildform.udpatlen.hint
+msgid "Pattern length"
+msgstr "Длина паттерна"
+
+#: tchildform.udsamlen.hint
+msgctxt "tchildform.udsamlen.hint"
+msgid "Sample length"
+msgstr "Длина сэмпла"
+
+#: tchildform.udsamloop.hint
+msgctxt "tchildform.udsamloop.hint"
+msgid "Sample loop"
+msgstr "Цикл сэмпла"
+
+#: tchildform.udsamoctave.hint
+msgctxt "tchildform.udsamoctave.hint"
+msgid "Octave number (hotkeys can be user defined, default are Num1-8 for that control where cursor in a note cell or Alt+1-8 for all)"
+msgstr "Номер октавы (горячие клавиши можно менять, по умолчанию Num1-8 для редактируемого элемента или Alt+1-8 для всех)"
+
+#: tchildform.udsample.hint
+msgctxt "tchildform.udsample.hint"
+msgid "Current sample"
+msgstr "Текущий сэмпл"
+
+#: tchildform.udspeed.hint
+msgctxt "tchildform.udspeed.hint"
+msgid "Initial speed"
+msgstr "Начальная скорость"
+
+#: texpdlg.button2.caption
+msgctxt "texpdlg.button2.caption"
+msgid "Cancel"
+msgstr "Отменить"
+
+#: texpdlg.caption
+msgid "ZX Spectrum PT3/TS player parameters"
+msgstr "Параметры проигрывателя PT3/TS для ZX Spectrum"
+
+#: texpdlg.groupbox1.caption
+msgid "Parameters"
+msgstr "Параметры"
+
+#: texpdlg.groupbox2.caption
+msgid "Hints"
+msgstr "Подсказки"
+
+#: texpdlg.label11.caption
+msgid "bit 7 is set after each loop."
+msgstr "бит 7 устанавливается после каждого повтора."
+
+#: texpdlg.label12.caption
+msgid "set bit 0 to disable loop;"
+msgstr "установи бит 0 для запрета повтора;"
+
+#: texpdlg.label13.caption
+msgid "Current position pointer (word):"
+msgstr "Адрес текущей позиции (word):"
+
+#: texpdlg.label15.caption
+msgid "Compilation address (max"
+msgstr "Адрес компиляции (max"
+
+#: texpdlg.label16.caption
+msgid "Variables address:"
+msgstr "Адрес переменных:"
+
+#: texpdlg.label18.caption
+msgctxt "texpdlg.label18.caption"
+msgid "; length:"
+msgstr "; длина:"
+
+#: texpdlg.label20.caption
+msgid "Player codes length:"
+msgstr "Длина кода плеера:"
+
+#: texpdlg.label23.caption
+msgctxt "texpdlg.label23.caption"
+msgid "; length:"
+msgstr "; длина:"
+
+#: texpdlg.label25.caption
+msgid "Module2 address:"
+msgstr "Адрес 2-го модуля:"
+
+#: texpdlg.label26.caption
+msgid "Module address:"
+msgstr "Адрес модуля:"
+
+#: texpdlg.label28.caption
+msgctxt "texpdlg.label28.caption"
+msgid "; length:"
+msgstr "; длина:"
+
+#: texpdlg.label9.caption
+msgid "Setup byte:"
+msgstr "Байт настройки:"
+
+#: texpdlg.loopchk.caption
+msgid "Disable loop"
+msgstr "Запретить повтор"
+
+#: texpdlg.radiogroup1.caption
+msgid "Format"
+msgstr "Формат"
+
+#: texpsndhdlg.button2.caption
+msgctxt "texpsndhdlg.button2.caption"
+msgid "Cancel"
+msgstr "Отменить"
+
+#: texpsndhdlg.caption
+msgid "SNDH file parameters"
+msgstr "Параметры SNDH файла"
+
+#: texpsndhdlg.cbnonpacked.caption
+msgid "Save non-packed"
+msgstr "Сохранить не упакованным"
+
+#: texpsndhdlg.cbnonpacked.hint
+msgid "Uncheck to pack SNDH with PACK-ICE v2.35 algorithm"
+msgstr "Снимите флажок чтобы упаковать SNDH алгоритмом PACK-ICE v2.35"
+
+#: texpsndhdlg.edyear.hint
+msgid "4 digits or empty"
+msgstr "4 цифры или пусто"
+
+#: texpsndhdlg.lbyear.caption
+msgid "Year of release (empty if no)"
+msgstr "Год выпуска (пусто если нет)"
+
+#: tfxmparams.button1.caption
+msgid "Start conversion"
+msgstr "Начать конвертирование"
+
+#: tfxmparams.button2.caption
+msgid "Default"
+msgstr "По умолчанию"
+
+#: tfxmparams.caption
+msgid "FXM Importer Parameters"
+msgstr "Параметры импорта FXM"
+
+#: tfxmparams.label1.caption
+msgid "Length:"
+msgstr "Длина:"
+
+#: tfxmparams.label2.caption
+msgid "Global transpose:"
+msgstr "Глобальная транспозиция:"
+
+#: tfxmparams.label3.caption
+msgid "Loop interrupt:"
+msgstr "Прерывание повтора:"
+
+#: tfxmparams.label4.caption
+msgid "Initial tempo:"
+msgstr "Начальная скорость:"
+
+#: tfxmparams.label5.caption
+msgid "Pattern size:"
+msgstr "Размер паттерна:"
+
+#: tglbtrans.button1.caption
+msgid "Transpose"
+msgstr "Транспонировать"
+
+#: tglbtrans.button2.caption
+msgctxt "tglbtrans.button2.caption"
+msgid "Close"
+msgstr "Закрыть"
+
+#: tglbtrans.caption
+msgid "Global Transposition"
+msgstr "Глобальное транспонирование"
+
+#: tglbtrans.checkbox1.caption
+msgid "Channel A track"
+msgstr "Трек канала A"
+
+#: tglbtrans.checkbox2.caption
+msgid "Channel B track"
+msgstr "Трек канала B"
+
+#: tglbtrans.checkbox3.caption
+msgid "Channel C track"
+msgstr "Трек канала C"
+
+#: tglbtrans.checkbox4.caption
+msgctxt "tglbtrans.checkbox4.caption"
+msgid "Envelope track"
+msgstr "Трек огибающей"
+
+#: tglbtrans.edit2.hint
+msgctxt "tglbtrans.edit2.hint"
+msgid "Pattern number to transpose"
+msgstr "Номер паттерна для транспонирования"
+
+#: tglbtrans.edit8.hint
+msgctxt "tglbtrans.edit8.hint"
+msgid "Number of semitones to transpose: positive - up and negative - down"
+msgstr "Число полутонов для транспонирования: положительное - вверх и отрицательное - вниз"
+
+#: tglbtrans.groupbox1.caption
+msgid "Tracks to transpose"
+msgstr "Выбор треков"
+
+#: tglbtrans.groupbox2.caption
+msgid "Global options"
+msgstr "Глобальные настройки"
+
+#: tglbtrans.label8.caption
+msgid "Number of semitones"
+msgstr "Число полутонов"
+
+#: tglbtrans.radiobutton1.caption
+msgid "Whole module"
+msgstr "Весь модуль"
+
+#: tglbtrans.radiobutton1.hint
+msgctxt "tglbtrans.radiobutton1.hint"
+msgid "Warning: cannot be undo!"
+msgstr "Предупреждение: нельзя отменить!"
+
+#: tglbtrans.radiobutton2.caption
+msgid "Only pattern #"
+msgstr "Только паттерн №"
+
+#: tglbtrans.updown1.hint
+msgctxt "tglbtrans.updown1.hint"
+msgid "Pattern number to transpose"
+msgstr "Номер паттерна для транспонирования"
+
+#: tglbtrans.updown8.hint
+msgctxt "tglbtrans.updown8.hint"
+msgid "Number of semitones to transpose: positive - up and negative - down"
+msgstr "Число полутонов для транспонирования: положительное - вверх и отрицательное - вниз"
+
+#: tmainform.addpositions.caption
+msgctxt "tmainform.addpositions.caption"
+msgid "Add positions"
+msgstr "Добавить позиции"
+
+#: tmainform.addpositions.hint
+msgctxt "tmainform.addpositions.hint"
+msgid "Create one or more patterns, and either insert into positions after selected ones, or fill empty positions till selected empty cell."
+msgstr "Создаёт один или более паттернов, и либо вставляет в позиции после выделенных, либо заполняет пустые позиции вплоть до выделенной пустой ячейки."
+
+#: tmainform.autoenvstd.hint
+msgid "Toggle standard combinations"
+msgstr "Перебор стандартных комбинаций"
+
+#: tmainform.changepatlen.caption
+msgid "Change patterns length..."
+msgstr "Сменить размер паттернов..."
+
+#: tmainform.changepatlen.hint
+msgid "Define new length for patterns in selected positions"
+msgstr "Задать новый размер для паттернов в выделенных позициях"
+
+#: tmainform.clipboard1.caption
+msgid "Clipboard"
+msgstr "Буфер обмена"
+
+#: tmainform.clonepositions.caption
+msgctxt "tmainform.clonepositions.caption"
+msgid "Clone positions"
+msgstr "Клонировать позиции"
+
+#: tmainform.clonepositions.hint
+msgid "Create patterns with same content as in selected positions and insert directly after them"
+msgstr "Создать паттерны с тем же содержимым, что и в выбранных позициях, и вставить непосредственно после них"
+
+#: tmainform.closeall1.caption
+msgid "Close All"
+msgstr "Закрыть все"
+
+#: tmainform.closeall1.hint
+msgid "Close all windows"
+msgstr "Закрыть все окна"
+
+#: tmainform.convtopsgmenu.caption
+msgid "Convert to PSG..."
+msgstr "Конвертировать в PSG..."
+
+#: tmainform.convtowavmenu.caption
+msgid "Convert to WAV..."
+msgstr "Конвертировать в WAV..."
+
+#: tmainform.deletepositions.caption
+msgctxt "tmainform.deletepositions.caption"
+msgid "Delete positions"
+msgstr "Удалить позиции"
+
+#: tmainform.deletepositions.hint
+msgctxt "tmainform.deletepositions.hint"
+msgid "Delete selected positions"
+msgstr "Удалить выделенные позиции"
+
+#: tmainform.duplicatepositions.caption
+msgctxt "tmainform.duplicatepositions.caption"
+msgid "Duplicate positions"
+msgstr "Дублировать позиции"
+
+#: tmainform.duplicatepositions.hint
+msgid "Insert selected positions values directly after them"
+msgstr "Вставить значения выделенных позиций непосредственно после них"
+
+#: tmainform.edit1.caption
+msgid "&Edit"
+msgstr "Редактировать"
+
+#: tmainform.edit1.hint
+msgid "Edit commands"
+msgstr "Команды редактирования"
+
+#: tmainform.editcopy1.caption
+msgid "&Copy"
+msgstr "Копировать"
+
+#: tmainform.editcopy1.hint
+msgid "Copy|Copies the selection and puts it on the Clipboard"
+msgstr "Копировать|Копирует выделенный фрагмент и помещает его в буфер обмена"
+
+#: tmainform.editcut1.caption
+msgid "Cu&t"
+msgstr "Вырезать"
+
+#: tmainform.editcut1.hint
+msgid "Cut|Cuts the selection and puts it on the Clipboard"
+msgstr "Вырезать|Вырезает выделенный фрагмент и помещает его в буфер обмена"
+
+#: tmainform.editpaste1.caption
+msgid "&Paste"
+msgstr "Вставить"
+
+#: tmainform.editpaste1.hint
+msgid "Paste|Inserts Clipboard contents"
+msgstr "Вставить|Вставляет содержимое буфера обмена"
+
+#: tmainform.expandtwice1.caption
+msgctxt "tmainform.expandtwice1.caption"
+msgid "Expand pattern"
+msgstr "Разредить паттерн"
+
+#: tmainform.expandtwice1.hint
+msgid "Expand pattern twice|Multiply pattern size x2 and insert empty line after each original line"
+msgstr "Разредить паттерн в два раза|Увеличить размер паттерна x2 и вставить пустую строку после каждой исходной строки"
+
+#: tmainform.exports1.caption
+msgid "Exports"
+msgstr "Экспорт"
+
+#: tmainform.file1.caption
+msgid "&File"
+msgstr "Файл"
+
+#: tmainform.file1.hint
+msgid "File related commands"
+msgstr "Команды работы с файлом"
+
+#: tmainform.file2.caption
+msgctxt "tmainform.file2.caption"
+msgid "File"
+msgstr "Файл"
+
+#: tmainform.fileclose1.caption
+msgid "&Close"
+msgstr "Закрыть"
+
+#: tmainform.fileclose1.hint
+msgid "Close|Close current file"
+msgstr "Закрыть|Закрыть текущий файл"
+
+#: tmainform.fileexit1.caption
+msgid "E&xit"
+msgstr "Выйти"
+
+#: tmainform.fileexit1.hint
+msgid "Exit|Exit application"
+msgstr "Выйти|Выйти из приложения"
+
+#: tmainform.filenew1.caption
+msgid "&New"
+msgstr "Создать"
+
+#: tmainform.filenew1.hint
+msgid "New|Create a new file"
+msgstr "Создать|Создать новый файл"
+
+#: tmainform.fileopen1.caption
+msgid "&Open"
+msgstr "Открыть"
+
+#: tmainform.fileopen1.hint
+msgid "Open|Open a file"
+msgstr "Открыть|Открыть файл"
+
+#: tmainform.filesave1.caption
+msgid "&Save"
+msgstr "Сохранить"
+
+#: tmainform.filesave1.hint
+msgid "Save|Save current file"
+msgstr "Сохранить|Сохранить текущий файл"
+
+#: tmainform.filesaveas1.caption
+msgid "Save &As..."
+msgstr "Сохранить как..."
+
+#: tmainform.filesaveas1.hint
+msgid "Save As|Save current file with different name"
+msgstr "Сохранить как|Сохранить текущий файл под другим именем"
+
+#: tmainform.findwindow1.caption
+msgid "Find Module"
+msgstr "Найти модуль"
+
+#: tmainform.findwindow1.hint
+msgid "Search module by fragment of file name, title or author name"
+msgstr "Поиск модуля по фрагменту имени файла, названия или имени автора"
+
+#: tmainform.globaltransposition.caption
+msgid "Global transposition"
+msgstr "Глобальное транспонирование"
+
+#: tmainform.globaltransposition.hint
+msgid "Transpose channel/pattern/module"
+msgstr "Транспонировать канал/паттерн/модуль"
+
+#: tmainform.help1.caption
+msgid "&Help"
+msgstr "Справка"
+
+#: tmainform.help1.hint
+msgid "Help topics"
+msgstr "Разделы справки"
+
+#: tmainform.helpabout1.caption
+msgid "&About..."
+msgstr "О программе..."
+
+#: tmainform.helpabout1.hint
+msgid "About|Displays program information, version number, and copyright"
+msgstr "О программе|Показывает информацию о программе, номер версии и авторов"
+
+#: tmainform.merge1.caption
+msgctxt "tmainform.merge1.caption"
+msgid "Merge"
+msgstr "Подмешать"
+
+#: tmainform.merge1.hint
+msgid "Merge|Merges Clipboard contents"
+msgstr "Подмешать|Подмешивает содержимое буфера обмена"
+
+#: tmainform.mergepositions.caption
+msgctxt "tmainform.mergepositions.caption"
+msgid "Merge"
+msgstr "Подмешать"
+
+#: tmainform.mergepositions.hint
+msgctxt "tmainform.mergepositions.hint"
+msgid "Paste clipboard content into selected cells or into cells starting from a selected one"
+msgstr "Вставить содержимое буфера обмена внутрь выделенных ячеек или в ячейки, начиная с выбранной"
+
+#: tmainform.mihierarchy.caption
+msgid "Trackers hierarchy"
+msgstr "Иерархия трекеров"
+
+#: tmainform.mihistory.caption
+msgid "Creation history"
+msgstr "История создания"
+
+#: tmainform.mijumpinpat.caption
+msgid "Jump to..."
+msgstr "Перейти к..."
+
+#: tmainform.mijumpinpat.hint
+msgid "Move cursor to various positions"
+msgstr "Перенести курсор в различные позиции"
+
+#: tmainform.milims.caption
+msgid "Trackers limitations"
+msgstr "Ограничения трекеров"
+
+#: tmainform.mimanual.caption
+msgid "Manual"
+msgstr "Руководство"
+
+#: tmainform.mimaximized.caption
+msgid "Maximized"
+msgstr "Развёрнуто"
+
+#: tmainform.miotherhelp.caption
+msgctxt "tmainform.miotherhelp.caption"
+msgid "Other"
+msgstr "Прочее"
+
+#: tmainform.miposselectall.caption
+msgctxt "tmainform.miposselectall.caption"
+msgid "Select all"
+msgstr "Выделить все"
+
+#: tmainform.miquickguide.caption
+msgid "Quick guide"
+msgstr "Краткое руководство"
+
+#: tmainform.miselectall.caption
+msgctxt "tmainform.miselectall.caption"
+msgid "Select all"
+msgstr "Выделить всё"
+
+#: tmainform.mitablescsv.caption
+msgid "Tone tables"
+msgstr "Тоновые таблицы"
+
+#: tmainform.mitracksselectall.caption
+msgctxt "tmainform.mitracksselectall.caption"
+msgid "Select all"
+msgstr "Выделить всё"
+
+#: tmainform.mitranspose.caption
+msgid "Transpose..."
+msgstr "Транспонировать..."
+
+#: tmainform.mitranspose.hint
+msgid "Transpose selected notes and evelope periods"
+msgstr "Транспонировать выделенные ноты или периоды огибающих"
+
+#: tmainform.mizxayplayer.caption
+msgid "ZX PT3 player"
+msgstr "Проигрыватель PT3 для ZX"
+
+#: tmainform.mizxtsplayer.caption
+msgid "ZX TS player"
+msgstr "Проигрыватель TS для ZX"
+
+#: tmainform.nextwindow1.caption
+msgid "Next"
+msgstr "Следующее"
+
+#: tmainform.nextwindow1.hint
+msgid "Swith to the next window"
+msgstr "Переключиться на следующее окно"
+
+#: tmainform.opendialogvtm.title
+msgid "Open module(s):"
+msgstr "Открыть модуль(и)"
+
+#: tmainform.options1.caption
+msgid "Options..."
+msgstr "Настройки..."
+
+#: tmainform.options1.hint
+msgid "Options|Application settings"
+msgstr "Настройки|Настройки приложения"
+
+#: tmainform.packpattern1.caption
+msgctxt "tmainform.packpattern1.caption"
+msgid "Pack pattern"
+msgstr "Упаковать паттерн"
+
+#: tmainform.packpattern1.hint
+msgid "Replaces empty lines of pattern or of its selection with various tempo setting special commands"
+msgstr "Заменяет пустые строки паттерна или его выделения спец. командами для установки различных скоростей"
+
+#: tmainform.patjmp0.hint
+msgid "Jump to begin of pattern"
+msgstr "Перейти к началу паттерна"
+
+#: tmainform.patjmp1.hint
+msgid "Jump to 25% of pattern"
+msgstr "Перейти на 25% паттерна"
+
+#: tmainform.patjmp2.hint
+msgid "Jump to 50% of pattern"
+msgstr "Перейти на 50% паттерна"
+
+#: tmainform.patjmp3.hint
+msgid "Jump to 75% of pattern"
+msgstr "Перейти на 75% паттерна"
+
+#: tmainform.play1.caption
+msgid "Play from start"
+msgstr "Играть с начала"
+
+#: tmainform.play1.hint
+msgid "Play from start|Play module from start"
+msgstr "Играть с начала|Играть модуль с начала"
+
+#: tmainform.play2.caption
+msgctxt "tmainform.play2.caption"
+msgid "Playback"
+msgstr "Проигрывание"
+
+#: tmainform.play2.hint
+msgid "Playback controls"
+msgstr "Управление проигрыванием"
+
+#: tmainform.play5.caption
+msgctxt "tmainform.play5.caption"
+msgid "Playback"
+msgstr "Проигрывание"
+
+#: tmainform.playfrompos.caption
+msgctxt "tmainform.playfrompos.caption"
+msgid "Play"
+msgstr "Играть"
+
+#: tmainform.playfrompos.hint
+msgid "Play|Play module from current position"
+msgstr "Играть|Играть модуль с текущей позиции"
+
+#: tmainform.playpat.caption
+msgid "Play pattern from start"
+msgstr "Играть паттерн с начала"
+
+#: tmainform.playpat.hint
+msgid "Play pattern from start|Play current pattern from start"
+msgstr "Играть паттерн с начала|Играть текущий паттерн с начала"
+
+#: tmainform.playpatfromline.caption
+msgid "Play pattern"
+msgstr "Играть паттерн"
+
+#: tmainform.playpatfromline.hint
+msgid "Play pattern|Play current pattern from current line"
+msgstr "Играть паттерн|Играть текущий паттерн с текущей строки"
+
+#: tmainform.previouswindow1.caption
+msgid "Previous"
+msgstr "Предыдущее"
+
+#: tmainform.previouswindow1.hint
+msgid "Swith to the previous window"
+msgstr "Переключиться на предыдущее окно"
+
+#: tmainform.progress.hint
+msgid "Conversion progress (ESC to abort)"
+msgstr "Прогресс конвертирования (ESC для отмены)"
+
+#: tmainform.redo.caption
+msgid "Redo"
+msgstr "Вернуть"
+
+#: tmainform.redo.hint
+msgid "Redo|Redo last undo"
+msgstr "Вернуть|Вернуть последнюю отмену"
+
+#: tmainform.renumpats.caption
+msgctxt "tmainform.renumpats.caption"
+msgid "Renumber patterns"
+msgstr "Перенумеровать паттерны"
+
+#: tmainform.renumpats.hint
+msgid "Renumber patterns in order of using in the position list"
+msgstr "Перенумеровывает паттерны в порядке использования в списке позиций"
+
+#: tmainform.savedialogpsg.title
+msgid "Convert to PSG"
+msgstr "Конвертировать в PSG"
+
+#: tmainform.savedialogsndh.title
+msgid "Save in SNDH"
+msgstr "Сохранить в SNDH"
+
+#: tmainform.savedialogvtm.title
+msgid "Save module as:"
+msgstr "Сохранить модуль как:"
+
+#: tmainform.savedialogwav.title
+msgid "Convert to WAV"
+msgstr "Конвертировать в WAV"
+
+#: tmainform.savedialogzxay.title
+msgid "Export to ZX Spectrum as:"
+msgstr "Экспортировать на ZX Spectrum как:"
+
+#: tmainform.saveforzxmenu.caption
+msgid "Save with ZX Spectrum player..."
+msgstr "Сохранить с плеером ZX Spectrum..."
+
+#: tmainform.savesndhmenu.caption
+msgid "Save in SNDH (Atari ST)..."
+msgstr "Сохранить в SNDH (Atari ST)..."
+
+#: tmainform.sbcancel.hint
+msgctxt "tmainform.sbcancel.hint"
+msgid "Cancel"
+msgstr "Отменить"
+
+#: tmainform.setlooppos.caption
+msgid "Set loop position"
+msgstr "Установить позицию цикла"
+
+#: tmainform.setlooppos.hint
+msgid "Loop|Set loop position"
+msgstr "Зациклить|Установить позицию цикла"
+
+#: tmainform.shrinktwice1.caption
+msgctxt "tmainform.shrinktwice1.caption"
+msgid "Shrink pattern"
+msgstr "Уплотнить паттерн"
+
+#: tmainform.shrinktwice1.hint
+msgid "Shrink pattern twice|Remove each second line and divide pattern size /2"
+msgstr "Уплотнить паттерн|Удалить каждую вторую строку и уменьшить размер паттерна /2"
+
+#: tmainform.splitpattern1.caption
+msgctxt "tmainform.splitpattern1.caption"
+msgid "Split pattern"
+msgstr "Разделить паттерн"
+
+#: tmainform.splitpattern1.hint
+msgid "Split pattern at cursor into two ones"
+msgstr "Разделить паттерн от курсора на две части"
+
+#: tmainform.stop1.caption
+msgid "Stop"
+msgstr "Остановить"
+
+#: tmainform.stop1.hint
+msgid "Stop|Stop playing/Free device"
+msgstr "Остановить|Остановить проигрывание/Освободить устройство"
+
+#: tmainform.swapchansleft.caption
+msgctxt "tmainform.swapchansleft.caption"
+msgid "Swap channels left"
+msgstr "Поменять с каналом левее"
+
+#: tmainform.swapchansleft.hint
+msgid "Swap selected and lefter channels"
+msgstr "Поменять местами выделенный канал с тем, что слева"
+
+#: tmainform.swapchansright.caption
+msgctxt "tmainform.swapchansright.caption"
+msgid "Swap channels right"
+msgstr "Поменять с каналом правее"
+
+#: tmainform.swapchansright.hint
+msgid "Swap selected and righter channels"
+msgstr "Поменять местами выделенный канал с тем, что справа"
+
+#: tmainform.tbcascade.caption
+msgctxt "tmainform.tbcascade.caption"
+msgid "Cascade"
+msgstr "Каскад"
+
+#: tmainform.tbcopy.caption
+msgctxt "tmainform.tbcopy.caption"
+msgid "Copy"
+msgstr "Копировать"
+
+#: tmainform.tbcut.caption
+msgid "Cut"
+msgstr "Вырезать"
+
+#: tmainform.tbnew.caption
+msgid "New"
+msgstr "Создать"
+
+#: tmainform.tbopen.caption
+msgid "Open"
+msgstr "Открыть"
+
+#: tmainform.tbpaste.caption
+msgid "Paste"
+msgstr "Вставить"
+
+#: tmainform.tbsave.caption
+msgctxt "tmainform.tbsave.caption"
+msgid "Save"
+msgstr "Сохр"
+
+#: tmainform.tbtilehor.caption
+msgctxt "tmainform.tbtilehor.caption"
+msgid "Tile Horizontally"
+msgstr "Замостить по горизонтали"
+
+#: tmainform.tbtilevert.caption
+msgctxt "tmainform.tbtilevert.caption"
+msgid "Tile Vertically"
+msgstr "Замостить по вертикали"
+
+#: tmainform.togglechanalloc.hint
+msgid "Channels|Toggle channel allocation"
+msgstr "Каналы|Перебор расположения каналов"
+
+#: tmainform.togglechip.hint
+msgid "Chip|Toggle sound chip"
+msgstr "Микросхема|Переключить звуковой чип"
+
+#: tmainform.togglelooping.caption
+msgid "Toggle looping"
+msgstr "Включить зацикливание"
+
+#: tmainform.togglelooping.hint
+msgid "Loop|Toggle looping"
+msgstr "Зациклить|Включить зацикливание"
+
+#: tmainform.toggleloopingall.caption
+msgid "Toggle looping all"
+msgstr "Включить зацикливание окон"
+
+#: tmainform.toggleloopingall.hint
+msgid "Loop all|Toggle looping among all opened files"
+msgstr "Зациклить окна|Включить зацикливание между всеми открытыми файлами"
+
+#: tmainform.togglemidivol.hint
+msgid "MIDI NoteOn Volume|Push for setting volume according to pitch velocity"
+msgstr "Громкость из MIDI NoteOn|Нажмите для установки громкости в соответствии со скоростью нажатия нотной клавиши"
+
+#: tmainform.togglesamples.caption
+msgctxt "tmainform.togglesamples.caption"
+msgid "Toggle samples"
+msgstr "Выключатели сэмплов"
+
+#: tmainform.togglesamples.hint
+msgid "Switch on/off standalone samples"
+msgstr "Включить/отключить отдельные сэмплы"
+
+#: tmainform.track1.caption
+msgctxt "tmainform.track1.caption"
+msgid "Track tools"
+msgstr "Инструменты треков"
+
+#: tmainform.tracksmanager.caption
+msgctxt "tmainform.tracksmanager.caption"
+msgid "Tracks manager"
+msgstr "Управление треками"
+
+#: tmainform.tracksmanager.hint
+msgid "Copy/move/swap/transpose tracks"
+msgstr "Копировать/перемещать/менять местами/транспонировать треки"
+
+#: tmainform.transposedown1.caption
+msgid "Transpose -1"
+msgstr "Транспонировать -1"
+
+#: tmainform.transposedown1.hint
+msgid "-1 semitone|Transpose selected notes and envelope periods 1 semitone down"
+msgstr "-1 полутон|Транспонировать выделенные ноты и периоды огибающей на 1 полутон вниз"
+
+#: tmainform.transposedown12.caption
+msgid "Transpose -12"
+msgstr "Транспонировать -12"
+
+#: tmainform.transposedown12.hint
+msgid "-12 semitones|Transpose selected notes and envelope periods 12 semitones down"
+msgstr "-12 полутонов|Транспонировать выделенные ноты и периоды огибающей на 12 полутонов вниз"
+
+#: tmainform.transposedown3.caption
+msgid "Transpose -3"
+msgstr "Транспонировать -3"
+
+#: tmainform.transposedown3.hint
+msgid "-3 semitones|Transpose selected notes and envelope periods 3 semitone down"
+msgstr "-3 полутона|Транспонировать выделенные ноты и периоды огибающей на 3 полутона вниз"
+
+#: tmainform.transposedown5.caption
+msgid "Transpose -5"
+msgstr "Транспонировать -5"
+
+#: tmainform.transposedown5.hint
+msgid "-5 semitones|Transpose selected notes and envelope periods 5 semitones down"
+msgstr "-5 полутонов|Транспонировать выделенные ноты и периоды огибающей на 5 полутонов вниз"
+
+#: tmainform.transposeup1.caption
+msgid "Transpose +1"
+msgstr "Транспонировать +1"
+
+#: tmainform.transposeup1.hint
+msgid "+1 semitone|Transpose selected notes and envelope periods 1 semitone up"
+msgstr "+1 полутон|Транспонировать выделенные ноты и периоды огибающей на 1 полутон вверх"
+
+#: tmainform.transposeup12.caption
+msgid "Transpose +12"
+msgstr "Транспонировать +12"
+
+#: tmainform.transposeup12.hint
+msgid "+12 semitones|Transpose selected notes and envelope periods 12 semitones up"
+msgstr "+12 полутонов|Транспонировать выделенные ноты и периоды огибающей на 12 полутонов вверх"
+
+#: tmainform.transposeup3.caption
+msgid "Transpose +3"
+msgstr "Транспонировать +3"
+
+#: tmainform.transposeup3.hint
+msgid "+3 semitones|Transpose selected notes and envelope periods 3 semitones up"
+msgstr "+3 полутона|Транспонировать выделенные ноты и периоды огибающей на 3 полутона вверх"
+
+#: tmainform.transposeup5.caption
+msgid "Transpose +5"
+msgstr "Транспонировать +5"
+
+#: tmainform.transposeup5.hint
+msgid "+5 semitones|Transpose selected notes and envelope periods 5 semitones up"
+msgstr "+5 полутонов|Транспонировать выделенные ноты и периоды огибающей на 5 полутонов вверх"
+
+#: tmainform.undo.caption
+msgid "Undo"
+msgstr "Отменить"
+
+#: tmainform.undo.hint
+msgid "Undo|Undo last change"
+msgstr "Отменить|Отменить последнее изменение"
+
+#: tmainform.undoredo1.caption
+msgid "Undo/Redo"
+msgstr "Отменить/Вернуть"
+
+#: tmainform.window1.caption
+msgid "&Window"
+msgstr "Окно"
+
+#: tmainform.window1.hint
+msgid "Window related commands"
+msgstr "Команды для работы с окнами"
+
+#: tmainform.window2.caption
+msgid "Window"
+msgstr "Окно"
+
+#: tmainform.windowcascade1.caption
+msgid "&Cascade"
+msgstr "Каскад"
+
+#: tmainform.windowcascade1.hint
+msgctxt "tmainform.windowcascade1.hint"
+msgid "Cascade"
+msgstr "Каскад"
+
+#: tmainform.windowtilehorizontal1.caption
+msgid "Tile &Horizontally"
+msgstr "Замостить по горизонтали"
+
+#: tmainform.windowtilehorizontal1.hint
+msgctxt "tmainform.windowtilehorizontal1.hint"
+msgid "Tile Horizontally"
+msgstr "Замостить по горизонтали"
+
+#: tmainform.windowtilevertical1.caption
+msgid "Tile &Vertically"
+msgstr "Замостить по вертикали"
+
+#: tmainform.windowtilevertical1.hint
+msgctxt "tmainform.windowtilevertical1.hint"
+msgid "Tile Vertically"
+msgstr "Замостить по вертикали"
+
+#: tnkchoosefrm.caption
+msgid "Choose note key"
+msgstr "Выберите нотную клавишу"
+
+#: tnkchoosefrm.lbnkeys.hint
+msgid "Enter or Click to choose, Esc to cancel"
+msgstr "Enter или щелчок мышью для выбора, Esc для отмены"
+
+#: toptionsdlg.bdefineshorcut.caption
+msgid "Define shortcut"
+msgstr "Задать клавиши"
+
+#: toptionsdlg.bdefineshorcut.hint
+msgid "Define shortcut (Enter)"
+msgstr "Задать клавиши (Enter)"
+
+#: toptionsdlg.bdeleteshortcut.caption
+msgid "Delete shortcut"
+msgstr "Удалить клавиши"
+
+#: toptionsdlg.bdeleteshortcut.hint
+msgid "Undefine shortcut (Del)"
+msgstr "Убрать сочетание клавиш (Del)"
+
+#: toptionsdlg.br.caption
+msgid "Bit rate"
+msgstr "Бит на сэмпл"
+
+#: toptionsdlg.bsetdefaults.caption
+msgid "Default for all"
+msgstr "По умолчанию все"
+
+#: toptionsdlg.bsetdefaults.hint
+msgid "Fill all shortcuts with default values"
+msgstr "Заполнить все горячие клавиши значениями по умолчанию"
+
+#: toptionsdlg.buff.caption
+msgid "Buffers"
+msgstr "Буферы"
+
+#: toptionsdlg.butcancel.caption
+msgctxt "toptionsdlg.butcancel.caption"
+msgid "Cancel"
+msgstr "Отменить"
+
+#: toptionsdlg.butcancel.hint
+msgid "Rollback the changes"
+msgstr "Откатить изменения"
+
+#: toptionsdlg.butok.hint
+msgid "Keep the changes"
+msgstr "Оставить изменения"
+
+#: toptionsdlg.caption
+msgctxt "toptionsdlg.caption"
+msgid "Options"
+msgstr "Настройки"
+
+#: toptionsdlg.cbbgallowmidi.caption
+msgid "Accept MIDI messages in background"
+msgstr "Принимать сообщения MIDI в фоне"
+
+#: toptionsdlg.cbcaabc.hint
+msgctxt "toptionsdlg.cbcaabc.hint"
+msgid "Check to use in Channel allocation button's carousel"
+msgstr "Установите флажок чтобы использовать в карусели кнопки выбора расположения каналов"
+
+#: toptionsdlg.cbcaacb.hint
+msgctxt "toptionsdlg.cbcaacb.hint"
+msgid "Check to use in Channel allocation button's carousel"
+msgstr "Установите флажок чтобы использовать в карусели кнопки выбора расположения каналов"
+
+#: toptionsdlg.cbcabac.hint
+msgctxt "toptionsdlg.cbcabac.hint"
+msgid "Check to use in Channel allocation button's carousel"
+msgstr "Установите флажок чтобы использовать в карусели кнопки выбора расположения каналов"
+
+#: toptionsdlg.cbcabca.hint
+msgctxt "toptionsdlg.cbcabca.hint"
+msgid "Check to use in Channel allocation button's carousel"
+msgstr "Установите флажок чтобы использовать в карусели кнопки выбора расположения каналов"
+
+#: toptionsdlg.cbcacab.hint
+msgctxt "toptionsdlg.cbcacab.hint"
+msgid "Check to use in Channel allocation button's carousel"
+msgstr "Установите флажок чтобы использовать в карусели кнопки выбора расположения каналов"
+
+#: toptionsdlg.cbcacba.hint
+msgctxt "toptionsdlg.cbcacba.hint"
+msgid "Check to use in Channel allocation button's carousel"
+msgstr "Установите флажок чтобы использовать в карусели кнопки выбора расположения каналов"
+
+#: toptionsdlg.cbcamono.hint
+msgctxt "toptionsdlg.cbcamono.hint"
+msgid "Check to use in Channel allocation button's carousel"
+msgstr "Установите флажок чтобы использовать в карусели кнопки выбора расположения каналов"
+
+#: toptionsdlg.cbdecnoise.caption
+msgid "Decimal noise period"
+msgstr "Трек шума десятичными"
+
+#: toptionsdlg.cbdectrlines.caption
+msgid "Decimal line numbering"
+msgstr "Десятичная нумерация строк"
+
+#: toptionsdlg.cbenvasnote.caption
+msgctxt "toptionsdlg.cbenvasnote.caption"
+msgid "Envelope as note"
+msgstr "Огибающая как нота"
+
+#: toptionsdlg.cblmbtodraw.caption
+msgctxt "toptionsdlg.cblmbtodraw.caption"
+msgid "Use left mouse button (LMB) to draw amplitude"
+msgstr "Рисовать амплитуду левой кнопкой мыши (ЛКМ)"
+
+#: toptionsdlg.cblmbtodraw.hint
+msgctxt "toptionsdlg.cblmbtodraw.hint"
+msgid "Use LMB instead of RMB to draw amplitude in corresponding area of the sample editor"
+msgstr "Использовать ЛКМ вместо ПКМ для рисования амплитуды в соответствующей области редактора сэмпла"
+
+#: toptionsdlg.cbnotwarnundo.caption
+msgid "Don't ask when operation cannot be undo"
+msgstr "Не спрашивать подтверждения для неотменяемых операций"
+
+#: toptionsdlg.cbnotwarnundo.hint
+msgid "Don't ask user confirmation when operation cannot be undo, just do it and flush Undo list"
+msgstr "Не запрашивать подтверждение пользователя для операций, которые нельзя отменить, а молча выполнять их и очищать список Undo"
+
+#: toptionsdlg.cbornasnote.caption
+msgctxt "toptionsdlg.cbornasnote.caption"
+msgid "Ornament as notes"
+msgstr "Орнамент как ноты"
+
+#: toptionsdlg.cbornhint.caption
+msgid "Show pop-up hint for ornament editor"
+msgstr "Показывать всплывающую подсказку в редакторе орнамента"
+
+#: toptionsdlg.cbrecalcenv.caption
+msgid "Recalculate envelope periods on note table change"
+msgstr "Пересчитывать периоды огибающей при смене таблицы нот"
+
+#: toptionsdlg.cbsamasnote.caption
+msgid "Sample tone as note"
+msgstr "Тон в сэмпле как нота"
+
+#: toptionsdlg.cbsamhint.caption
+msgid "Show pop-up hint for sample editor"
+msgstr "Показывать всплывающую подсказку в редакторе сэмпла"
+
+#: toptionsdlg.cbsamornhl.caption
+msgid "Highlight lines in sample and ornament editors"
+msgstr "Подсвечивать строки в редакторах сэмпла и орнамента"
+
+#: toptionsdlg.cbsamornhl.hint
+msgid "Highlight lines in sample and ornament editor with tempo step"
+msgstr "Подсвечивать строки в редакторах сэмпла и орнамента с шагом скорости модуля"
+
+#: toptionsdlg.cbtrackshint.caption
+msgid "Show pop-up hint for tracks editor"
+msgstr "Показывать всплывающую подсказку в редакторе треков"
+
+#: toptionsdlg.chansel.caption
+msgid "Channels allocation"
+msgstr "Положение каналов"
+
+#: toptionsdlg.chfreq.caption
+msgid "Chip frequency"
+msgstr "Частота чипа"
+
+#: toptionsdlg.chipemu.caption
+msgid "Chip emulation"
+msgstr "Эмуляция чипа"
+
+#: toptionsdlg.chipsel.caption
+msgid "Sound chip"
+msgstr "Звуковой чип"
+
+#: toptionsdlg.designtab.caption
+msgid "Design"
+msgstr "Оформление"
+
+#: toptionsdlg.digisndtab.caption
+msgid "Digital Sound"
+msgstr "Цифровой звук"
+
+#: toptionsdlg.featlevel.caption
+msgctxt "toptionsdlg.featlevel.caption"
+msgid "Features level"
+msgstr "Уровень возможностей"
+
+#: toptionsdlg.gbdesign.caption
+msgid "Design items"
+msgstr "Элементы оформления"
+
+#: toptionsdlg.gbinitparams.caption
+msgid "Initial parameters"
+msgstr "Начальные параметры"
+
+#: toptionsdlg.gblang.caption
+msgid "Interface language"
+msgstr "Язык (language)"
+
+#: toptionsdlg.intsel.caption
+msgid "Interrupt frequency"
+msgstr "Частота прерываний"
+
+#: toptionsdlg.keystab.caption
+msgid "Keys"
+msgstr "Клавиши"
+
+#: toptionsdlg.label6.caption
+msgctxt "toptionsdlg.label6.caption"
+msgid "Number of buffers"
+msgstr "Количество буферов"
+
+#: toptionsdlg.lbautstpval.caption
+msgid "Auto step"
+msgstr "Автошаг"
+
+#: toptionsdlg.lbbuflncpt.caption
+msgid "Buffer length"
+msgstr "Длина буфера"
+
+#: toptionsdlg.lbglobal.caption
+msgid "Global"
+msgstr "Общее"
+
+#: toptionsdlg.lbnotetbl.caption
+msgctxt "toptionsdlg.lbnotetbl.caption"
+msgid "Note table"
+msgstr "Таблица нот"
+
+#: toptionsdlg.lbnotice.caption
+msgid "Some changes will be heard after"
+msgstr "Некоторые изменения можно услышать после"
+
+#: toptionsdlg.lbnumlines.caption
+msgid "Track lines"
+msgstr "Строк трека"
+
+#: toptionsdlg.lbornaments.caption
+msgctxt "toptionsdlg.lbornaments.caption"
+msgid "Ornaments"
+msgstr "Орнаменты"
+
+#: toptionsdlg.lbornamentsfont.hint
+msgid "Ornaments font"
+msgstr "Шрифт орнаментов"
+
+#: toptionsdlg.lbsamples.caption
+msgctxt "toptionsdlg.lbsamples.caption"
+msgid "Samples"
+msgstr "Сэмплы"
+
+#: toptionsdlg.lbsamplesfont.hint
+msgid "Samples font"
+msgstr "Шрифт сэмплов"
+
+#: toptionsdlg.lbtests.caption
+msgid "Tests"
+msgstr "Тесты"
+
+#: toptionsdlg.lbtestsfont.hint
+msgid "Test lines font"
+msgstr "Шрифт тестовых строк"
+
+#: toptionsdlg.lbtotlncpt.caption
+msgid "Total length"
+msgstr "Суммарная длина"
+
+#: toptionsdlg.lbtracks.caption
+msgid "Tracks"
+msgstr "Треки"
+
+#: toptionsdlg.lbtracksfont.hint
+msgid "Tracks font"
+msgstr "Шрифт треков"
+
+#: toptionsdlg.nch.caption
+msgid "Channels"
+msgstr "Каналы"
+
+#: toptionsdlg.opmod.caption
+msgid "Compatibility"
+msgstr "Совместимость"
+
+#: toptionsdlg.otherops.caption
+msgctxt "toptionsdlg.otherops.caption"
+msgid "Other"
+msgstr "Другие"
+
+#: toptionsdlg.priorgrp.caption
+msgid "Application priority"
+msgstr "Приоритет приложения"
+
+#: toptionsdlg.rbcaabc.hint
+msgctxt "toptionsdlg.rbcaabc.hint"
+msgid "Check to use for chip emulation and for visual allocation in tracks editor"
+msgstr "Установите флажок чтобы использовать при эмулировании и для визуализации положения в редакторе треков"
+
+#: toptionsdlg.rbcaacb.hint
+msgctxt "toptionsdlg.rbcaacb.hint"
+msgid "Check to use for chip emulation and for visual allocation in tracks editor"
+msgstr "Установите флажок чтобы использовать при эмулировании и для визуализации положения в редакторе треков"
+
+#: toptionsdlg.rbcabac.hint
+msgctxt "toptionsdlg.rbcabac.hint"
+msgid "Check to use for chip emulation and for visual allocation in tracks editor"
+msgstr "Установите флажок чтобы использовать при эмулировании и для визуализации положения в редакторе треков"
+
+#: toptionsdlg.rbcabca.hint
+msgctxt "toptionsdlg.rbcabca.hint"
+msgid "Check to use for chip emulation and for visual allocation in tracks editor"
+msgstr "Установите флажок чтобы использовать при эмулировании и для визуализации положения в редакторе треков"
+
+#: toptionsdlg.rbcacab.hint
+msgctxt "toptionsdlg.rbcacab.hint"
+msgid "Check to use for chip emulation and for visual allocation in tracks editor"
+msgstr "Установите флажок чтобы использовать при эмулировании и для визуализации положения в редакторе треков"
+
+#: toptionsdlg.rbcacba.hint
+msgctxt "toptionsdlg.rbcacba.hint"
+msgid "Check to use for chip emulation and for visual allocation in tracks editor"
+msgstr "Установите флажок чтобы использовать при эмулировании и для визуализации положения в редакторе треков"
+
+#: toptionsdlg.rbcamono.caption
+msgid "Mono"
+msgstr "Моно"
+
+#: toptionsdlg.rbcamono.hint
+msgctxt "toptionsdlg.rbcamono.hint"
+msgid "Check to use for chip emulation and for visual allocation in tracks editor"
+msgstr "Установите флажок чтобы использовать при эмулировании и для визуализации положения в редакторе треков"
+
+#: toptionsdlg.resamp.caption
+msgid "Resampler"
+msgstr "Передискретизация"
+
+#: toptionsdlg.savehead.caption
+msgctxt "toptionsdlg.savehead.caption"
+msgid "Save with нeader"
+msgstr "Сохранить с заголовком"
+
+#: toptionsdlg.seldev.caption
+msgid "Device"
+msgstr "Устройство"
+
+#: toptionsdlg.sgkeys.hint
+msgid "Enter or Double Click to define shortcut, Delete to undefine"
+msgstr "Enter или двойной щелчок чтобы задать горячие клавиши, Delete чтобы убрать"
+
+#: toptionsdlg.shglobalbgempty.hint
+msgid "Background color for empty spaces"
+msgstr "Цвет фона для пустых мест"
+
+#: toptionsdlg.shglobalworkspace.hint
+msgid "Workspace background color"
+msgstr "Цвет фона рабочей области"
+
+#: toptionsdlg.shornamentsbg.hint
+msgid "Ornament background color"
+msgstr "Цвет фона орнамента"
+
+#: toptionsdlg.shornamentsbgbeyondhl.hint
+msgid "Highlight background color after ornament body"
+msgstr "Цвет подсветки фона после тела орнамента"
+
+#: toptionsdlg.shornamentsbgbynd.hint
+msgctxt "toptionsdlg.shornamentsbgbynd.hint"
+msgid "Beyond ornament background color"
+msgstr "Цвет фона за орнаментом"
+
+#: toptionsdlg.shornamentsbghl.hint
+msgid "Highlight background color before ornament loop"
+msgstr "Цвет подсветки фона перед зацикливанием орнамента"
+
+#: toptionsdlg.shornamentsbglp.hint
+msgid "Ornament loop background color"
+msgstr "Цвет фона зацикленной части орнамента"
+
+#: toptionsdlg.shornamentsbglphl.hint
+msgid "Highlight background color in ornament loop body"
+msgstr "Цвет подсветки фона орнамента внутри тела цикла"
+
+#: toptionsdlg.shornamentstxt.hint
+msgid "Ornament text color"
+msgstr "Цвет текста орнамента"
+
+#: toptionsdlg.shornamentstxtbynd.hint
+msgid "Beyond ornament text color"
+msgstr "Цвет текста за орнаментом"
+
+#: toptionsdlg.shornamentstxtlp.hint
+msgid "Ornament loop text color"
+msgstr "Цвет текста орнамента внутри тела цикла"
+
+#: toptionsdlg.shsamplesbg.hint
+msgid "Sample background color"
+msgstr "Цвет фона сэмпла"
+
+#: toptionsdlg.shsamplesbgbeyondhl.hint
+msgid "Highlight background color after sample body"
+msgstr "Цвет подсветки фона после тела сэмпла"
+
+#: toptionsdlg.shsamplesbgbynd.hint
+msgctxt "toptionsdlg.shsamplesbgbynd.hint"
+msgid "Beyond sample background color"
+msgstr "Цвет фона за сэмплом"
+
+#: toptionsdlg.shsamplesbghl.hint
+msgid "Highlight background color before sample loop"
+msgstr "Цвет подсветки фона сэмпла перед телом цикла"
+
+#: toptionsdlg.shsamplesbglp.hint
+msgid "Sample loop background color"
+msgstr "Цвет фона тела цикла сэмпла"
+
+#: toptionsdlg.shsamplesbglphl.hint
+msgid "Highlight background color in sample loop body"
+msgstr "Цвет подсветки фона сэмпла в теле цикла"
+
+#: toptionsdlg.shsamplestxt.hint
+msgid "Sample text color"
+msgstr "Цвет текста сэмпла"
+
+#: toptionsdlg.shsamplestxtbynd.hint
+msgid "Beyond sample text color"
+msgstr "Цвет текста за сэмплом"
+
+#: toptionsdlg.shsamplestxtlp.hint
+msgid "Sample loop text color"
+msgstr "Цвет текста сэмпла в теле цикла"
+
+#: toptionsdlg.shtestsbg.hint
+msgid "Test lines background color"
+msgstr "Цвет фона тестовых строк"
+
+#: toptionsdlg.shteststxt.hint
+msgid "Test lines text color"
+msgstr "Цвет текста тестовых строк"
+
+#: toptionsdlg.shtracksbg.hint
+msgid "Usual background color"
+msgstr "Обычный цвет фона"
+
+#: toptionsdlg.shtracksbgbynd.hint
+msgid "Beyond pattern background color"
+msgstr "Цвет фона вне паттерна"
+
+#: toptionsdlg.shtracksbghl.hint
+msgid "Highlight background color"
+msgstr "Цвет подсветки фона"
+
+#: toptionsdlg.shtracksbghlmain.hint
+msgid "Main highlight background color"
+msgstr "Главный цвет подсветки фона"
+
+#: toptionsdlg.shtrackstxt.hint
+msgid "Usual text color"
+msgstr "Цвет обычного текста"
+
+#: toptionsdlg.shtrackstxthlmain.hint
+msgid "Main highlight text color"
+msgstr "Главный цвет подсвеченного текста"
+
+#: toptionsdlg.sr.caption
+msgid "Sample rate"
+msgstr "Частота сэмплов"
+
+#: toptionsdlg.tbbuflen.hint
+msgid "Length of one buffer"
+msgstr "Длина одного буфера"
+
+#: toptionsdlg.tbbufnum.hint
+msgctxt "toptionsdlg.tbbufnum.hint"
+msgid "Number of buffers"
+msgstr "Количество буферов"
+
+#: ttoglsams.caption
+msgctxt "ttoglsams.caption"
+msgid "Toggle samples"
+msgstr "Выключатели сэмплов"
+
+#: ttrmng.button1.caption
+msgctxt "ttrmng.button1.caption"
+msgid "Close"
+msgstr "Закрыть"
+
+#: ttrmng.caption
+msgctxt "ttrmng.caption"
+msgid "Tracks manager"
+msgstr "Управление треками"
+
+#: ttrmng.checkbox1.caption
+msgctxt "ttrmng.checkbox1.caption"
+msgid "Envelope track"
+msgstr "Трек огибающей"
+
+#: ttrmng.checkbox2.caption
+msgid "Noise track"
+msgstr "Трек шума"
+
+#: ttrmng.edit1.hint
+msgctxt "ttrmng.edit1.hint"
+msgid "Start pattern line"
+msgstr "Начальная строка паттерна"
+
+#: ttrmng.edit2.hint
+msgctxt "ttrmng.edit2.hint"
+msgid "Pattern number"
+msgstr "Номер паттерна"
+
+#: ttrmng.edit3.hint
+msgctxt "ttrmng.edit3.hint"
+msgid "Pattern number"
+msgstr "Номер паттерна"
+
+#: ttrmng.edit4.hint
+msgctxt "ttrmng.edit4.hint"
+msgid "Start pattern line"
+msgstr "Начальная строка паттерна"
+
+#: ttrmng.edit5.hint
+msgctxt "ttrmng.edit5.hint"
+msgid "Number of pattern lines for operation"
+msgstr "Количество строк паттерна для операции"
+
+#: ttrmng.edit6.hint
+msgctxt "ttrmng.edit6.hint"
+msgid "Channel name"
+msgstr "Имя канала"
+
+#: ttrmng.edit7.hint
+msgctxt "ttrmng.edit7.hint"
+msgid "Channel name"
+msgstr "Имя канала"
+
+#: ttrmng.edit8.hint
+msgctxt "ttrmng.edit8.hint"
+msgid "Number of semitones to transpose: positive - up and negative - down"
+msgstr "Число полутонов для транспонирования: положительное - вверх и отрицательное - вниз"
+
+#: ttrmng.groupbox1.caption
+msgctxt "ttrmng.groupbox1.caption"
+msgid "Location 1"
+msgstr "Локация 1"
+
+#: ttrmng.groupbox2.caption
+msgctxt "ttrmng.groupbox2.caption"
+msgid "Location 2"
+msgstr "Локация 2"
+
+#: ttrmng.groupbox3.caption
+msgctxt "ttrmng.groupbox3.caption"
+msgid "Copy"
+msgstr "Копировать"
+
+#: ttrmng.groupbox4.caption
+msgid "Move"
+msgstr "Переместить"
+
+#: ttrmng.groupbox5.caption
+msgid "Swap"
+msgstr "Обменять"
+
+#: ttrmng.groupbox6.caption
+msgid "Area"
+msgstr "Область"
+
+#: ttrmng.groupbox7.caption
+msgid "Transposition"
+msgstr "Транспонирование"
+
+#: ttrmng.label1.caption
+msgid "<--Pattern-->"
+msgstr "<--Паттерн-->"
+
+#: ttrmng.label2.caption
+msgid "<--Line-->"
+msgstr "<--Строка-->"
+
+#: ttrmng.label3.caption
+msgid "<--Channel-->"
+msgstr "<--Канал-->"
+
+#: ttrmng.label5.caption
+msgid "Lines"
+msgstr "Строк"
+
+#: ttrmng.label8.caption
+msgid "Semitones"
+msgstr "Полутонов"
+
+#: ttrmng.speedbutton3.hint
+msgctxt "ttrmng.speedbutton3.hint"
+msgid "Warning: cannot be undo!"
+msgstr "Предупреждение: нельзя отменить!"
+
+#: ttrmng.speedbutton4.hint
+msgctxt "ttrmng.speedbutton4.hint"
+msgid "Warning: cannot be undo!"
+msgstr "Предупреждение: нельзя отменить!"
+
+#: ttrmng.speedbutton5.hint
+msgctxt "ttrmng.speedbutton5.hint"
+msgid "Warning: cannot be undo!"
+msgstr "Предупреждение: нельзя отменить!"
+
+#: ttrmng.speedbutton6.caption
+msgctxt "ttrmng.speedbutton6.caption"
+msgid "Location 1"
+msgstr "Локация 1"
+
+#: ttrmng.speedbutton7.caption
+msgctxt "ttrmng.speedbutton7.caption"
+msgid "Location 2"
+msgstr "Локация 2"
+
+#: ttrmng.updown1.hint
+msgctxt "ttrmng.updown1.hint"
+msgid "Pattern number"
+msgstr "Номер паттерна"
+
+#: ttrmng.updown2.hint
+msgctxt "ttrmng.updown2.hint"
+msgid "Start pattern line"
+msgstr "Начальная строка паттерна"
+
+#: ttrmng.updown3.hint
+msgctxt "ttrmng.updown3.hint"
+msgid "Pattern number"
+msgstr "Номер паттерна"
+
+#: ttrmng.updown4.hint
+msgctxt "ttrmng.updown4.hint"
+msgid "Start pattern line"
+msgstr "Начальная строка паттерна"
+
+#: ttrmng.updown5.hint
+msgctxt "ttrmng.updown5.hint"
+msgid "Number of pattern lines for operation"
+msgstr "Количество строк паттерна для операции"
+
+#: ttrmng.updown6.hint
+msgctxt "ttrmng.updown6.hint"
+msgid "Channel name"
+msgstr "Имя канала"
+
+#: ttrmng.updown7.hint
+msgctxt "ttrmng.updown7.hint"
+msgid "Channel name"
+msgstr "Имя канала"
+
+#: ttrmng.updown8.hint
+msgctxt "ttrmng.updown8.hint"
+msgid "Number of semitones to transpose: positive - up and negative - down"
+msgstr "Число полутонов для транспонирования: положительное - вверх и отрицательное - вниз"
+
+#: ttssel.caption
+msgid "Select module for Turbo Sound mode"
+msgstr "Выберите модуль для режима Turbo Sound"
+

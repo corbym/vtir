@@ -1,0 +1,1653 @@
+object MainForm: TMainForm
+  Left = 376
+  Height = 455
+  Top = 168
+  Width = 576
+  Caption = 'Vortex Tracker II'
+  ClientHeight = 455
+  ClientWidth = 576
+  DoubleBuffered = True
+  Font.Color = clBlack
+  Font.Height = -11
+  Menu = MainMenu1
+  OnClose = FormClose
+  OnCloseQuery = FormCloseQuery
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnMouseWheelDown = FormMouseWheelDown
+  OnMouseWheelUp = FormMouseWheelUp
+  ParentDoubleBuffered = False
+  Position = poDefault
+  LCLVersion = '3.0.0.3'
+  Visible = True
+  object Workspace: TPanel
+    AnchorSideTop.Control = MainToolBar
+    AnchorSideTop.Side = asrBottom
+    AnchorSideRight.Control = VScrollBar
+    AnchorSideBottom.Control = HScrollBar
+    Left = 0
+    Height = 368
+    Top = 46
+    Width = 559
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    BevelOuter = bvNone
+    Color = clAppWorkspace
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 0
+    OnDblClick = WorkspaceDblClick
+    OnResize = WorkspaceResize
+  end
+  object HScrollBar: TScrollBar
+    AnchorSideLeft.Control = Workspace
+    AnchorSideRight.Control = Workspace
+    AnchorSideRight.Side = asrBottom
+    AnchorSideBottom.Control = MainStatusBar
+    Left = 0
+    Height = 17
+    Top = 414
+    Width = 559
+    Anchors = [akLeft, akRight, akBottom]
+    LargeChange = 64
+    PageSize = 0
+    SmallChange = 64
+    TabOrder = 4
+    TabStop = False
+    Visible = False
+    OnScroll = HScrollBarScroll
+  end
+  object VScrollBar: TScrollBar
+    AnchorSideTop.Control = Workspace
+    AnchorSideRight.Control = Owner
+    AnchorSideRight.Side = asrBottom
+    AnchorSideBottom.Control = Workspace
+    AnchorSideBottom.Side = asrBottom
+    Left = 559
+    Height = 368
+    Top = 46
+    Width = 17
+    Anchors = [akTop, akRight, akBottom]
+    Kind = sbVertical
+    LargeChange = 64
+    PageSize = 0
+    SmallChange = 64
+    TabOrder = 3
+    TabStop = False
+    Visible = False
+    OnScroll = VScrollBarScroll
+  end
+  object MainStatusBar: TStatusBar
+    Left = 0
+    Height = 24
+    Top = 431
+    Width = 576
+    AutoHint = True
+    AutoSize = False
+    Panels = <    
+      item
+        Width = 200
+      end    
+      item
+        Style = psOwnerDraw
+        Width = 50
+      end>
+    ParentColor = False
+    OnDrawPanel = MainStatusBarDrawPanel
+  end
+  object MainToolBar: TToolBar
+    Left = 0
+    Height = 46
+    Top = 0
+    Width = 576
+    AutoSize = True
+    ButtonHeight = 22
+    ButtonWidth = 26
+    Font.CharSet = RUSSIAN_CHARSET
+    Font.Color = clBlack
+    Font.Pitch = fpVariable
+    Font.Quality = fqDraft
+    Font.Style = [fsBold]
+    Images = ImageList1
+    Indent = 5
+    List = True
+    ParentColor = False
+    ParentFont = False
+    ParentShowHint = False
+    PopupMenu = PMToolBar
+    ShowCaptions = True
+    ShowHint = True
+    TabOrder = 1
+    object TBNew: TToolButton
+      Left = 5
+      Top = 2
+      Action = FileNew1
+      Caption = 'New'
+      ShowCaption = False
+    end
+    object TBOpen: TToolButton
+      Left = 31
+      Top = 2
+      Action = FileOpen1
+      Caption = 'Open'
+      ShowCaption = False
+    end
+    object TBSave: TToolButton
+      Left = 57
+      Top = 2
+      Action = FileSave1
+      Caption = 'Save'
+      ShowCaption = False
+    end
+    object TBDivFile: TToolButton
+      Left = 83
+      Height = 22
+      Top = 2
+      ShowCaption = False
+      Style = tbsSeparator
+    end
+    object TBCut: TToolButton
+      Left = 125
+      Top = 2
+      Action = EditCut1
+      Caption = 'Cut'
+      ShowCaption = False
+    end
+    object TBCopy: TToolButton
+      Left = 151
+      Top = 2
+      Action = EditCopy1
+      Caption = 'Copy'
+      ShowCaption = False
+    end
+    object TBPaste: TToolButton
+      Left = 177
+      Top = 2
+      Action = EditPaste1
+      Caption = 'Paste'
+      ShowCaption = False
+    end
+    object TBDivClpBrd: TToolButton
+      Left = 203
+      Height = 22
+      Top = 2
+      ShowCaption = False
+      Style = tbsSeparator
+    end
+    object TBUndo: TToolButton
+      Left = 211
+      Top = 2
+      Action = Undo
+      ShowCaption = False
+    end
+    object TBRedo: TToolButton
+      Left = 237
+      Top = 2
+      Action = Redo
+      ShowCaption = False
+    end
+    object TBDivUndo: TToolButton
+      Left = 263
+      Height = 22
+      Top = 2
+      ShowCaption = False
+      Style = tbsSeparator
+    end
+    object TBCascade: TToolButton
+      Left = 271
+      Top = 2
+      Action = WindowCascade1
+      Caption = 'Cascade'
+      ShowCaption = False
+    end
+    object TBTileHor: TToolButton
+      Left = 297
+      Top = 2
+      Action = WindowTileHorizontal1
+      Caption = 'Tile Horizontally'
+      ShowCaption = False
+    end
+    object TBTileVert: TToolButton
+      Left = 323
+      Top = 2
+      Action = WindowTileVertical1
+      Caption = 'Tile Vertically'
+      ShowCaption = False
+    end
+    object TBDivWin: TToolButton
+      Left = 349
+      Height = 22
+      Top = 2
+      ShowCaption = False
+      Style = tbsSeparator
+      Wrap = True
+    end
+    object TBStop: TToolButton
+      Left = 357
+      Top = 2
+      Action = Stop1
+      ShowCaption = False
+    end
+    object TBPlayPos: TToolButton
+      Left = 383
+      Top = 2
+      Action = PlayFromPos
+      ShowCaption = False
+    end
+    object TBPlay: TToolButton
+      Left = 409
+      Top = 2
+      Action = Play1
+      ShowCaption = False
+    end
+    object TBPlayPatFrom: TToolButton
+      Left = 435
+      Top = 2
+      Action = PlayPatFromLine
+      ShowCaption = False
+    end
+    object TBPlayPat: TToolButton
+      Left = 461
+      Top = 2
+      Action = PlayPat
+      ShowCaption = False
+    end
+    object TBLoop: TToolButton
+      Left = 495
+      Top = 2
+      Action = ToggleLooping
+      AllowAllUp = True
+      Grouped = True
+      ShowCaption = False
+      Style = tbsCheck
+    end
+    object TBLoopAll: TToolButton
+      Left = 521
+      Top = 2
+      Action = ToggleLoopingAll
+      AllowAllUp = True
+      Grouped = True
+      ShowCaption = False
+      Style = tbsCheck
+    end
+    object TBToggleSams: TToolButton
+      Left = 547
+      Top = 2
+      Action = ToggleSamples
+      ShowCaption = False
+    end
+    object TBDivLoop: TToolButton
+      Left = 5
+      Height = 22
+      Top = 24
+      ShowCaption = False
+      Style = tbsSeparator
+    end
+    object TBTracksMngr: TToolButton
+      Left = 13
+      Top = 24
+      Action = TracksManager
+      ShowCaption = False
+    end
+    object TBGlbTrans: TToolButton
+      Left = 39
+      Top = 24
+      Action = GlobalTransposition
+      ShowCaption = False
+    end
+    object TBDivEdit: TToolButton
+      Left = 65
+      Height = 22
+      Top = 24
+      ShowCaption = False
+      Style = tbsSeparator
+    end
+    object TBDivChip: TToolButton
+      Left = 130
+      Height = 22
+      Top = 24
+      ShowCaption = False
+      Style = tbsSeparator
+    end
+    object TBDivPlay: TToolButton
+      Left = 487
+      Height = 22
+      Top = 2
+      ShowCaption = False
+      Style = tbsSeparator
+    end
+    object TBDivOpts: TToolButton
+      Left = 117
+      Height = 22
+      Top = 2
+      ShowCaption = False
+      Style = tbsSeparator
+    end
+    object TBOptions: TToolButton
+      Left = 91
+      Top = 2
+      Action = Options1
+      ShowCaption = False
+    end
+    object TBDivMidi: TToolButton
+      Left = 200
+      Height = 22
+      Top = 24
+      ShowCaption = False
+      Style = tbsSeparator
+    end
+    object TBMidiKbd: TToolButton
+      Left = 138
+      Top = 24
+      Action = ToggleMidiKbd
+      OnClick = TBMidiKbdClick
+    end
+    object TBMidiV: TToolButton
+      Left = 174
+      Top = 24
+      Action = ToggleMidiVol
+    end
+    object TBChip: TToolButton
+      Left = 73
+      Top = 24
+      Action = ToggleChip
+    end
+    object TBChans: TToolButton
+      Left = 99
+      Top = 24
+      Action = ToggleChanAlloc
+    end
+  end
+  object Progress: TProgressBar
+    Left = 16
+    Height = 20
+    Hint = 'Conversion progress (ESC to abort)'
+    Top = 336
+    Width = 100
+    ParentColor = False
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 2
+    Visible = False
+  end
+  object SBCancel: TSpeedButton
+    Left = 120
+    Height = 22
+    Hint = 'Cancel'
+    Top = 336
+    Width = 23
+    Color = clDefault
+    Images = ImageList1
+    ImageIndex = 33
+    Visible = False
+    OnClick = SBCancelClick
+    ShowHint = True
+    ParentShowHint = False
+  end
+  object MainMenu1: TMainMenu
+    Images = ImageList1
+    Left = 32
+    Top = 80
+    object File1: TMenuItem
+      Caption = '&File'
+      Hint = 'File related commands'
+      object FileNewItem: TMenuItem
+        Action = FileNew1
+      end
+      object FileOpenItem: TMenuItem
+        Action = FileOpen1
+      end
+      object FileCloseItem: TMenuItem
+        Action = FileClose1
+      end
+      object FileSaveItem: TMenuItem
+        Action = FileSave1
+      end
+      object FileSaveAsItem: TMenuItem
+        Action = FileSaveAs1
+      end
+      object Exports1: TMenuItem
+        Caption = 'Exports'
+        object SaveSNDHMenu: TMenuItem
+          Caption = 'Save in SNDH (Atari ST)...'
+          OnClick = SaveSNDHMenuClick
+        end
+        object SaveforZXMenu: TMenuItem
+          Caption = 'Save with ZX Spectrum player...'
+          OnClick = SaveforZXMenuClick
+        end
+        object ConvToPSGMenu: TMenuItem
+          Caption = 'Convert to PSG...'
+          OnClick = ConvToPSGMenuClick
+        end
+        object ConvToWAVMenu: TMenuItem
+          Caption = 'Convert to WAV...'
+          OnClick = ConvToWAVMenuClick
+        end
+      end
+      object N1: TMenuItem
+        Caption = '-'
+      end
+      object OptionsItem: TMenuItem
+        Action = Options1
+      end
+      object N2: TMenuItem
+        Caption = '-'
+      end
+      object RFile1: TMenuItem
+        Visible = False
+        OnClick = RFileClick
+      end
+      object RFile2: TMenuItem
+        Tag = 1
+        Visible = False
+        OnClick = RFileClick
+      end
+      object RFile3: TMenuItem
+        Tag = 2
+        Visible = False
+        OnClick = RFileClick
+      end
+      object RFile4: TMenuItem
+        Tag = 3
+        Visible = False
+        OnClick = RFileClick
+      end
+      object RFile5: TMenuItem
+        Tag = 4
+        Visible = False
+        OnClick = RFileClick
+      end
+      object RFile6: TMenuItem
+        Tag = 5
+        Visible = False
+        OnClick = RFileClick
+      end
+      object N3: TMenuItem
+        Caption = '-'
+        Visible = False
+      end
+      object FileExitItem: TMenuItem
+        Action = FileExit1
+      end
+    end
+    object Play2: TMenuItem
+      Caption = 'Playback'
+      Hint = 'Playback controls'
+      object Stop2: TMenuItem
+        Action = Stop1
+      end
+      object Play3: TMenuItem
+        Action = PlayFromPos
+      end
+      object Play4: TMenuItem
+        Action = Play1
+      end
+      object Playpatternfromcurrentline1: TMenuItem
+        Action = PlayPatFromLine
+      end
+      object Playpatternfromstart1: TMenuItem
+        Action = PlayPat
+      end
+      object Togglelooping1: TMenuItem
+        Action = ToggleLooping
+      end
+      object Toggleloopingall1: TMenuItem
+        Action = ToggleLoopingAll
+      end
+      object N8: TMenuItem
+        Caption = '-'
+      end
+      object TogglesamplesItem: TMenuItem
+        Action = ToggleSamples
+      end
+    end
+    object Edit1: TMenuItem
+      Caption = '&Edit'
+      Hint = 'Edit commands'
+      object Undo1: TMenuItem
+        Action = Undo
+      end
+      object Redo1: TMenuItem
+        Action = Redo
+      end
+      object N7: TMenuItem
+        Caption = '-'
+      end
+      object CutItem: TMenuItem
+        Action = EditCut1
+      end
+      object CopyItem: TMenuItem
+        Action = EditCopy1
+      end
+      object PasteItem: TMenuItem
+        Action = EditPaste1
+      end
+      object N4: TMenuItem
+        Caption = '-'
+      end
+      object TracksManagerItem: TMenuItem
+        Action = TracksManager
+      end
+      object Globaltransposition1: TMenuItem
+        Action = GlobalTransposition
+      end
+    end
+    object Window1: TMenuItem
+      Caption = '&Window'
+      Hint = 'Window related commands'
+      object WindowCascadeItem: TMenuItem
+        Action = WindowCascade1
+      end
+      object WindowTileItem: TMenuItem
+        Action = WindowTileHorizontal1
+      end
+      object WindowTileItem2: TMenuItem
+        Action = WindowTileVertical1
+      end
+      object Separator14: TMenuItem
+        Caption = '-'
+      end
+      object MIMaximized: TMenuItem
+        Caption = 'Maximized'
+        OnClick = MIMaximizedClick
+      end
+      object Separator2: TMenuItem
+        Caption = '-'
+      end
+      object NextWindowItem: TMenuItem
+        Action = NextWindow1
+      end
+      object PrevWindowItem: TMenuItem
+        Action = PreviousWindow1
+      end
+      object Separator3: TMenuItem
+        Caption = '-'
+      end
+      object FindWindowItem: TMenuItem
+        Action = FindWindow1
+      end
+      object Separator1: TMenuItem
+        Caption = '-'
+      end
+      object CloseAllItem: TMenuItem
+        Action = CloseAll1
+      end
+      object SeparatorW: TMenuItem
+        Caption = '-'
+        Visible = False
+      end
+    end
+    object Help1: TMenuItem
+      Caption = '&Help'
+      Hint = 'Help topics'
+      object MIQuickGuide: TMenuItem
+        Caption = 'Quick guide'
+        ImageIndex = 28
+        OnClick = MIQuickGuideClick
+      end
+      object MIManual: TMenuItem
+        Caption = 'Manual'
+        ImageIndex = 23
+        OnClick = MIManualClick
+      end
+      object MIHistory: TMenuItem
+        Caption = 'Creation history'
+        ImageIndex = 27
+        OnClick = MIHistoryClick
+      end
+      object MIOtherHelp: TMenuItem
+        Caption = 'Other'
+        object MITablesCsv: TMenuItem
+          Caption = 'Tone tables'
+          OnClick = MITablesCsvClick
+        end
+        object MIHierarchy: TMenuItem
+          Caption = 'Trackers hierarchy'
+          OnClick = MIHierarchyClick
+        end
+        object MILims: TMenuItem
+          Caption = 'Trackers limitations'
+          OnClick = MILimsClick
+        end
+        object MIZXAYPlayer: TMenuItem
+          Caption = 'ZX PT3 player'
+          OnClick = MIZXAYPlayerClick
+        end
+        object MIZXTSPlayer: TMenuItem
+          Caption = 'ZX TS player'
+          OnClick = MIZXTSPlayerClick
+        end
+      end
+      object Separator15: TMenuItem
+        Caption = '-'
+      end
+      object HelpAboutItem: TMenuItem
+        Action = HelpAbout1
+        ImageIndex = 22
+      end
+    end
+    object MIRestore1: TMenuItem
+      Caption = '▣'
+      RightJustify = True
+      Visible = False
+      OnClick = MIRestore1Click
+    end
+    object MIClose1: TMenuItem
+      Caption = '✕'
+      RightJustify = True
+      Visible = False
+      OnClick = MIClose1Click
+    end
+  end
+  object OpenDialogVTM: TOpenDialog
+    Title = 'Open module(s):'
+    DefaultExt = '.PT3'
+    Filter = 'All supported files|*.txt;*.pt3;*.pt2;*.st1;*.stc;*.st3;*.stf;*.stp;*.sqt;*.as0;*.asc;*.psc;*.fls;*.pt1;*.gtr;*.ftc;*.fxm;*.ay;*.psm;*.vt2|Pro Tracker 3.xx files (PT3)|*.pt3|Pro Tracker 2.xx files (PT2)|*.pt2|Sound Tracker 1.x non-compiled files (ST1)|*.st1;*.ay|Sound Tracker 1.x compiled files (STC)|*.stc|Sound Tracker 1.x recompiled files (ST3)|*.st3|Sound Tracker Pro non-compiled files (STF)|*.stf|Sound Tracker Pro compiled files (STP)|*.stp|SQ-Tracker compiled files (SQT)|*.sqt|ASC Sound Master 0 compiled files (AS0)|*.as0|ASC Sound Master compiled files (ASC)|*.asc|Pro Sound Creator files (PSC)|*.psc|Flash Tracker files (FLS)|*.fls|Pro Tracker 1.xx files (PT1)|*.pt1|Global Tracker 1.x (GTR)|*.gtr|Fast Tracker (FTC)|*.ftc|Fuxoft''s AY Language (FXM, AY AMAD)|*.fxm;*.ay|Pro Sound Maker files (PSM)|*.psm'
+    Options = [ofAllowMultiSelect, ofPathMustExist, ofEnableSizing]
+    Left = 280
+    Top = 80
+  end
+  object ActionList1: TActionList
+    Images = ImageList1
+    Left = 32
+    Top = 128
+    object Play1: TAction
+      Category = 'Play'
+      Caption = 'Play from start'
+      Hint = 'Play from start|Play module from start'
+      ImageIndex = 38
+      OnExecute = Play1Execute
+      OnUpdate = CommonActionUpdate
+      ShortCut = 117
+    end
+    object FileNew1: TAction
+      Category = 'File'
+      Caption = '&New'
+      Hint = 'New|Create a new file'
+      ImageIndex = 6
+      OnExecute = FileNew1Execute
+      ShortCut = 16462
+    end
+    object FileOpen1: TAction
+      Category = 'File'
+      Caption = '&Open'
+      Hint = 'Open|Open a file'
+      ImageIndex = 7
+      OnExecute = FileOpen1Execute
+      ShortCut = 16463
+    end
+    object PlayFromPos: TAction
+      Category = 'Play'
+      Caption = 'Play'
+      Hint = 'Play|Play module from current position'
+      ImageIndex = 18
+      OnExecute = PlayFromPosExecute
+      OnUpdate = CommonActionUpdate
+      ShortCut = 116
+    end
+    object FileClose1: TAction
+      Category = 'File'
+      Caption = '&Close'
+      Hint = 'Close|Close current file'
+      ImageIndex = 5
+      OnExecute = FileClose1Execute
+      OnUpdate = CommonActionUpdate
+    end
+    object FileSave1: TAction
+      Category = 'File'
+      Caption = '&Save'
+      Hint = 'Save|Save current file'
+      ImageIndex = 8
+      OnExecute = FileSave1Execute
+      OnUpdate = FileSave1Update
+      ShortCut = 16467
+    end
+    object FileSaveAs1: TAction
+      Category = 'File'
+      Caption = 'Save &As...'
+      Hint = 'Save As|Save current file with different name'
+      OnExecute = FileSaveAs1Execute
+      OnUpdate = CommonActionUpdate
+    end
+    object FileExit1: TAction
+      Category = 'File'
+      Caption = 'E&xit'
+      Hint = 'Exit|Exit application'
+      OnExecute = FileExit1Execute
+    end
+    object WindowCascade1: TAction
+      Category = 'Window'
+      Caption = '&Cascade'
+      Hint = 'Cascade'
+      ImageIndex = 17
+      OnExecute = WindowCascade1Execute
+      OnUpdate = CommonActionUpdate
+    end
+    object WindowTileHorizontal1: TAction
+      Category = 'Window'
+      Caption = 'Tile &Horizontally'
+      Hint = 'Tile Horizontally'
+      ImageIndex = 15
+      OnExecute = WindowTileHorizontal1Execute
+      OnUpdate = CommonActionUpdate
+    end
+    object WindowTileVertical1: TAction
+      Category = 'Window'
+      Caption = 'Tile &Vertically'
+      Hint = 'Tile Vertically'
+      ImageIndex = 16
+      OnExecute = WindowTileVertical1Execute
+      OnUpdate = CommonActionUpdate
+    end
+    object HelpAbout1: TAction
+      Category = 'Help'
+      Caption = '&About...'
+      Hint = 'About|Displays program information, version number, and copyright'
+      OnExecute = HelpAbout1Execute
+    end
+    object Stop1: TAction
+      Category = 'Play'
+      Caption = 'Stop'
+      Hint = 'Stop|Stop playing/Free device'
+      ImageIndex = 20
+      OnExecute = Stop1Execute
+      OnUpdate = Stop1Update
+      ShortCut = 27
+    end
+    object ToggleLooping: TAction
+      Category = 'Play'
+      Caption = 'Toggle looping'
+      Hint = 'Loop|Toggle looping'
+      ImageIndex = 37
+      OnExecute = ToggleLoopingExecute
+      ShortCut = 16460
+    end
+    object ToggleLoopingAll: TAction
+      Category = 'Play'
+      Caption = 'Toggle looping all'
+      Hint = 'Loop all|Toggle looping among all opened files'
+      ImageIndex = 39
+      OnExecute = ToggleLoopingAllExecute
+      ShortCut = 49228
+    end
+    object PlayPat: TAction
+      Category = 'Play'
+      Caption = 'Play pattern from start'
+      Hint = 'Play pattern from start|Play current pattern from start'
+      ImageIndex = 41
+      OnExecute = PlayPatExecute
+      OnUpdate = CommonActionUpdate
+      ShortCut = 119
+    end
+    object PlayPatFromLine: TAction
+      Category = 'Play'
+      Caption = 'Play pattern'
+      Hint = 'Play pattern|Play current pattern from current line'
+      ImageIndex = 40
+      OnExecute = PlayPatFromLineExecute
+      OnUpdate = CommonActionUpdate
+      ShortCut = 118
+    end
+    object FindWindow1: TAction
+      Category = 'Window'
+      Caption = 'Find Module'
+      Hint = 'Search module by fragment of file name, title or author name'
+      ImageIndex = 12
+      OnExecute = FindWindow1Execute
+      OnUpdate = CommonActionUpdate
+    end
+    object Options1: TAction
+      Category = 'File'
+      Caption = 'Options...'
+      Hint = 'Options|Application settings'
+      ImageIndex = 21
+      OnExecute = Options1Execute
+    end
+    object ToggleSamples: TAction
+      Category = 'Play'
+      Caption = 'Toggle samples'
+      Hint = 'Switch on/off standalone samples'
+      ImageIndex = 31
+      OnExecute = ToggleSamplesExecute
+      ShortCut = 16461
+    end
+    object VolumeUp: TAction
+      Category = 'Play'
+      OnExecute = VolumeUpExecute
+    end
+    object VolumeDown: TAction
+      Category = 'Play'
+      OnExecute = VolumeDownExecute
+    end
+    object NextWindow1: TAction
+      Category = 'Window'
+      Caption = 'Next'
+      Hint = 'Swith to the next window'
+      OnExecute = NextWindow1Execute
+      OnUpdate = CommonActionUpdate
+    end
+    object PreviousWindow1: TAction
+      Category = 'Window'
+      Caption = 'Previous'
+      Hint = 'Swith to the previous window'
+      OnExecute = PreviousWindow1Execute
+      OnUpdate = CommonActionUpdate
+    end
+    object CloseAll1: TAction
+      Category = 'Window'
+      Caption = 'Close All'
+      Hint = 'Close all windows'
+      ImageIndex = 43
+      OnExecute = CloseAll1Execute
+      OnUpdate = CommonActionUpdate
+    end
+    object EditCut1: TAction
+      Category = 'Edit'
+      Caption = 'Cu&t'
+      Hint = 'Cut|Cuts the selection and puts it on the Clipboard'
+      ImageIndex = 0
+      OnExecute = EditCut1Execute
+      OnUpdate = EditCut1Update
+      ShortCut = 16472
+    end
+    object EditCopy1: TAction
+      Category = 'Edit'
+      Caption = '&Copy'
+      Hint = 'Copy|Copies the selection and puts it on the Clipboard'
+      ImageIndex = 1
+      OnExecute = EditCopy1Execute
+      OnUpdate = EditCopy1Update
+      ShortCut = 16451
+    end
+    object EditPaste1: TAction
+      Category = 'Edit'
+      Caption = '&Paste'
+      Hint = 'Paste|Inserts Clipboard contents'
+      ImageIndex = 2
+      OnExecute = EditPaste1Execute
+      OnUpdate = EditPaste1Update
+      ShortCut = 16470
+    end
+    object MergePositions: TAction
+      Category = 'Edit'
+      Caption = 'Merge'
+      Hint = 'Paste clipboard content into selected cells or into cells starting from a selected one'
+      OnExecute = MergePositionsExecute
+      OnUpdate = MergePositionsUpdate
+    end
+    object SetLoopPos: TAction
+      Category = 'Edit'
+      Caption = 'Set loop position'
+      Hint = 'Loop|Set loop position'
+      OnExecute = SetLoopPosExecute
+      OnUpdate = SetLoopPosUpdate
+      ShortCut = 76
+    end
+    object AddPositions: TAction
+      Category = 'Edit'
+      Caption = 'Add positions'
+      Hint = 'Create one or more patterns, and either insert into positions after selected ones, or fill empty positions till selected empty cell.'
+      OnExecute = AddPositionsExecute
+      OnUpdate = AddPositionsUpdate
+      ShortCut = 45
+    end
+    object DuplicatePositions: TAction
+      Tag = 1
+      Category = 'Edit'
+      Caption = 'Duplicate positions'
+      Hint = 'Insert selected positions values directly after them'
+      OnExecute = InsertPositionsExecute
+      OnUpdate = InsertPositionsUpdate
+    end
+    object ClonePositions: TAction
+      Tag = 2
+      Category = 'Edit'
+      Caption = 'Clone positions'
+      Hint = 'Create patterns with same content as in selected positions and insert directly after them'
+      OnExecute = InsertPositionsExecute
+      OnUpdate = InsertPositionsUpdate
+    end
+    object DeletePositions: TAction
+      Category = 'Edit'
+      Caption = 'Delete positions'
+      Hint = 'Delete selected positions'
+      OnExecute = DeletePositionsExecute
+      OnUpdate = DeletePositionsUpdate
+      ShortCut = 46
+    end
+    object ChangePatLen: TAction
+      Category = 'Edit'
+      Caption = 'Change patterns length...'
+      Hint = 'Define new length for patterns in selected positions'
+      OnExecute = ChangePatLenExecute
+      OnUpdate = CheckValidPositionsSelected
+    end
+    object RenumPats: TAction
+      Category = 'Edit'
+      Caption = 'Renumber patterns'
+      Hint = 'Renumber patterns in order of using in the position list'
+      OnExecute = RenumPatsExecute
+      OnUpdate = RenumPatsUpdate
+    end
+    object ToggleChip: TAction
+      Category = 'Edit'
+      Caption = 'YM'
+      Hint = 'Chip|Toggle sound chip'
+      OnExecute = ToggleChipExecute
+      ShortCut = 49219
+    end
+    object ToggleChanAlloc: TAction
+      Category = 'Edit'
+      Caption = 'ABC'
+      Hint = 'Channels|Toggle channel allocation'
+      OnExecute = ToggleChanAllocExecute
+      ShortCut = 49217
+    end
+    object Undo: TAction
+      Category = 'Edit'
+      Caption = 'Undo'
+      Hint = 'Undo|Undo last change'
+      ImageIndex = 3
+      OnExecute = UndoExecute
+      OnUpdate = UndoUpdate
+      ShortCut = 32776
+    end
+    object Redo: TAction
+      Category = 'Edit'
+      Caption = 'Redo'
+      Hint = 'Redo|Redo last undo'
+      ImageIndex = 4
+      OnExecute = RedoExecute
+      OnUpdate = RedoUpdate
+      ShortCut = 32781
+    end
+    object TransposeUp1: TAction
+      Category = 'Edit'
+      Caption = 'Transpose +1'
+      Hint = '+1 semitone|Transpose selected notes and envelope periods 1 semitone up'
+      OnExecute = TransposeUp1Execute
+      OnUpdate = CheckTracksFocused
+      ShortCut = 107
+    end
+    object TransposeDown1: TAction
+      Category = 'Edit'
+      Caption = 'Transpose -1'
+      Hint = '-1 semitone|Transpose selected notes and envelope periods 1 semitone down'
+      OnExecute = TransposeDown1Execute
+      OnUpdate = CheckTracksFocused
+      ShortCut = 109
+    end
+    object TransposeUp3: TAction
+      Category = 'Edit'
+      Caption = 'Transpose +3'
+      Hint = '+3 semitones|Transpose selected notes and envelope periods 3 semitones up'
+      OnExecute = TransposeUp3Execute
+      OnUpdate = CheckTracksFocused
+    end
+    object TransposeDown3: TAction
+      Category = 'Edit'
+      Caption = 'Transpose -3'
+      Hint = '-3 semitones|Transpose selected notes and envelope periods 3 semitone down'
+      OnExecute = TransposeDown3Execute
+      OnUpdate = CheckTracksFocused
+    end
+    object TransposeUp5: TAction
+      Category = 'Edit'
+      Caption = 'Transpose +5'
+      Hint = '+5 semitones|Transpose selected notes and envelope periods 5 semitones up'
+      OnExecute = TransposeUp5Execute
+      OnUpdate = CheckTracksFocused
+    end
+    object TransposeDown5: TAction
+      Category = 'Edit'
+      Caption = 'Transpose -5'
+      Hint = '-5 semitones|Transpose selected notes and envelope periods 5 semitones down'
+      OnExecute = TransposeDown5Execute
+      OnUpdate = CheckTracksFocused
+    end
+    object TransposeUp12: TAction
+      Category = 'Edit'
+      Caption = 'Transpose +12'
+      Hint = '+12 semitones|Transpose selected notes and envelope periods 12 semitones up'
+      OnExecute = TransposeUp12Execute
+      OnUpdate = CheckTracksFocused
+      ShortCut = 16491
+    end
+    object TransposeDown12: TAction
+      Category = 'Edit'
+      Caption = 'Transpose -12'
+      Hint = '-12 semitones|Transpose selected notes and envelope periods 12 semitones down'
+      OnExecute = TransposeDown12Execute
+      OnUpdate = CheckTracksFocused
+      ShortCut = 16493
+    end
+    object TracksManager: TAction
+      Category = 'Edit'
+      Caption = 'Tracks manager'
+      Hint = 'Copy/move/swap/transpose tracks'
+      ImageIndex = 42
+      OnExecute = TracksManagerExecute
+      ShortCut = 16468
+    end
+    object GlobalTransposition: TAction
+      Category = 'Edit'
+      Caption = 'Global transposition'
+      Hint = 'Transpose channel/pattern/module'
+      ImageIndex = 36
+      OnExecute = GlobalTranspositionExecute
+    end
+    object AutoStep: TAction
+      Category = 'Edit'
+      OnExecute = AutoStepExecute
+      OnUpdate = CommonActionUpdate
+      ShortCut = 16466
+    end
+    object AutoEnv: TAction
+      Category = 'Edit'
+      OnExecute = AutoEnvExecute
+      OnUpdate = CommonActionUpdate
+      ShortCut = 16453
+    end
+    object AutoEnvStd: TAction
+      Category = 'Edit'
+      Caption = ':'
+      Hint = 'Toggle standard combinations'
+      OnExecute = AutoEnvStdExecute
+      OnUpdate = CommonActionUpdate
+    end
+    object AutoPrms: TAction
+      Category = 'Edit'
+      OnExecute = AutoPrmsExecute
+      OnUpdate = CommonActionUpdate
+      ShortCut = 16464
+    end
+    object Octave1: TAction
+      Tag = 1
+      Category = 'Edit'
+      OnExecute = OctaveActionExecute
+      OnUpdate = CommonActionUpdate
+    end
+    object Octave2: TAction
+      Tag = 2
+      Category = 'Edit'
+      OnExecute = OctaveActionExecute
+      OnUpdate = CommonActionUpdate
+    end
+    object Octave3: TAction
+      Tag = 3
+      Category = 'Edit'
+      OnExecute = OctaveActionExecute
+      OnUpdate = CommonActionUpdate
+    end
+    object Octave4: TAction
+      Tag = 4
+      Category = 'Edit'
+      OnExecute = OctaveActionExecute
+      OnUpdate = CommonActionUpdate
+    end
+    object Octave5: TAction
+      Tag = 5
+      Category = 'Edit'
+      OnExecute = OctaveActionExecute
+      OnUpdate = CommonActionUpdate
+    end
+    object Octave6: TAction
+      Tag = 6
+      Category = 'Edit'
+      OnExecute = OctaveActionExecute
+      OnUpdate = CommonActionUpdate
+    end
+    object Octave7: TAction
+      Tag = 7
+      Category = 'Edit'
+      OnExecute = OctaveActionExecute
+      OnUpdate = CommonActionUpdate
+    end
+    object Octave8: TAction
+      Tag = 8
+      Category = 'Edit'
+      OnExecute = OctaveActionExecute
+      OnUpdate = CommonActionUpdate
+    end
+    object ToggleMidiKbd: TAction
+      Category = 'Edit'
+      Caption = 'MIDI'
+      OnExecute = ToggleMidiKbdExecute
+    end
+    object ToggleMidiVol: TAction
+      Category = 'Edit'
+      Caption = 'V'
+      Hint = 'MIDI NoteOn Volume|Push for setting volume according to pitch velocity'
+      OnExecute = ToggleMidiVolExecute
+    end
+    object SwapChansLeft: TAction
+      Category = 'Edit'
+      Caption = 'Swap channels left'
+      Hint = 'Swap selected and lefter channels'
+      ImageIndex = 42
+      OnExecute = SwapChansExecute
+      OnUpdate = CheckTracksFocused
+    end
+    object SwapChansRight: TAction
+      Tag = 1
+      Category = 'Edit'
+      Caption = 'Swap channels right'
+      Hint = 'Swap selected and righter channels'
+      ImageIndex = 42
+      OnExecute = SwapChansExecute
+      OnUpdate = CheckTracksFocused
+    end
+    object PatJmp0: TAction
+      Category = 'Edit'
+      Caption = '0/4'
+      Hint = 'Jump to begin of pattern'
+      OnExecute = PatJmpExecute
+      OnUpdate = PatternsActionUpdate
+    end
+    object PatJmp1: TAction
+      Tag = 1
+      Category = 'Edit'
+      Caption = '1/4'
+      Hint = 'Jump to 25% of pattern'
+      OnExecute = PatJmpExecute
+      OnUpdate = PatternsActionUpdate
+    end
+    object PatJmp2: TAction
+      Tag = 2
+      Category = 'Edit'
+      Caption = '2/4'
+      Hint = 'Jump to 50% of pattern'
+      OnExecute = PatJmpExecute
+      OnUpdate = PatternsActionUpdate
+    end
+    object PatJmp3: TAction
+      Tag = 3
+      Category = 'Edit'
+      Caption = '3/4'
+      Hint = 'Jump to 75% of pattern'
+      OnExecute = PatJmpExecute
+      OnUpdate = PatternsActionUpdate
+    end
+  end
+  object ImageList1: TImageList
+    Left = 32
+    Top = 176
+    Bitmap = {
+      4C7A2C0000001000000010000000321000000000000078DAED9D5B6C55551A80
+      B7C4074C2684F8549F669C37CCCC033E3861669231C4E8844966324C3231E838
+      C9104D1C3309899998680CA7E5282A0C8AB614277500B594AAE5A25CAC708042
+      29F78ACAA540A95C04CAA52DB405DA82FCB3FEB5CFDE67EDB5D7E5DF975E0E9C
+      4D567A387B7DFFBF6EFFBAAF751C27FD67DAD4A920FEFFC1B23228367EC6B469
+      9C193F7E3C8C771C889A0653A74C8138BA457ECAE4C93065D224889B0FC8C765
+      739327C174960EB9993363C9C84D7A9073B91933208772F2FFB772DCFF14DF7F
+      6EFA749FCB4D9B6A9421BECF3D5896E7A715BECBE7899617DEE7CA26BAFC3481
+      9F6CCE0BF17DAE6C7CE1330B0339FE11FC8EA107348ECCE3D3D3D303E7CF9F87
+      8E8E8EA832E0C68D1B3E7FF8F061CEEE3A70902A83F39E4E8FCF6A9C8EF7C28E
+      7C4B4B0BF78B8F18368D0CFE5E4E3F1D8F3A241981B8B7B6B6FAFAC578799C22
+      2E5AFDA26E2F6EA27C8F97E39ECBE5F87B955C7432AF7259215EB26E4FBE2953
+      4DFAA93CEA4EA2DFE68AC49E23DBFFE1D61C77847A01605D0EA0611D406D83CF
+      8A72B89F17B3002FBC0230F345590663195FBB0E9CF165BE5ED93913CB18CBF8
+      192A7E9DCF07DCC4A043DD7ABE01A0A616A092B9F93500D94A8057E6E7C35D08
+      3BCC7821CC33DD50D3E0B2958C9D5F692B3312DF50E0F3BAB3824D8A4E51EE5C
+      B6C6D36DE7D10E44DB0DE86661F778B9BED1D43FCA74F3FC8B0EF58ACEE725DD
+      22AF4B43390EAABA87A83FB6ED8F61FB2F3DF927C3F24874267F2ACEE64FE53F
+      6329173AB9B63052F9A4FA4D323209CB7CA66433A5670CD87B54BBA0F8A3C88E
+      5AAF50EB088AFEB8B63D527543E919336306AAFF38630ED37B9B8C38E399A8AC
+      694E64B8D3342DFD49E29F24FDA9F99F74CC0A29A7B52D6C49FD16F31C20B9DC
+      78735DF29C13354FC5B9329927CC0586E6DA14FA8D758F2AECF2BC918D97757B
+      63CD243CB2517955D86DBC2DEC3867169517C34EE57561B7F1B6B0DBF808AED4
+      37885F4F420AF5A7AE6D8BD3BEC191CE01387A61008E5D1C8893EFD078A41736
+      B6F5C2A6A37DB0F9581F6C61AEE9781F6C6BEF87E613FDD0D2D16FE46B5ABAE0
+      7F3BBB60C9AE2E58B6BB1B3EDAD30DB57BBB61F9BE6EA8DBDF03F5AD3D467EF6
+      FAF350BEA1132ABEEC846C6367D4720C33979F8667EB4EC373CCE1FF9F5A76CA
+      EA44FEB1CA7678BCEA04FFEEDDA64B5627E7DD3F9FAE72EBF893D7AC4ED7EFA4
+      3C847EC3DD6AF710D3F9FC5F9EBAE6AF0B999CE747E69F79EE3A9957E97F7E16
+      9D7FEE5FD743FC8B2FDF20F3B35EBA11E25F9D43E75F2E0FF373FF3340E6B36F
+      0D84F885D583505D3368CDB3CAF70761416598FFEF9241F870F910D47D3A049F
+      AE1A82956B8660D5E7AE6B583D04F50D43505B3F044B3E0AE8F1F98F57B81CA5
+      DC2CFD38CC7FC674ACDD7053CB88F15FF1D950884736B795C6639C64FEABDC4D
+      686EB945E2D77D791308E3DF91AA4F92EAA1D4999084DFBA75ABB1FD22EAD7D6
+      DFD4270E9F443FBECB64323CFEE8F0B3AADC9858F6893B8F57C830A6BBC77ABC
+      222F8CBCE8A2F262DC311C51C26F493F48907FA1FE4F8CF20369B49945D0A7D0
+      C68130BF1E2A3F9E73ECF3F3BE3F9D0C810F3991D5C91079555D659221853FC4
+      EA6469D22F504E75756792FA2B49FD47AD3F1D455C447727EB2FF23144A47527
+      85DD1AE3A5622519DAB4D1AD3749DF6BD337260F29F0A4F420941F4A7A90CA9B
+      61ED8E1476021FB74D03CA1A4386BEA69B944FA36D1E4D5B4FB466A46AAB2963
+      08B7AF5A78E47E237D0CE104FAAC5238B47D058FD5F5170C3252E1296E9878AB
+      0C43DB15C83F1D4BC83F65F9F1D898B6E7F7B3C4FE5A26865D8D5519718C3B09
+      9B9790B05E423E8E0C8F135D9C30C7D12FF351EBCD0CA9FE8B50DF89720375A7
+      5D46282EDAFA4B1D0F356FAF33B4F917AA3BF4758636EF7C19229BB1C6DF5C6F
+      24B5953465DC81EB01B1E603296D518C31DC48EAD69F8320E856CC0990C790BA
+      F98428FD07C39C04440987C86BE768F2F37D62FDA08ABB36BC7E6F1054FDD1D8
+      7371AA39CCA8E9575A47A48FF32DE3FFC83C6F2312F03AFD3FFEF823DCBC7913
+      060606E0FAF5EBD0DBDB0B57AE5C81AEAE2EB874E912747676C2D9B367E1F4E9
+      D34A7E707090EFC1E9EFEFE72CEE67B97CF9325CB87081EF4BF9E1871FE0D4A9
+      537C7F8A8AB7E93C79F2249C3871028E1F3F3E2CF11FEDF457C5F3C8912370E8
+      D021F8F6DB6FE1C08103B06FDF3ED8B3678F92F7D2B6BDBD1D8E1E3DCAF7FF7C
+      F7DD77F0CD37DFF07D407BF7EE85DDBB77F3753C156FD3B973E74ED8B163076C
+      DBB62DF5F897EC5F5FCE46D3FEF1FB24F68FDF27B17F9D5DA878559DA3B30B15
+      AF8BA7CA2E54BC2E9E2A5BA4DA3F7E9FC4FEF1FB24F68FDF8F65FB4FAA2B4E5D
+      9FB67E7C868686B8DD747777F332847989F988F940E1E38683CAEBD221AD3CF7
+      EC176DF7DCB973F0FDF7DFF3328C3683E54F556665FEEAD5AB7E9D11A7FE43FE
+      E2C58BA3D2FECBB230EFD17ED176D1F69A9B9B61F3E6CDB061C30658B3660D99
+      C73A03F9EDDBB7F3FDBFC8AF5EBD9ACC7FFDF5D7BCCE407ED3A64DB07EFD7A12
+      5FE4ED7FE2F50FA8A9492283F3307546EC3DC79CC7F3FA2F6463AD49711ECFFF
+      E3B9F4CA9AE8F7A1208FE7DAF16E01BC1F615D2ED2D92ACE23DBD20AAC2002B4
+      32976BA19FC5409EF987C31D003D378055AAD1F50B7CACF8E7C31F3BFD59FA25
+      C9FF24E5CF714A67198BF431EDB582127FC7F3A5E7CEB0DD787B99F7EFC7C962
+      D6DEB2B6A7BE1EE0830F00162E0478ED351ACFC67CACB30DF0D55700AB56017C
+      F821407535C0BC7934BEAD0D5887DD0DC3DAB5002B56B86D190BC3A3CEA3769E
+      8D5F59A7B71086952BDD302C5A44E3CF9C0136800536D875C3F0C5177E18483C
+      1BC3B381B01B0636D685C6463F0C24BEA707D820BE10862D5BFC3090F86BD700
+      3A3BC361686820F1E8D09FCE954C4C1AAB086B341427DB80B8768DF367388EC7
+      79ACBEBE3E7F2E0AE793704C8B733B2ADE9B739375E1738695676F3E08C7C32A
+      DE9F6B13F687E379617C8E1D3BC6E773701C8D634115EFCD77793C5FABC3CFCC
+      E1F8D30B8FEAFC2C7E8FE1C3F1A2C7F3B3CAF839B08F5F583F14D211DF79E10B
+      AD53E665047841AEC7EF67751E9F13F3F2488C87593F7F8763EBA6A6A6E0FEFA
+      BC1E79DDD3DFA19529EC5DD8B871231F578778FC2BECEAF259E13D32389E5FC9
+      EA9840FAE55947912772FC57B0BA65F9F2E5C1F413D2419625E7CD92254B58F5
+      58038B172F86AAAA2A56552F0C942339CDC4B62882CD50EE55182BEB8749F406
+      D66D1D31CF297BC8C2FEA3C8D0F94BC2478F437CD696164E643EC9B9EDD1E59D
+      C46C1AE997340D4671DC927132B175232BBA287264368A9C90FF7C1E50E42859
+      A1CD30C950863553F82BF336560C7B1C56D46F89B7B05F2EA85B93FEA1F2996F
+      E31D951C9D5E4196DC6F09C931B08EE76FE9D2A55A3906D6B1C9F1645958A39C
+      086C48CE5A3606CC24DB735B2463168078EFBC7C0650F933BD53FB01A0BED3FB
+      11CA8CE19DD98F5886C12843EFC7DB0B0B461971F4E76D4BCB7BEF4DEF74BC49
+      B6CCCA7E4CB255ACE8C7245BC78A7DF8A8EF4A0FB53E0088CEAACA6F145657FE
+      A9ACC97E282CDDFE4DF63D12F66F8A27C5FE4D752DC5FE4DF53DC5FEF53268F6
+      AF977177DBBF988EF159882C8366335159BB0C3B1BB50F419711710E7618F31A
+      46200D8627FFD2283F6994DF34EC6718D6CEEC0D67FC3B80AC7C92B33B8EFD0E
+      0B321FE71E08629A4294A798F97C998EC57336A67E9F85E8E92FB2109197595D
+      FA8DF23CFE98B07FCB3BCAD93B2738F60C86CD66FF94B839E67B6494FAA9F6EF
+      1013DAC4CB7D4FB9EDB7F125FDF1F527A93FC7E03A5E5A7507B9EDBF7DFB36DF
+      03E09D83C1B32C9475B75BB76E05F219D7F3BDB32884FA83EB420ED76BF12FEE
+      37C0BD03B88F9E1017BE4F41D48FE748BCB320070F1EE47B07BC757655DE7BFB
+      14C4B327787E04CF9DE0FEFD5DBB76F1B323B8CEAEE251575B5B5B4097775605
+      F79E6FD9B285EF3F6F6C6C54F2A88B928FB8775DC5A32E77CDCB11DBD7E067E6
+      EAEAEA94BC1F2F708C7F71AD5DC5FBF152714298AAABAB953CEE2150865F8AC7
+      82050B943CEE21A0A4DF6BEA7D64CA3D04A86BDEBC793077EE5CC866B3505E5E
+      AEBD03728CF71D46C4FEF1FC1CEE1D9A3D7B762CFB470ECFB0E15F7451EDDFE3
+      3C17C7FE3DB668ED5FB621C99E48F6AFFB47B57F5D1D40B57F55DD55B2FFA26A
+      FFD145B57FEFDC2C9E614BD2FEF373AFF9CF775DFB6F6943C9EDBFE633B9FDD7
+      7CB6DABFAADD17E494ECBF78161013C45735F70BF159B20CCADC37DCC17CD2F4
+      4B23FFD2283FA567D8F604D8D6444073471C10EF0E2CF829CCDF0559F31A9ACA
+      2F95D585350A6B0A47A4D5A7D474A711F7F8691F252DC0E007C8FACDFB1B286B
+      7EA5670CCF650E37EF38C9FB6C69F4F9D2FCEDD2D13A475F6ABB47F5897B5FAF
+      C87BFDB751E033C21EFC4C0ABCE8647FAA7732AF0B8BEEDD68F1A28BC3533E07
+      78619C4EFA9C9477C27C5477F7B59BF6338C19FBFA8B239C3B0DF185BC51F399
+      821C2DAF9BFB91E6A195BC29FC0E417F04678CBFEDAF29FC94BF26FDBA3CA0E6
+      9F63C87F4AFE65346B0F94FC8351CDBF3867E94B758838F8C2BB1F2E5F063875
+      CABD3FA2B51560FB76F7FE87D5AB01F08C37DEA5F1EEBB006FBC11FE1DB8FE7E
+      B26E983B37CCF7F5D1F74ABDFE7A98EFEDA5F3E1796480AB57E97C361BE60B6B
+      2D767ECE9C30DFD343F97D6CD76F454598EFEED6EFADAAAF0FF2E5E561BEAB4B
+      FDFB7E9F7FCEEF0F09E49FEA7704B1EC9C3913D4B37123C09A35007575EE5D30
+      EFBD07F0E69B4A5E5336FDB297643C07B5B577C35828F19893DB77F0EEB6E8F7
+      D6497C847B04D53CFD1E41354FBF4750CDD3EF1154F3F47B04D53CFD1E412B1F
+      2BFEF47B04B5E99724FF13CCFB8CD5F6571DF773E7DC7B970E1D72EFB06A6E76
+      EB4FBCBFE9934F00962D0378FF7D7DD961BCB5DD5DBC58CF9F3D6B2F1FEAF55F
+      F75DB0EE57F38B16E979C5FD4472BA0A7CB89D30F0BCEF82ED4F5515AB0BE6CB
+      EDB77BEF16F67BDADACCB689ED57F02E32DE6FE077669D3CE9F79BB43258DF49
+      D7EE4178AF44982FDC8D137ED7D1614F7F13CFCA9E957FE71D3DDFDE6E2F7F6F
+      BFADE78F1F77EF7FDBB307A0A9C9ED7762DF01EF4FC3FB00F01E38F5FE8134EC
+      AFF414D7F8C5D87E989CB58C637F03FB0C5EBB8FED273AF699DC8ECD17EF0FEE
+      E02E729F15FB1BD867887EFF6F4106EB6FA4D0EF2D3DA5A718EC37313F06DA90
+      E47B414BF55751D55FF78EBB1794EEB6E67BE6427C45DEFFEDFCE771C2DFDB82
+      CBF3D98AAC2FC3674539E3147F85774A5ED633D2FA659EAA5F4ADBFB59B1B3A5
+      BF8DE732F2FA9D4B570AF996FF2CF3CEFD0B7D4E74E8DF639C39192DCFFD3219
+      A27E8F0D382643C787E25F716F403F35FE72F98DCD57D0D21F1FFC7F549786ED
+      6652FAFD1FC77988B9C9CC95117EF766D6038EF34708F37F60EE4FCC3D62D0FF
+      08FBFC0473B31EF678EFF77F0A61F815FF1BFEFD1F647F83EC0431FCF2EFF738
+      CE54E61E0F8443C5EA78D7FF2F987B321F9E8738FF2A4B9B28E9EF38BF676E3A
+      4F9797980C5B3E88BFFFE338BF65EEAFF9704CE67152E91779EFF77F3CFF5E98
+      0BF17F025E767E6EFCFD1FC7F91D734F733E1C9F87799CF0BE6615EFEAFC1B73
+      8F29D3E319E7673061C24FE14967A2222D307C7F67EE1F3CBD55BFFF836704DE
+      7A6B1E97F1EF09F76359BDAFC0FF92FDFFCF7EF9B5FDFECF3DF73C807E9F17CA
+      F404370CB4DFFF71427981FCAC5F536DF259E72710EE6CC03DFA8E088C43277D
+      77DFFF0168973249
+    }
+  end
+  object SaveDialogVTM: TSaveDialog
+    Title = 'Save module as:'
+    DefaultExt = '.txt'
+    Filter = 'Module in text file (only for work)|*.txt|Pro Tracker 3.xx file|*.pt3'
+    OnTypeChange = SaveDialogVTMTypeChange
+    Options = [ofHideReadOnly, ofPathMustExist, ofEnableSizing]
+    Left = 368
+    Top = 80
+  end
+  object PMPosList: TPopupMenu
+    Images = ImageList1
+    Left = 112
+    Top = 80
+    object MIPosLstUndo: TMenuItem
+      Action = Undo
+    end
+    object MIPosLstRedo: TMenuItem
+      Action = Redo
+    end
+    object Separator13: TMenuItem
+      Caption = '-'
+    end
+    object MIPosLstCopy: TMenuItem
+      Action = EditCopy1
+    end
+    object MIPosLstCut: TMenuItem
+      Action = EditCut1
+    end
+    object MIPosLstPaste: TMenuItem
+      Action = EditPaste1
+    end
+    object MIPosLstMerge: TMenuItem
+      Action = MergePositions
+    end
+    object Separator12: TMenuItem
+      Caption = '-'
+    end
+    object MIPosSelectAll: TMenuItem
+      Caption = 'Select all'
+      OnClick = MIPosSelectAllClick
+    end
+    object Separator10: TMenuItem
+      Caption = '-'
+    end
+    object Setloopposition1: TMenuItem
+      Action = SetLoopPos
+      Bitmap.Data = {
+        36040000424D3604000000000000360000002800000010000000100000000100
+        2000000000000004000064000000640000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000FF000000FF00000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        00FFFFA5A5FF000000FF00000000000000000000000000000000000000000000
+        0000000000FF000000FF000000FF000000FF0000000000000000000000FFFFB0
+        B0FFFFA6A6FF000000FF000000FF000000FF000000FF00000000000000000000
+        0000000000FFFFECECFFFFE3E3FF000000FF00000000000000FFFFBBBBFFFFB1
+        B1FFFFA7A7FFFF9D9DFFFF9393FFFF8989FFFF8080FF000000FF000000000000
+        0000000000FFFFEDEDFF000000FF000000FF0000000000000000000000FFFFB2
+        B2FFFFA8A8FF000000FF000000FF000000FFFF8080FF000000FF000000000000
+        0000000000FFFFEEEEFF000000FF000000000000000000000000000000000000
+        00FFFFA9A9FF000000FF00000000000000FFFF8181FF000000FF000000000000
+        0000000000FFFFEFEFFF000000FF000000000000000000000000000000000000
+        0000000000FF000000FF00000000000000FFFF8282FF000000FF000000000000
+        0000000000FFFFF0F0FF000000FF000000000000000000000000000000000000
+        0000000000000000000000000000000000FFFF8383FF000000FF000000000000
+        0000000000FFFFF1F1FF000000FF000000000000000000000000000000000000
+        0000000000000000000000000000000000FFFF8484FF000000FF000000000000
+        0000000000FFFFF2F2FF000000FF000000000000000000000000000000000000
+        0000000000000000000000000000000000FFFF8585FF000000FF000000000000
+        0000000000FFFFF3F3FF000000FF000000000000000000000000000000000000
+        0000000000000000000000000000000000FFFF8686FF000000FF000000000000
+        0000000000FFFFF4F4FF000000FF000000FF000000FF000000FF000000FF0000
+        00FF000000FF000000FF000000FF000000FFFF8787FF000000FF000000000000
+        0000000000FFFFF5F5FFFFECECFFFFE1E1FFFFD7D7FFFFCECEFFFFC3C3FFFFB9
+        B9FFFFB0B0FFFFA6A6FFFF9C9CFFFF9292FFFF8888FF000000FF000000000000
+        000000000000000000FF000000FF000000FF000000FF000000FF000000FF0000
+        00FF000000FF000000FF000000FF000000FF000000FF00000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000
+      }
+      ImageIndex = 37
+    end
+    object Separator6: TMenuItem
+      Caption = '-'
+    end
+    object MIAddPos: TMenuItem
+      Action = AddPositions
+    end
+    object MIDupPos: TMenuItem
+      Action = DuplicatePositions
+    end
+    object MIClonePos: TMenuItem
+      Action = ClonePositions
+    end
+    object Separator7: TMenuItem
+      Caption = '-'
+    end
+    object Deleteposition1: TMenuItem
+      Action = DeletePositions
+    end
+    object Separator11: TMenuItem
+      Caption = '-'
+    end
+    object MIChnPatLen: TMenuItem
+      Action = ChangePatLen
+    end
+    object MIRenumPats: TMenuItem
+      Action = RenumPats
+    end
+  end
+  object SaveDialogSNDH: TSaveDialog
+    Title = 'Save in SNDH'
+    Filter = 'Atari ST''s SNDH files (SND, SNDH)|*.snd;*.sndh|Any file|*.*'
+    Options = [ofHideReadOnly, ofPathMustExist, ofEnableSizing]
+    Left = 368
+    Top = 128
+  end
+  object SaveDialogZXAY: TSaveDialog
+    Title = 'Export to ZX Spectrum as:'
+    Filter = 'Hobeta with player ($c)|*.$c|Hobeta without player ($m)|*.$m|.AY-files (AY)|*.ay|SCL-files (SCL)|*.scl|ZX tape files (TAP)|*.tap|Any file|*.*'
+    OnTypeChange = SaveDialogZXAYTypeChange
+    Options = [ofHideReadOnly, ofPathMustExist, ofEnableSizing]
+    Left = 368
+    Top = 176
+  end
+  object PMTracks: TPopupMenu
+    Images = ImageList1
+    Left = 112
+    Top = 128
+    object Undo2: TMenuItem
+      Action = Undo
+    end
+    object Redo2: TMenuItem
+      Action = Redo
+    end
+    object N5: TMenuItem
+      Caption = '-'
+    end
+    object Copy1: TMenuItem
+      Action = EditCopy1
+    end
+    object Cut1: TMenuItem
+      Action = EditCut1
+    end
+    object Paste1: TMenuItem
+      Action = EditPaste1
+    end
+    object Merge1: TMenuItem
+      Caption = 'Merge'
+      Hint = 'Merge|Merges Clipboard contents'
+      ShortCut = 49238
+      OnClick = Merge1Click
+    end
+    object N6: TMenuItem
+      Caption = '-'
+    end
+    object MITracksSelectAll: TMenuItem
+      Caption = 'Select all'
+      OnClick = MITracksSelectAllClick
+    end
+    object Separator8: TMenuItem
+      Caption = '-'
+    end
+    object MITranspose: TMenuItem
+      Caption = 'Transpose...'
+      Hint = 'Transpose selected notes and evelope periods'
+      ImageIndex = 36
+      object MITransposeU1: TMenuItem
+        Action = TransposeUp1
+      end
+      object MITransposeD1: TMenuItem
+        Action = TransposeDown1
+      end
+      object MITransposeU3: TMenuItem
+        Action = TransposeUp3
+      end
+      object MITransposeD3: TMenuItem
+        Action = TransposeDown3
+      end
+      object MITransposeU5: TMenuItem
+        Action = TransposeUp5
+      end
+      object MITransposeD5: TMenuItem
+        Action = TransposeDown5
+      end
+      object MITransposeU12: TMenuItem
+        Action = TransposeUp12
+      end
+      object MITransposeD12: TMenuItem
+        Action = TransposeDown12
+      end
+    end
+    object N9: TMenuItem
+      Caption = '-'
+    end
+    object MIJumpInPat: TMenuItem
+      Caption = 'Jump to...'
+      Hint = 'Move cursor to various positions'
+      object MIPat0: TMenuItem
+        Action = PatJmp0
+      end
+      object MIPat1: TMenuItem
+        Action = PatJmp1
+      end
+      object MIPat2: TMenuItem
+        Action = PatJmp2
+      end
+      object MIPat3: TMenuItem
+        Action = PatJmp3
+      end
+    end
+    object Separator5: TMenuItem
+      Caption = '-'
+    end
+    object ExpandTwice1: TMenuItem
+      Caption = 'Expand pattern'
+      Hint = 'Expand pattern twice|Multiply pattern size x2 and insert empty line after each original line'
+      ImageIndex = 26
+      ShortCut = 106
+      OnClick = ExpandTwice1Click
+    end
+    object ShrinkTwice1: TMenuItem
+      Caption = 'Shrink pattern'
+      Hint = 'Shrink pattern twice|Remove each second line and divide pattern size /2'
+      ShortCut = 111
+      OnClick = ShrinkTwice1Click
+    end
+    object SplitPattern1: TMenuItem
+      Caption = 'Split pattern'
+      Hint = 'Split pattern at cursor into two ones'
+      OnClick = SplitPattern1Click
+    end
+    object PackPattern1: TMenuItem
+      Caption = 'Pack pattern'
+      Hint = 'Replaces empty lines of pattern or of its selection with various tempo setting special commands'
+      OnClick = PackPattern1Click
+    end
+    object Separator4: TMenuItem
+      Caption = '-'
+    end
+    object MISwapLeft: TMenuItem
+      Action = SwapChansLeft
+    end
+    object MISwapRight: TMenuItem
+      Action = SwapChansRight
+    end
+  end
+  object PMToolBar: TPopupMenu
+    Left = 112
+    Top = 176
+    object File2: TMenuItem
+      Caption = 'File'
+      Checked = True
+      OnClick = PopupMenu3Click
+    end
+    object Clipboard1: TMenuItem
+      Tag = 1
+      Caption = 'Clipboard'
+      Checked = True
+      OnClick = PopupMenu3Click
+    end
+    object UndoRedo1: TMenuItem
+      Tag = 2
+      Caption = 'Undo/Redo'
+      Checked = True
+      OnClick = PopupMenu3Click
+    end
+    object Window2: TMenuItem
+      Tag = 3
+      Caption = 'Window'
+      Checked = True
+      OnClick = PopupMenu3Click
+    end
+    object Play5: TMenuItem
+      Tag = 4
+      Caption = 'Playback'
+      Checked = True
+      OnClick = PopupMenu3Click
+    end
+    object Track1: TMenuItem
+      Tag = 5
+      Caption = 'Track tools'
+      Checked = True
+      OnClick = PopupMenu3Click
+    end
+  end
+  object VisTimer: TTimer
+    Enabled = False
+    Interval = 20
+    OnTimer = VisTimerTimer
+    Left = 192
+    Top = 80
+  end
+  object PMGeneral: TPopupMenu
+    Images = ImageList1
+    Left = 112
+    Top = 224
+    object Undo3: TMenuItem
+      Action = Undo
+    end
+    object Redo3: TMenuItem
+      Action = Redo
+    end
+    object N10: TMenuItem
+      Caption = '-'
+    end
+    object Copy2: TMenuItem
+      Action = EditCopy1
+    end
+    object Cut2: TMenuItem
+      Action = EditCut1
+    end
+    object Paste2: TMenuItem
+      Action = EditPaste1
+    end
+    object Separator9: TMenuItem
+      Caption = '-'
+    end
+    object MISelectAll: TMenuItem
+      Caption = 'Select all'
+      OnClick = MISelectAllClick
+    end
+  end
+  object SaveDialogPSG: TSaveDialog
+    Title = 'Convert to PSG'
+    Filter = 'ZX Spectrum emulators'' sound files (PSG)|*.psg|Any file|*.*'
+    Options = [ofHideReadOnly, ofPathMustExist, ofEnableSizing]
+    Left = 368
+    Top = 224
+  end
+  object SaveDialogWAV: TSaveDialog
+    Title = 'Convert to WAV'
+    Filter = 'Wave files (WAV)|*.wav|Any file|*.*'
+    Options = [ofHideReadOnly, ofPathMustExist, ofEnableSizing]
+    Left = 368
+    Top = 272
+  end
+  object MidiInTimer: TTimer
+    OnTimer = MidiInTimerTimer
+    Left = 192
+    Top = 128
+  end
+end

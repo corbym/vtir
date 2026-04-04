@@ -1,0 +1,130 @@
+object FXMParams: TFXMParams
+  Left = 186
+  Height = 174
+  Top = 113
+  Width = 343
+  Caption = 'FXM Importer Parameters'
+  ClientHeight = 174
+  ClientWidth = 343
+  Color = clBtnFace
+  Font.Color = clWindowText
+  Font.Height = -11
+  OnShow = FormShow
+  LCLVersion = '3.0.0.3'
+  object Label1: TLabel
+    Left = 14
+    Height = 13
+    Top = 8
+    Width = 39
+    Caption = 'Length:'
+    ParentColor = False
+  end
+  object Label3: TLabel
+    Left = 14
+    Height = 13
+    Top = 48
+    Width = 78
+    Caption = 'Loop interrupt:'
+    ParentColor = False
+  end
+  object Label4: TLabel
+    Left = 14
+    Height = 13
+    Top = 88
+    Width = 68
+    Caption = 'Initial tempo:'
+    ParentColor = False
+  end
+  object Label5: TLabel
+    Left = 178
+    Height = 13
+    Top = 8
+    Width = 62
+    Caption = 'Pattern size:'
+    ParentColor = False
+  end
+  object Label2: TLabel
+    Left = 178
+    Height = 13
+    Top = 48
+    Width = 91
+    Caption = 'Global transpose:'
+    ParentColor = False
+  end
+  object Label6: TLabel
+    Left = 178
+    Height = 13
+    Top = 88
+    Width = 69
+    Caption = 'amad_andsix:'
+    ParentColor = False
+  end
+  object Edit1: TEdit
+    Left = 14
+    Height = 21
+    Top = 24
+    Width = 152
+    TabOrder = 0
+    OnChange = Edit1Change
+  end
+  object Edit2: TEdit
+    Left = 14
+    Height = 21
+    Top = 64
+    Width = 152
+    TabOrder = 1
+    OnChange = Edit2Change
+  end
+  object Edit3: TEdit
+    Left = 14
+    Height = 21
+    Top = 104
+    Width = 152
+    TabOrder = 2
+    OnChange = Edit3Change
+  end
+  object Edit4: TEdit
+    Left = 178
+    Height = 21
+    Top = 24
+    Width = 152
+    TabOrder = 3
+    OnChange = Edit4Change
+  end
+  object Button1: TButton
+    Left = 14
+    Height = 25
+    Top = 136
+    Width = 152
+    Caption = 'Start conversion'
+    Default = True
+    ModalResult = 1
+    TabOrder = 6
+  end
+  object Button2: TButton
+    Left = 178
+    Height = 25
+    Top = 136
+    Width = 152
+    Cancel = True
+    Caption = 'Default'
+    ModalResult = 2
+    TabOrder = 7
+  end
+  object Edit5: TEdit
+    Left = 178
+    Height = 21
+    Top = 64
+    Width = 152
+    TabOrder = 4
+    OnChange = Edit5Change
+  end
+  object Edit6: TEdit
+    Left = 178
+    Height = 21
+    Top = 104
+    Width = 152
+    TabOrder = 5
+    OnChange = Edit6Change
+  end
+end

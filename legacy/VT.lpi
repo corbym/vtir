@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectOptions>
+    <Version Value="12"/>
+    <PathDelim Value="\"/>
+    <General>
+      <Flags>
+        <MainUnitHasScaledStatement Value="False"/>
+      </Flags>
+      <SessionStorage Value="InProjectDir"/>
+      <Title Value="VT"/>
+      <UseAppBundle Value="False"/>
+      <ResourceType Value="res"/>
+      <UseXPManifest Value="True"/>
+      <XPManifest>
+        <TextName Value="Sergey Bulba"/>
+        <TextDesc Value="Vortex Tracker II"/>
+      </XPManifest>
+      <Icon Value="0"/>
+    </General>
+    <i18n>
+      <EnableI18N Value="True"/>
+      <OutDir Value="lib\$(TargetCPU)-$(TargetOS)\languages"/>
+      <ExcludedIdentifiers Count="78">
+        <Item1 Value="tmainform.autoenvstd.caption"/>
+        <Item2 Value="tmainform.patjmp0.caption"/>
+        <Item3 Value="tmainform.patjmp1.caption"/>
+        <Item4 Value="tmainform.patjmp2.caption"/>
+        <Item5 Value="tmainform.patjmp3.caption"/>
+        <Item6 Value="tmainform.miclose1.caption"/>
+        <Item7 Value="tmainform.mirestore1.caption"/>
+        <Item8 Value="toptionsdlg.edautstpval.text"/>
+        <Item9 Value="toptionsdlg.ednotetbl.text"/>
+        <Item10 Value="toptionsdlg.ednumlines.text"/>
+        <Item11 Value="toptionsdlg.lbbufln.caption"/>
+        <Item12 Value="toptionsdlg.lbchg.caption"/>
+        <Item13 Value="toptionsdlg.lbfirk.caption"/>
+        <Item14 Value="toptionsdlg.lbnum.caption"/>
+        <Item15 Value="toptionsdlg.lbornamentsfont.caption"/>
+        <Item16 Value="toptionsdlg.lbsamplesfont.caption"/>
+        <Item17 Value="toptionsdlg.lbtestsfont.caption"/>
+        <Item18 Value="toptionsdlg.lbtotln.caption"/>
+        <Item19 Value="toptionsdlg.lbtracksfont.caption"/>
+        <Item20 Value="toptionsdlg.cblang.text"/>
+        <Item21 Value="taboutbox.comments.caption"/>
+        <Item22 Value="taboutbox.copyright.caption"/>
+        <Item23 Value="taboutbox.label1.caption"/>
+        <Item24 Value="taboutbox.label2.caption"/>
+        <Item25 Value="taboutbox.label3.caption"/>
+        <Item26 Value="taboutbox.label4.caption"/>
+        <Item27 Value="taboutbox.label5.caption"/>
+        <Item28 Value="tchildform.header.caption"/>
+        <Item29 Value="tchildform.edtable.text"/>
+        <Item30 Value="tchildform.lbby.caption"/>
+        <Item31 Value="tchildform.lbticks.caption"/>
+        <Item32 Value="tchildform.lbticksdiv.caption"/>
+        <Item33 Value="tchildform.lbtime.caption"/>
+        <Item34 Value="tchildform.lbtimediv.caption"/>
+        <Item35 Value="tchildform.lbtotticks.caption"/>
+        <Item36 Value="tchildform.lbtottime.caption"/>
+        <Item37 Value="tchildform.sbautoenvdigit1.caption"/>
+        <Item38 Value="tchildform.sbautoenvdigit2.caption"/>
+        <Item39 Value="tchildform.sbautopars.caption"/>
+        <Item40 Value="tchildform.sbclose.caption"/>
+        <Item41 Value="tchildform.sbmax.caption"/>
+        <Item42 Value="tchildform.sbmutea.caption"/>
+        <Item43 Value="tchildform.edautohl.text"/>
+        <Item44 Value="tchildform.edautostep.text"/>
+        <Item45 Value="tchildform.edoctave.text"/>
+        <Item46 Value="tchildform.edorn.text"/>
+        <Item47 Value="tchildform.edornlen.text"/>
+        <Item48 Value="tchildform.edornloop.text"/>
+        <Item49 Value="tchildform.edornoctave.text"/>
+        <Item50 Value="tchildform.edpat.text"/>
+        <Item51 Value="tchildform.edpatlen.text"/>
+        <Item52 Value="tchildform.edsamlen.text"/>
+        <Item53 Value="tchildform.edsamloop.text"/>
+        <Item54 Value="tchildform.edsamoctave.text"/>
+        <Item55 Value="tchildform.edsample.text"/>
+        <Item56 Value="tchildform.edspeed.text"/>
+        <Item57 Value="tchildform.sbmuteb.caption"/>
+        <Item58 Value="tchildform.sbmutec.caption"/>
+        <Item59 Value="tchildform.sborgen.caption"/>
+        <Item60 Value="texpdlg.label1.caption"/>
+        <Item61 Value="texpdlg.label2.caption"/>
+        <Item62 Value="texpdlg.label3.caption"/>
+        <Item63 Value="texpdlg.label5.caption"/>
+        <Item64 Value="texpdlg.label7.caption"/>
+        <Item65 Value="tfxmparams.label6.caption"/>
+        <Item66 Value="tglbtrans.edit2.text"/>
+        <Item67 Value="tglbtrans.edit8.text"/>
+        <Item68 Value="ttrmng.edit1.text"/>
+        <Item69 Value="ttrmng.edit2.text"/>
+        <Item70 Value="ttrmng.edit3.text"/>
+        <Item71 Value="ttrmng.edit4.text"/>
+        <Item72 Value="ttrmng.edit5.text"/>
+        <Item73 Value="ttrmng.edit8.text"/>
+        <Item74 Value="ttrmng.speedbutton1.caption"/>
+        <Item75 Value="ttrmng.speedbutton2.caption"/>
+        <Item76 Value="ttrmng.speedbutton3.caption"/>
+        <Item77 Value="ttrmng.speedbutton4.caption"/>
+        <Item78 Value="ttrmng.speedbutton5.caption"/>
+      </ExcludedIdentifiers>
+      <ExcludedOriginals Count="28">
+        <Item1 Value="Vortex Tracker II"/>
+        <Item2 Value="ABC"/>
+        <Item3 Value="ACB"/>
+        <Item4 Value="BAC"/>
+        <Item5 Value="BCA"/>
+        <Item6 Value="CAB"/>
+        <Item7 Value="CBA"/>
+        <Item8 Value="AY"/>
+        <Item9 Value="YM"/>
+        <Item10 Value="MIDI"/>
+        <Item11 Value="V"/>
+        <Item12 Value="OK"/>
+        <Item13 Value="C"/>
+        <Item14 Value="E"/>
+        <Item15 Value="O"/>
+        <Item16 Value="S"/>
+        <Item17 Value="D"/>
+        <Item18 Value="C#"/>
+        <Item19 Value="N"/>
+        <Item20 Value="T"/>
+        <Item21 Value="A"/>
+        <Item22 Value="A#"/>
+        <Item23 Value="B"/>
+        <Item24 Value="D#"/>
+        <Item25 Value="F"/>
+        <Item26 Value="F#"/>
+        <Item27 Value="G"/>
+        <Item28 Value="G#"/>
+      </ExcludedOriginals>
+    </i18n>
+    <VersionInfo>
+      <UseVersionInfo Value="True"/>
+      <AutoIncrementBuild Value="True"/>
+      <MajorVersionNr Value="1"/>
+      <RevisionNr Value="32"/>
+      <BuildNr Value="508"/>
+      <StringTable CompanyName="Sergey Bulba" FileDescription="ZX Spectrum YM2149F/AY-3-8910/12 Music Editor" InternalName="VT" LegalCopyright="(c)2000-2024 S.V.Bulba" OriginalFilename="VT.exe" ProductName="Vortex Tracker II" ProductVersion="1.0"/>
+    </VersionInfo>
+    <BuildModes>
+      <Item Name="Debug" Default="True"/>
+      <Item Name="Release">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <PathDelim Value="\"/>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <SmartLinkUnit Value="True"/>
+            <Optimizations>
+              <OptimizationLevel Value="3"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <GenerateDebugInfo Value="False"/>
+              <DebugInfoType Value="dsDwarf2Set"/>
+            </Debugging>
+            <LinkSmart Value="True"/>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+          <Other>
+            <CompilerMessages>
+              <IgnoredMessages idx5092="True" idx5091="True" idx5089="True" idx5058="True" idx5057="True" idx5036="True" idx5024="True"/>
+            </CompilerMessages>
+          </Other>
+        </CompilerOptions>
+      </Item>
+    </BuildModes>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+    <RunParams>
+      <FormatVersion Value="2"/>
+    </RunParams>
+    <RequiredPackages>
+      <Item>
+        <PackageName Value="LCL"/>
+      </Item>
+    </RequiredPackages>
+    <Units>
+      <Unit>
+        <Filename Value="VT.lpr"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="main.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="MainForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="Main"/>
+      </Unit>
+      <Unit>
+        <Filename Value="childwin.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="ChildForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+        <UnitName Value="ChildWin"/>
+      </Unit>
+      <Unit>
+        <Filename Value="about.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="AboutBox"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="About"/>
+      </Unit>
+      <Unit>
+        <Filename Value="trfuncs.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="options.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="OptionsDlg"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="TrkMng.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="TrMng"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="GlbTrn.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="GlbTrans"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ExportZX.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="ExpDlg"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="FXMImport.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FXMParams"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="selectts.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="TSSel"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="TglSams.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="ToglSams"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="config.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Config"/>
+      </Unit>
+      <Unit>
+        <Filename Value="winversion.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="WinVersion"/>
+      </Unit>
+      <Unit>
+        <Filename Value="languages.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Languages"/>
+      </Unit>
+      <Unit>
+        <Filename Value="digsound.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="digsoundcode.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="AY.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="keys.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="catchshortcut.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="CatchSCFrm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="nkeypeeker.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="NKChooseFrm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ice.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="exportsndh.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="ExpSNDHDlg"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="ExportSNDH"/>
+      </Unit>
+      <Unit>
+        <Filename Value="digsoundbuf.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="midikbd.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+    </Units>
+  </ProjectOptions>
+  <CompilerOptions>
+    <Version Value="11"/>
+    <PathDelim Value="\"/>
+    <SearchPaths>
+      <IncludeFiles Value="$(ProjOutDir)"/>
+      <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+    </SearchPaths>
+    <Linking>
+      <Debugging>
+        <DebugInfoType Value="dsDwarf2"/>
+      </Debugging>
+      <Options>
+        <Win32>
+          <GraphicApplication Value="True"/>
+        </Win32>
+      </Options>
+    </Linking>
+    <Other>
+      <CompilerMessages>
+        <IgnoredMessages idx5092="True" idx5091="True" idx5058="True" idx5057="True" idx5024="True"/>
+      </CompilerMessages>
+    </Other>
+  </CompilerOptions>
+  <Debugging>
+    <Exceptions>
+      <Item>
+        <Name Value="EAbort"/>
+      </Item>
+      <Item>
+        <Name Value="ECodetoolError"/>
+      </Item>
+      <Item>
+        <Name Value="EFOpenError"/>
+      </Item>
+    </Exceptions>
+  </Debugging>
+</CONFIG>

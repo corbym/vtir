@@ -1,0 +1,1544 @@
+object ChildForm: TChildForm
+  Left = 0
+  Height = 321
+  Top = 0
+  Width = 525
+  ClientHeight = 321
+  ClientWidth = 525
+  Color = clWindow
+  OnEnter = FrameEnter
+  OnExit = FrameExit
+  OnMouseDown = HeaderMouseDown
+  OnMouseMove = FrameMouseMove
+  OnMouseUp = HeaderMouseUp
+  OnMouseWheelDown = FormMouseWheelDown
+  OnMouseWheelUp = FormMouseWheelUp
+  ParentBackground = False
+  ParentColor = False
+  ParentShowHint = False
+  ShowHint = True
+  TabOrder = 0
+  DesignLeft = 421
+  DesignTop = 127
+  object Header: TPanel
+    AnchorSideLeft.Control = EditorPages
+    AnchorSideRight.Control = EditorPages
+    AnchorSideRight.Side = asrBottom
+    Left = 0
+    Height = 23
+    Top = 0
+    Width = 524
+    Alignment = taLeftJustify
+    Anchors = [akTop, akLeft, akRight]
+    BevelOuter = bvNone
+    Caption = 'Header'
+    ClientHeight = 23
+    ClientWidth = 524
+    Color = clInactiveCaption
+    Font.Color = clGrayText
+    ParentBackground = False
+    ParentColor = False
+    ParentFont = False
+    TabOrder = 0
+    OnDblClick = HeaderDblClick
+    OnMouseDown = HeaderMouseDown
+    OnMouseMove = HeaderMouseMove
+    OnMouseUp = HeaderMouseUp
+    object SBClose: TSpeedButton
+      AnchorSideRight.Control = Header
+      AnchorSideRight.Side = asrBottom
+      Left = 490
+      Height = 23
+      Top = 0
+      Width = 34
+      Align = alRight
+      Caption = '✕'
+      Flat = True
+      OnClick = SBCloseClick
+    end
+    object SBMax: TSpeedButton
+      AnchorSideRight.Control = SBClose
+      Left = 456
+      Height = 23
+      Top = 0
+      Width = 34
+      Align = alRight
+      Caption = '▢'
+      Flat = True
+      OnClick = SBMaxClick
+    end
+  end
+  object EditorPages: TPageControl
+    AnchorSideTop.Control = Header
+    AnchorSideTop.Side = asrBottom
+    AnchorSideRight.Side = asrBottom
+    Left = 0
+    Height = 294
+    Top = 23
+    Width = 524
+    ActivePage = PatternsSheet
+    Images = MainForm.ImageList1
+    TabIndex = 0
+    TabOrder = 1
+    OnChange = EditorPagesChange
+    OnResize = EditorPagesResize
+    object PatternsSheet: TTabSheet
+      Caption = 'Patterns'
+      ClientHeight = 266
+      ClientWidth = 516
+      ImageIndex = 29
+      object LbBy: TLabel
+        Left = 236
+        Height = 15
+        Top = 32
+        Width = 13
+        Caption = 'by'
+        ParentColor = False
+      end
+      object SBTS: TSpeedButton
+        Left = 4
+        Height = 20
+        Hint = 'Select 2nd module for Turbo Sound mode'
+        Top = 4
+        Width = 103
+        OnClick = SBTSClick
+      end
+      object SBAutoHL: TSpeedButton
+        Left = 239
+        Height = 23
+        Hint = 'Toggle auto highlight step'
+        Top = 55
+        Width = 42
+        AllowAllUp = True
+        Caption = 'AutHlt'
+        Down = True
+        GroupIndex = 15
+        OnClick = AutoHLCheckClick
+      end
+      object EdTitle: TEdit
+        Left = 4
+        Height = 23
+        Hint = 'Song title'
+        Top = 29
+        Width = 233
+        Alignment = taCenter
+        MaxLength = 32
+        TabOrder = 1
+        OnChange = EdTitleChange
+      end
+      object EdAuthor: TEdit
+        Left = 255
+        Height = 23
+        Hint = 'Author name'
+        Top = 29
+        Width = 213
+        Alignment = taCenter
+        MaxLength = 32
+        TabOrder = 2
+        OnChange = EdAuthorChange
+      end
+      object SGPositions: TStringGrid
+        Left = 4
+        Height = 20
+        Hint = 'Position list'
+        Top = 105
+        Width = 465
+        AutoAdvance = aaNone
+        AutoEdit = False
+        ColCount = 256
+        DefaultColWidth = 26
+        DefaultRowHeight = 16
+        FixedCols = 0
+        FixedRows = 0
+        MouseWheelOption = mwGrid
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goRangeSelect, goDrawFocusSelected, goSmoothScroll, goSelectionActive]
+        PopupMenu = MainForm.PMPosList
+        RowCount = 1
+        ScrollBars = ssNone
+        TabAdvance = aaNone
+        TabOrder = 15
+        OnEnter = SGPositionsEnter
+        OnExit = SGPositionsExit
+        OnKeyDown = SGPositionsKeyDown
+        OnKeyPress = SGPositionsKeyPress
+        OnMouseDown = SGPositionsMouseDown
+        OnMouseMove = SGPositionsMouseMove
+        OnMouseUp = SGPositionsMouseUp
+        OnMouseWheelDown = FormMouseWheelDown
+        OnMouseWheelUp = FormMouseWheelUp
+        OnSelection = SGPositionsSelection
+        OnSelectCell = SGPositionsSelectCell
+        OnTopLeftChanged = SGPositionsTopLeftChanged
+      end
+      object EdAutoHL: TEdit
+        AnchorSideTop.Side = asrBottom
+        Left = 239
+        Height = 23
+        Hint = 'Highlight step'
+        Top = 79
+        Width = 26
+        Alignment = taCenter
+        AutoSize = False
+        TabOrder = 13
+        Text = '4'
+        OnChange = EdAutoHLChange
+        OnEditingDone = Edit17ExitOrDone
+        OnExit = Edit17ExitOrDone
+      end
+      object UDAutoHL: TUpDown
+        Left = 265
+        Height = 23
+        Hint = 'Highlight step'
+        Top = 79
+        Width = 16
+        Associate = EdAutoHL
+        Min = 0
+        OnChangingEx = UDAutoHLChangingEx
+        OnClick = UDAutoHLClick
+        Position = 4
+        TabOrder = 14
+      end
+      object EdSpeed: TEdit
+        Left = 83
+        Height = 23
+        Hint = 'Initial speed'
+        Top = 55
+        Width = 25
+        Alignment = taCenter
+        AutoSize = False
+        TabOrder = 7
+        Text = '3'
+        OnChange = EdSpeedChange
+        OnEditingDone = Edit6ExitOrDone
+        OnExit = Edit6ExitOrDone
+      end
+      object UDSpeed: TUpDown
+        Left = 108
+        Height = 23
+        Hint = 'Initial speed'
+        Top = 55
+        Width = 16
+        Associate = EdSpeed
+        Max = 255
+        Min = 1
+        OnChangingEx = UDSpeedChangingEx
+        Position = 3
+        TabOrder = 8
+      end
+      object SBMuteA: TSpeedButton
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 80
+        Height = 23
+        Hint = 'Toggle channel A sound'
+        Top = 146
+        Width = 49
+        BorderSpacing.Top = 4
+        Caption = 'Chan A'
+        OnClick = SBMuteClick
+      end
+      object SBMuteB: TSpeedButton
+        Tag = 1
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 224
+        Height = 23
+        Hint = 'Toggle channel B sound'
+        Top = 146
+        Width = 49
+        BorderSpacing.Top = 4
+        Caption = 'Chan B'
+        OnClick = SBMuteClick
+      end
+      object SBMuteC: TSpeedButton
+        Tag = 2
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 368
+        Height = 23
+        Hint = 'Toggle channel C sound'
+        Top = 146
+        Width = 49
+        BorderSpacing.Top = 4
+        Caption = 'Chan C'
+        OnClick = SBMuteClick
+      end
+      object SBMuteAT: TSpeedButton
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 128
+        Height = 23
+        Hint = 'Toggle channel A tone'
+        Top = 146
+        Width = 23
+        AllowAllUp = True
+        BorderSpacing.Top = 4
+        Caption = 'T'
+        GroupIndex = 1
+        OnClick = SBMuteTClick
+      end
+      object SBMuteAN: TSpeedButton
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 152
+        Height = 23
+        Hint = 'Toggle channel A noise'
+        Top = 146
+        Width = 23
+        AllowAllUp = True
+        BorderSpacing.Top = 4
+        Caption = 'N'
+        GroupIndex = 2
+        OnClick = SBMuteNClick
+      end
+      object SBMuteAE: TSpeedButton
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 176
+        Height = 23
+        Hint = 'Toggle channel A envelope'
+        Top = 146
+        Width = 23
+        AllowAllUp = True
+        BorderSpacing.Top = 4
+        Caption = 'E'
+        GroupIndex = 3
+        OnClick = SBMuteEClick
+      end
+      object SBMuteBT: TSpeedButton
+        Tag = 1
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 272
+        Height = 23
+        Hint = 'Toggle channel B tone'
+        Top = 146
+        Width = 23
+        AllowAllUp = True
+        BorderSpacing.Top = 4
+        Caption = 'T'
+        GroupIndex = 5
+        OnClick = SBMuteTClick
+      end
+      object SBMuteBN: TSpeedButton
+        Tag = 1
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 296
+        Height = 23
+        Hint = 'Toggle channel B noise'
+        Top = 146
+        Width = 23
+        AllowAllUp = True
+        BorderSpacing.Top = 4
+        Caption = 'N'
+        GroupIndex = 6
+        OnClick = SBMuteNClick
+      end
+      object SBMuteBE: TSpeedButton
+        Tag = 1
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 320
+        Height = 23
+        Hint = 'Toggle channel B envelope'
+        Top = 146
+        Width = 23
+        AllowAllUp = True
+        BorderSpacing.Top = 4
+        Caption = 'E'
+        GroupIndex = 7
+        OnClick = SBMuteEClick
+      end
+      object SBMuteCT: TSpeedButton
+        Tag = 2
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 417
+        Height = 23
+        Hint = 'Toggle channel C tone'
+        Top = 146
+        Width = 23
+        AllowAllUp = True
+        BorderSpacing.Top = 4
+        Caption = 'T'
+        GroupIndex = 9
+        OnClick = SBMuteTClick
+      end
+      object SBMuteCN: TSpeedButton
+        Tag = 2
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 441
+        Height = 23
+        Hint = 'Toggle channel C noise'
+        Top = 146
+        Width = 23
+        AllowAllUp = True
+        BorderSpacing.Top = 4
+        Caption = 'N'
+        GroupIndex = 10
+        OnClick = SBMuteNClick
+      end
+      object SBMuteCE: TSpeedButton
+        Tag = 2
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 465
+        Height = 23
+        Hint = 'Toggle channel C envelope'
+        Top = 146
+        Width = 23
+        AllowAllUp = True
+        BorderSpacing.Top = 4
+        Caption = 'E'
+        GroupIndex = 11
+        OnClick = SBMuteEClick
+      end
+      object EdAutoStep: TEdit
+        AnchorSideTop.Side = asrBottom
+        Left = 126
+        Height = 23
+        Hint = 'Edit step (spacing)'
+        Top = 79
+        Width = 26
+        Alignment = taCenter
+        AutoSize = False
+        TabOrder = 11
+        Text = '0'
+        OnChange = EdAutoStepChange
+        OnEditingDone = Edit14ExitOrDone
+        OnExit = Edit14ExitOrDone
+      end
+      object UDAutoStep: TUpDown
+        Left = 152
+        Height = 23
+        Hint = 'Edit step (spacing)'
+        Top = 79
+        Width = 16
+        Associate = EdAutoStep
+        Max = 64
+        Min = -64
+        OnClick = UDAutoStepClick
+        Position = 0
+        TabOrder = 12
+      end
+      object SBAutoStep: TSpeedButton
+        Left = 126
+        Height = 23
+        Top = 55
+        Width = 42
+        AllowAllUp = True
+        Caption = 'AutStp'
+        GroupIndex = 13
+        OnClick = SBAutoStepClick
+      end
+      object SBAutoEnv: TSpeedButton
+        Left = 170
+        Height = 23
+        Top = 55
+        Width = 67
+        AllowAllUp = True
+        Caption = 'AutoEnv'
+        GroupIndex = 14
+        OnClick = SBAutoEnvClick
+      end
+      object SBAutoEnvDigit1: TSpeedButton
+        Left = 170
+        Height = 23
+        Hint = 'Tone frequency'
+        Top = 79
+        Width = 23
+        Caption = '1'
+        OnClick = SBAutoEnvDigit1Click
+      end
+      object SBAutoEnvStd: TSpeedButton
+        Left = 192
+        Height = 23
+        Top = 79
+        Width = 23
+        Action = MainForm.AutoEnvStd
+      end
+      object SBAutoEnvDigit2: TSpeedButton
+        Left = 214
+        Height = 23
+        Hint = 'Envelope frequency'
+        Top = 79
+        Width = 23
+        Caption = '1'
+        OnClick = SBAutoEnvDigit2Click
+      end
+      object EdOctave: TEdit
+        Left = 83
+        Height = 23
+        Hint = 'Octave number (hotkeys can be user defined, default are Num1-8 for that control where cursor in a note cell or Alt+1-8 for all)'
+        Top = 79
+        Width = 25
+        Alignment = taCenter
+        AutoSize = False
+        TabOrder = 9
+        Text = '4'
+        OnChange = EdOctaveChange
+        OnEditingDone = EdOctaveExitOrDone
+        OnExit = EdOctaveExitOrDone
+      end
+      object UDOctave: TUpDown
+        Left = 108
+        Height = 23
+        Hint = 'Octave number (hotkeys can be user defined, default are Num1-8 for that control where cursor in a note cell or Alt+1-8 for all)'
+        Top = 79
+        Width = 16
+        Associate = EdOctave
+        Max = 8
+        Min = 1
+        OnChangingEx = UDOctaveChangingEx
+        Position = 4
+        TabOrder = 10
+      end
+      object SBSoloA: TSpeedButton
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 200
+        Height = 23
+        Hint = 'Toggle channel A solo mode'
+        Top = 146
+        Width = 23
+        AllowAllUp = True
+        BorderSpacing.Top = 4
+        Caption = 'S'
+        GroupIndex = 4
+        OnClick = SBSoloClick
+      end
+      object SBSoloB: TSpeedButton
+        Tag = 1
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 344
+        Height = 23
+        Hint = 'Toggle channel B solo mode'
+        Top = 146
+        Width = 23
+        AllowAllUp = True
+        BorderSpacing.Top = 4
+        Caption = 'S'
+        GroupIndex = 8
+        OnClick = SBSoloClick
+      end
+      object SBSoloC: TSpeedButton
+        Tag = 2
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 489
+        Height = 23
+        Hint = 'Toggle channel C solo mode'
+        Top = 146
+        Width = 23
+        AllowAllUp = True
+        BorderSpacing.Top = 4
+        Caption = 'S'
+        GroupIndex = 12
+        OnClick = SBSoloClick
+      end
+      object BvChanB: TBevel
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 223
+        Height = 23
+        Top = 146
+        Width = 1
+        BorderSpacing.Top = 4
+        Shape = bsLeftLine
+      end
+      object BvChanC: TBevel
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 367
+        Height = 23
+        Top = 146
+        Width = 1
+        BorderSpacing.Top = 4
+        Shape = bsLeftLine
+      end
+      object EdPat: TEdit
+        Left = 4
+        Height = 23
+        Hint = 'Current pattern'
+        Top = 55
+        Width = 26
+        Alignment = taCenter
+        AutoSize = False
+        TabOrder = 3
+        Text = '0'
+        OnChange = EdPatChange
+        OnEditingDone = Edit2ExitOrDone
+        OnExit = Edit2ExitOrDone
+      end
+      object UDPat: TUpDown
+        Left = 30
+        Height = 23
+        Hint = 'Current pattern'
+        Top = 55
+        Width = 16
+        Associate = EdPat
+        Max = 84
+        Min = 0
+        OnChangingEx = UDPatChangingEx
+        Position = 0
+        TabOrder = 4
+      end
+      object EdPatLen: TEdit
+        Left = 4
+        Height = 23
+        Top = 79
+        Width = 26
+        Alignment = taCenter
+        AutoSize = False
+        TabOrder = 5
+        Text = '64'
+        OnEditingDone = Edit8ExitOrDone
+        OnExit = Edit8ExitOrDone
+        OnKeyDown = EdPatLenKeyDown
+      end
+      object UDPatLen: TUpDown
+        Left = 30
+        Height = 23
+        Hint = 'Pattern length'
+        Top = 79
+        Width = 16
+        Associate = EdPatLen
+        Min = 1
+        OnChangingEx = UDPatLenChangingEx
+        Position = 64
+        TabOrder = 6
+      end
+      object SBLoadPat: TSpeedButton
+        Left = 48
+        Height = 23
+        Hint = 'Load pattern'
+        Top = 55
+        Width = 32
+        Caption = 'Load'
+        OnClick = SBLoadPatClick
+      end
+      object SBSavePat: TSpeedButton
+        Left = 48
+        Height = 23
+        Hint = 'Save pattern'
+        Top = 79
+        Width = 32
+        Caption = 'Save'
+        OnClick = SBSavePatClick
+      end
+      object Timings: TPanel
+        Left = 301
+        Height = 20
+        Top = 4
+        Width = 174
+        BevelOuter = bvNone
+        BorderStyle = bsSingle
+        ClientHeight = 16
+        ClientWidth = 170
+        Color = clNone
+        FullRepaint = False
+        ParentBackground = False
+        ParentColor = False
+        TabOrder = 0
+        object LbTotTime: TLabel
+          AnchorSideLeft.Control = LbTimeDiv
+          AnchorSideLeft.Side = asrBottom
+          Left = 49
+          Height = 15
+          Hint = 'Total time'
+          Top = 1
+          Width = 21
+          BorderSpacing.Left = 2
+          Caption = '0:00'
+          ParentColor = False
+        end
+        object LbTime: TLabel
+          AnchorSideRight.Control = LbTimeDiv
+          Left = 19
+          Height = 15
+          Hint = 'Current time'
+          Top = 1
+          Width = 21
+          Anchors = [akTop, akRight]
+          BorderSpacing.Right = 2
+          Caption = '0:00'
+          ParentColor = False
+        end
+        object LbTimeDiv: TLabel
+          Left = 42
+          Height = 15
+          Top = 1
+          Width = 5
+          Caption = '/'
+          ParentColor = False
+        end
+        object LbTicks: TLabel
+          AnchorSideRight.Control = LbTicksDiv
+          Left = 102
+          Height = 15
+          Hint = 'Current tick'
+          Top = 1
+          Width = 10
+          Anchors = [akTop, akRight]
+          BorderSpacing.Right = 2
+          Caption = '(0'
+          ParentColor = False
+        end
+        object LbTicksDiv: TLabel
+          Left = 114
+          Height = 15
+          Top = 1
+          Width = 5
+          Caption = '/'
+          ParentColor = False
+        end
+        object LbTotTicks: TLabel
+          AnchorSideLeft.Control = LbTicksDiv
+          AnchorSideLeft.Side = asrBottom
+          Left = 121
+          Height = 15
+          Hint = 'Total ticks'
+          Top = 1
+          Width = 10
+          BorderSpacing.Left = 2
+          Caption = '0)'
+          ParentColor = False
+        end
+      end
+      object SBDecTrLines: TSpeedButton
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 4
+        Height = 23
+        Hint = 'Decimal numbering'
+        Top = 146
+        Width = 23
+        AllowAllUp = True
+        BorderSpacing.Top = 4
+        Caption = 'D'
+        GroupIndex = 16
+        OnClick = SBDecTrLinesClick
+      end
+      object BvChanA: TBevel
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 79
+        Height = 23
+        Top = 146
+        Width = 1
+        BorderSpacing.Top = 4
+        Shape = bsLeftLine
+      end
+      object BvNoise: TBevel
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 51
+        Height = 23
+        Top = 146
+        Width = 1
+        BorderSpacing.Top = 4
+        Shape = bsLeftLine
+      end
+      object BvEnv: TBevel
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 27
+        Height = 23
+        Top = 146
+        Width = 1
+        BorderSpacing.Top = 4
+        Shape = bsLeftLine
+      end
+      object SBEnvAsNote: TSpeedButton
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 28
+        Height = 23
+        Hint = 'Envelope as note'
+        Top = 146
+        Width = 23
+        AllowAllUp = True
+        BorderSpacing.Top = 4
+        Caption = 'C#'
+        GroupIndex = 17
+        OnClick = SBEnvAsNoteClick
+      end
+      object SBDecNoise: TSpeedButton
+        AnchorSideTop.Control = SBPositions
+        AnchorSideTop.Side = asrBottom
+        Left = 54
+        Height = 23
+        Hint = 'Decimal noise'
+        Top = 146
+        Width = 23
+        AllowAllUp = True
+        BorderSpacing.Top = 4
+        Caption = 'D'
+        GroupIndex = 18
+        OnClick = SBDecNoiseClick
+      end
+      object SBAutoPars: TSpeedButton
+        Left = 283
+        Height = 23
+        Top = 55
+        Width = 66
+        AllowAllUp = True
+        Caption = 'AutoPrms'
+        GroupIndex = 19
+      end
+      object SBAutoSmp: TSpeedButton
+        AnchorSideLeft.Control = SBAutoPars
+        AnchorSideLeft.Side = asrBottom
+        Left = 349
+        Height = 23
+        Hint = 'Use sample number when auto parameters is on'
+        Top = 55
+        Width = 23
+        AllowAllUp = True
+        Caption = 'S'
+        GroupIndex = 20
+        OnClick = SomeAutoParameterClick
+      end
+      object SBAutoEnvT: TSpeedButton
+        AnchorSideLeft.Control = SBAutoSmp
+        AnchorSideLeft.Side = asrBottom
+        Left = 372
+        Height = 23
+        Hint = 'Use envelope type/off when auto parameters is on'
+        Top = 55
+        Width = 23
+        AllowAllUp = True
+        Caption = 'E'
+        GroupIndex = 21
+        OnClick = SomeAutoParameterClick
+      end
+      object SBAutoOrn: TSpeedButton
+        AnchorSideLeft.Control = SBAutoEnvT
+        AnchorSideLeft.Side = asrBottom
+        Left = 395
+        Height = 23
+        Hint = 'Use ornament number when auto parameters is on'
+        Top = 55
+        Width = 23
+        AllowAllUp = True
+        Caption = 'O'
+        GroupIndex = 22
+        OnClick = SomeAutoParameterClick
+      end
+      object SBAutoVol: TSpeedButton
+        AnchorSideLeft.Control = SBAutoOrn
+        AnchorSideLeft.Side = asrBottom
+        Left = 418
+        Height = 23
+        Hint = 'Use volume when auto parameters is on'
+        Top = 55
+        Width = 23
+        AllowAllUp = True
+        Caption = 'V'
+        GroupIndex = 23
+        OnClick = SomeAutoParameterClick
+      end
+      object SBAutoCmd: TSpeedButton
+        AnchorSideLeft.Control = SBAutoVol
+        AnchorSideLeft.Side = asrBottom
+        Left = 441
+        Height = 23
+        Hint = 'Use special command when auto parameters is on'
+        Top = 55
+        Width = 23
+        AllowAllUp = True
+        Caption = 'C'
+        GroupIndex = 24
+        OnClick = SomeAutoParameterClick
+      end
+      object SBPositions: TScrollBar
+        AnchorSideLeft.Control = SGPositions
+        AnchorSideTop.Control = SGPositions
+        AnchorSideTop.Side = asrBottom
+        AnchorSideRight.Control = SGPositions
+        AnchorSideRight.Side = asrBottom
+        Left = 4
+        Height = 17
+        Hint = 'Position list scroller'
+        Top = 125
+        Width = 465
+        Anchors = [akTop, akLeft, akRight]
+        Max = 0
+        PageSize = 0
+        TabOrder = 16
+        TabStop = False
+        OnScroll = SBPositionsScroll
+      end
+    end
+    object SamplesSheet: TTabSheet
+      Caption = 'Samples'
+      ClientHeight = 266
+      ClientWidth = 516
+      ImageIndex = 31
+      object PnSamsRight: TPanel
+        Left = 304
+        Height = 216
+        Top = 16
+        Width = 48
+        AutoSize = True
+        BevelOuter = bvNone
+        ClientHeight = 216
+        ClientWidth = 48
+        Color = clNone
+        ParentBackground = False
+        ParentColor = False
+        TabOrder = 1
+        object LbSamLen: TLabel
+          Left = 0
+          Height = 15
+          Top = 44
+          Width = 48
+          Alignment = taCenter
+          AutoSize = False
+          Caption = 'Length'
+          ParentColor = False
+        end
+        object LbSamLoop: TLabel
+          Left = 0
+          Height = 15
+          Top = 0
+          Width = 48
+          Alignment = taCenter
+          AutoSize = False
+          Caption = 'Loop'
+          ParentColor = False
+        end
+        object SBSaveSam: TSpeedButton
+          Left = 0
+          Height = 22
+          Hint = 'Save sample'
+          Top = 168
+          Width = 48
+          Caption = 'Save'
+          OnClick = SBSaveSamClick
+        end
+        object SBLoadSam: TSpeedButton
+          Left = 0
+          Height = 22
+          Hint = 'Load sample'
+          Top = 142
+          Width = 48
+          Caption = 'Load'
+          OnClick = SBLoadSamClick
+        end
+        object EdSamLen: TEdit
+          Left = 0
+          Height = 23
+          Hint = 'Sample length'
+          Top = 61
+          Width = 33
+          Alignment = taCenter
+          AutoSize = False
+          TabOrder = 2
+          Text = '1'
+          OnEditingDone = Edit9ExitOrDone
+          OnExit = Edit9ExitOrDone
+        end
+        object UDSamLen: TUpDown
+          Left = 33
+          Height = 23
+          Hint = 'Sample length'
+          Top = 61
+          Width = 15
+          Associate = EdSamLen
+          Max = 64
+          Min = 1
+          OnChangingEx = UDSamLenChangingEx
+          Position = 1
+          TabOrder = 3
+        end
+        object EdSamLoop: TEdit
+          Left = 0
+          Height = 23
+          Hint = 'Sample loop'
+          Top = 17
+          Width = 33
+          Alignment = taCenter
+          AutoSize = False
+          TabOrder = 0
+          Text = '0'
+          OnEditingDone = Edit10ExitOrDone
+          OnExit = Edit10ExitOrDone
+        end
+        object UDSamLoop: TUpDown
+          Left = 33
+          Height = 23
+          Hint = 'Sample loop'
+          Top = 17
+          Width = 15
+          Associate = EdSamLoop
+          Max = 63
+          Min = 0
+          OnChangingEx = UDSamLoopChangingEx
+          Position = 0
+          TabOrder = 1
+        end
+        object SBUnrollSample: TSpeedButton
+          Left = 0
+          Height = 22
+          Hint = 'Unroll tone, noise and amplitude accumulations'
+          Top = 194
+          Width = 48
+          Caption = 'Unroll'
+          OnClick = SBUnrollSampleClick
+        end
+        object LbSamOctave: TLabel
+          Left = 0
+          Height = 15
+          Top = 89
+          Width = 48
+          Alignment = taCenter
+          AutoSize = False
+          Caption = 'Octave'
+          ParentColor = False
+        end
+        object EdSamOctave: TEdit
+          Left = 0
+          Height = 23
+          Hint = 'Octave number (hotkeys can be user defined, default are Num1-8 for that control where cursor in a note cell or Alt+1-8 for all)'
+          Top = 104
+          Width = 33
+          Alignment = taCenter
+          AutoSize = False
+          TabOrder = 4
+          Text = '4'
+          OnChange = EdSamOctaveChange
+          OnEditingDone = EdSamOctaveExitOrDone
+          OnExit = EdSamOctaveExitOrDone
+        end
+        object UDSamOctave: TUpDown
+          Left = 33
+          Height = 23
+          Hint = 'Octave number (hotkeys can be user defined, default are Num1-8 for that control where cursor in a note cell or Alt+1-8 for all)'
+          Top = 104
+          Width = 15
+          Associate = EdSamOctave
+          Max = 8
+          Min = 1
+          OnChangingEx = UDSamOctaveChangingEx
+          Position = 4
+          TabOrder = 5
+        end
+      end
+      object PnSamsTop: TPanel
+        Left = 4
+        Height = 23
+        Top = 4
+        Width = 103
+        AutoSize = True
+        BevelOuter = bvNone
+        ClientHeight = 23
+        ClientWidth = 103
+        Color = clNone
+        ParentBackground = False
+        ParentColor = False
+        TabOrder = 0
+        object EdSample: TEdit
+          Left = 0
+          Height = 23
+          Hint = 'Current sample'
+          Top = 0
+          Width = 33
+          Alignment = taCenter
+          AutoSize = False
+          TabOrder = 0
+          Text = '1'
+          OnChange = EdSampleChange
+          OnEditingDone = EdSampleExitOrDone
+          OnExit = EdSampleExitOrDone
+        end
+        object UDSample: TUpDown
+          Left = 33
+          Height = 23
+          Hint = 'Current sample'
+          Top = 0
+          Width = 16
+          Associate = EdSample
+          Max = 31
+          Min = 1
+          OnChangingEx = UDSampleChangingEx
+          Position = 1
+          TabOrder = 1
+        end
+        object SBSamAsNotes: TSpeedButton
+          AnchorSideLeft.Control = UDSample
+          AnchorSideLeft.Side = asrBottom
+          AnchorSideTop.Control = EdSample
+          Left = 53
+          Height = 23
+          Hint = 'Sample tone shifts as notes'
+          Top = 0
+          Width = 23
+          AllowAllUp = True
+          BorderSpacing.Left = 4
+          Caption = 'C#'
+          GroupIndex = 1
+          OnClick = SBSamAsNotesClick
+        end
+        object SBSamRecalc: TSpeedButton
+          AnchorSideLeft.Control = SBSamAsNotes
+          AnchorSideLeft.Side = asrBottom
+          AnchorSideTop.Control = EdSample
+          Left = 80
+          Height = 23
+          Hint = 'Do recalcing sample tone shifts on changing base note'
+          Top = 0
+          Width = 23
+          AllowAllUp = True
+          BorderSpacing.Left = 4
+          GroupIndex = 2
+          Images = MainForm.ImageList1
+          ImageIndex = 10
+          ShowCaption = False
+        end
+      end
+    end
+    object OrnamentsSheet: TTabSheet
+      Caption = 'Ornaments'
+      ClientHeight = 266
+      ClientWidth = 516
+      ImageIndex = 30
+      object PnOrnsRight: TPanel
+        Left = 336
+        Height = 218
+        Top = 16
+        Width = 48
+        AutoSize = True
+        BevelOuter = bvNone
+        ClientHeight = 218
+        ClientWidth = 48
+        Color = clNone
+        ParentBackground = False
+        ParentColor = False
+        TabOrder = 1
+        object LbOrnLen: TLabel
+          Left = 0
+          Height = 15
+          Top = 48
+          Width = 48
+          Alignment = taCenter
+          AutoSize = False
+          Caption = 'Length'
+          ParentColor = False
+        end
+        object LbOrnLoop: TLabel
+          Left = 0
+          Height = 15
+          Top = 0
+          Width = 48
+          Alignment = taCenter
+          AutoSize = False
+          Caption = 'Loop'
+          ParentColor = False
+        end
+        object SBLoadOrn: TSpeedButton
+          Left = 0
+          Height = 22
+          Hint = 'Load ornament'
+          Top = 148
+          Width = 48
+          Caption = 'Load'
+          OnClick = SBLoadOrnClick
+        end
+        object SBSaveOrn: TSpeedButton
+          Left = 0
+          Height = 22
+          Hint = 'Save ornament'
+          Top = 172
+          Width = 48
+          Caption = 'Save'
+          OnClick = SBSaveOrnClick
+        end
+        object SBOrGen: TSpeedButton
+          Left = 0
+          Height = 22
+          Hint = 'External ornament generator plug-in'
+          Top = 196
+          Width = 48
+          Caption = 'OrGen'
+          OnClick = SBOrGenClick
+        end
+        object EdOrnLoop: TEdit
+          Left = 0
+          Height = 23
+          Hint = 'Ornament loop'
+          Top = 17
+          Width = 33
+          Alignment = taCenter
+          AutoSize = False
+          TabOrder = 0
+          Text = '0'
+          OnEditingDone = EdOrnLoopExitOrDone
+          OnExit = EdOrnLoopExitOrDone
+        end
+        object UDOrnLoop: TUpDown
+          Left = 33
+          Height = 23
+          Hint = 'Ornament loop'
+          Top = 17
+          Width = 15
+          Associate = EdOrnLoop
+          Max = 63
+          Min = 0
+          OnChangingEx = UDOrnLoopChangingEx
+          Position = 0
+          TabOrder = 1
+        end
+        object EdOrnLen: TEdit
+          Left = 0
+          Height = 23
+          Hint = 'Ornament length'
+          Top = 65
+          Width = 33
+          Alignment = taCenter
+          AutoSize = False
+          TabOrder = 2
+          Text = '1'
+          OnEditingDone = EdOrnLenExitOrDone
+          OnExit = EdOrnLenExitOrDone
+        end
+        object UDOrnLen: TUpDown
+          Left = 33
+          Height = 23
+          Hint = 'Ornament length'
+          Top = 65
+          Width = 15
+          Associate = EdOrnLen
+          Max = 64
+          Min = 1
+          OnChangingEx = UDOrnLenChangingEx
+          Position = 1
+          TabOrder = 3
+        end
+        object LbOrnOctave: TLabel
+          Left = 0
+          Height = 15
+          Top = 96
+          Width = 48
+          Alignment = taCenter
+          AutoSize = False
+          Caption = 'Octave'
+          ParentColor = False
+        end
+        object EdOrnOctave: TEdit
+          Left = 0
+          Height = 23
+          Hint = 'Octave number (hotkeys can be user defined, default are Num1-8 for that control where cursor in a note cell or Alt+1-8 for all)'
+          Top = 112
+          Width = 33
+          Alignment = taCenter
+          AutoSize = False
+          TabOrder = 4
+          Text = '4'
+          OnChange = EdOrnOctaveChange
+          OnEditingDone = EdOrnOctaveExitOrDone
+          OnExit = EdOrnOctaveExitOrDone
+        end
+        object UDOrnOctave: TUpDown
+          Left = 33
+          Height = 23
+          Hint = 'Octave number (hotkeys can be user defined, default are Num1-8 for that control where cursor in a note cell or Alt+1-8 for all)'
+          Top = 112
+          Width = 15
+          Associate = EdOrnOctave
+          Max = 8
+          Min = 1
+          OnChangingEx = UDOrnOctaveChangingEx
+          Position = 4
+          TabOrder = 5
+        end
+      end
+      object PnOrnsTop: TPanel
+        Left = 4
+        Height = 23
+        Top = 4
+        Width = 76
+        AutoSize = True
+        BevelOuter = bvNone
+        ClientHeight = 23
+        ClientWidth = 76
+        Color = clNone
+        ParentBackground = False
+        ParentColor = False
+        TabOrder = 0
+        object EdOrn: TEdit
+          Left = 0
+          Height = 23
+          Hint = 'Current ornament'
+          Top = 0
+          Width = 33
+          Alignment = taCenter
+          AutoSize = False
+          TabOrder = 0
+          Text = '1'
+          OnChange = EdOrnChange
+          OnEditingDone = EdOrnExitOrDone
+          OnExit = EdOrnExitOrDone
+        end
+        object UDOrn: TUpDown
+          Left = 33
+          Height = 23
+          Hint = 'Current ornament'
+          Top = 0
+          Width = 16
+          Associate = EdOrn
+          Max = 15
+          Min = 1
+          OnChangingEx = UDOrnChangingEx
+          Position = 1
+          TabOrder = 1
+        end
+        object SBOrnAsNotes: TSpeedButton
+          AnchorSideLeft.Control = UDOrn
+          AnchorSideLeft.Side = asrBottom
+          AnchorSideTop.Control = UDOrn
+          Left = 53
+          Height = 23
+          Hint = 'Ornament as notes'
+          Top = 0
+          Width = 23
+          AllowAllUp = True
+          BorderSpacing.Left = 4
+          Caption = 'C#'
+          GroupIndex = 1
+          OnClick = SBOrnAsNotesClick
+        end
+      end
+    end
+    object TablesTab: TTabSheet
+      Caption = 'Tables'
+      ClientHeight = 266
+      ClientWidth = 516
+      ImageIndex = 36
+      object EdTable: TEdit
+        Left = 4
+        Height = 23
+        Top = 4
+        Width = 33
+        Alignment = taCenter
+        AutoSize = False
+        TabOrder = 0
+        Text = '2'
+        OnChange = EdTableChange
+        OnEditingDone = Edit7ExitOrDone
+        OnExit = Edit7ExitOrDone
+      end
+      object UDTable: TUpDown
+        Left = 37
+        Height = 23
+        Top = 4
+        Width = 16
+        Associate = EdTable
+        Max = 3
+        Min = 0
+        OnChangingEx = UDTableChangingEx
+        Position = 2
+        TabOrder = 1
+      end
+      object SGTable: TStringGrid
+        Left = 4
+        Height = 184
+        Top = 31
+        Width = 464
+        ColCount = 13
+        Columns = <        
+          item
+            Alignment = taRightJustify
+            Title.Alignment = taCenter
+            Title.Caption = 'C'
+            Width = 37
+          end        
+          item
+            Alignment = taRightJustify
+            Title.Alignment = taCenter
+            Title.Caption = 'C#'
+            Width = 37
+          end        
+          item
+            Alignment = taRightJustify
+            Title.Alignment = taCenter
+            Title.Caption = 'D'
+            Width = 37
+          end        
+          item
+            Alignment = taRightJustify
+            Title.Alignment = taCenter
+            Title.Caption = 'D#'
+            Width = 37
+          end        
+          item
+            Alignment = taRightJustify
+            Title.Alignment = taCenter
+            Title.Caption = 'E'
+            Width = 37
+          end        
+          item
+            Alignment = taRightJustify
+            Title.Alignment = taCenter
+            Title.Caption = 'F'
+            Width = 37
+          end        
+          item
+            Alignment = taRightJustify
+            Title.Alignment = taCenter
+            Title.Caption = 'F#'
+            Width = 37
+          end        
+          item
+            Alignment = taRightJustify
+            Title.Alignment = taCenter
+            Title.Caption = 'G'
+            Width = 37
+          end        
+          item
+            Alignment = taRightJustify
+            Title.Alignment = taCenter
+            Title.Caption = 'G#'
+            Width = 37
+          end        
+          item
+            Alignment = taRightJustify
+            Title.Alignment = taCenter
+            Title.Caption = 'A'
+            Width = 37
+          end        
+          item
+            Alignment = taRightJustify
+            Title.Alignment = taCenter
+            Title.Caption = 'A#'
+            Width = 37
+          end        
+          item
+            Alignment = taRightJustify
+            Title.Alignment = taCenter
+            Title.Caption = 'B'
+            Width = 37
+          end>
+        DefaultColWidth = 16
+        Font.CharSet = RUSSIAN_CHARSET
+        Font.Height = -13
+        Font.Name = 'Courier'
+        Font.Pitch = fpFixed
+        Font.Quality = fqDraft
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goSmoothScroll, goFixedRowNumbering]
+        ParentFont = False
+        RowCount = 9
+        TabOrder = 2
+        OnKeyDown = SGTableKeyDown
+        OnMouseWheelDown = FormMouseWheelDown
+        OnMouseWheelUp = FormMouseWheelUp
+      end
+      object SBTableAsList: TSpeedButton
+        Left = 57
+        Height = 23
+        Hint = 'Show as list of numbers'
+        Top = 4
+        Width = 50
+        AllowAllUp = True
+        Caption = 'List'
+        GroupIndex = 1
+        OnClick = SBTableAsClick
+      end
+      object SBTableAsDec: TSpeedButton
+        Left = 111
+        Height = 23
+        Hint = 'Show as decimal numbers'
+        Top = 4
+        Width = 27
+        AllowAllUp = True
+        Caption = 'Dec'
+        GroupIndex = 2
+        OnClick = SBTableAsClick
+      end
+      object MTable: TMemo
+        Left = 4
+        Height = 97
+        Top = 31
+        Width = 464
+        Lines.Strings = (
+          'MTable'
+        )
+        ReadOnly = True
+        TabOrder = 3
+      end
+    end
+    object OptTab: TTabSheet
+      Caption = 'Options'
+      ClientHeight = 266
+      ClientWidth = 516
+      ImageIndex = 21
+      object GBFeatures: TRadioGroup
+        Left = 4
+        Height = 80
+        Top = 4
+        Width = 161
+        AutoFill = True
+        Caption = 'Features level'
+        ChildSizing.LeftRightSpacing = 6
+        ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
+        ChildSizing.EnlargeVertical = crsHomogenousChildResize
+        ChildSizing.ShrinkHorizontal = crsScaleChilds
+        ChildSizing.ShrinkVertical = crsScaleChilds
+        ChildSizing.Layout = cclLeftToRightThenTopToBottom
+        ChildSizing.ControlsPerLine = 1
+        ClientHeight = 60
+        ClientWidth = 157
+        ItemIndex = 1
+        Items.Strings = (
+          'Pro Tracker 3.5'
+          'Vortex Tracker II (PT 3.6)'
+          'Pro Tracker 3.7'
+        )
+        OnClick = GBFeaturesClick
+        ParentBackground = False
+        TabOrder = 0
+      end
+      object GBHeader: TRadioGroup
+        Left = 172
+        Height = 80
+        Top = 4
+        Width = 281
+        AutoFill = True
+        Caption = 'Save with нeader'
+        ChildSizing.LeftRightSpacing = 6
+        ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
+        ChildSizing.EnlargeVertical = crsHomogenousChildResize
+        ChildSizing.ShrinkHorizontal = crsScaleChilds
+        ChildSizing.ShrinkVertical = crsScaleChilds
+        ChildSizing.Layout = cclLeftToRightThenTopToBottom
+        ChildSizing.ControlsPerLine = 1
+        ClientHeight = 60
+        ClientWidth = 277
+        ItemIndex = 0
+        Items.Strings = (
+          '"Vortex Tracker II 1.0 module: " where possible'
+          '"ProTracker 3.x compilation of " always'
+        )
+        OnClick = GBHeaderClick
+        ParentBackground = False
+        TabOrder = 1
+      end
+    end
+  end
+  object SaveTextDlg: TSaveDialog
+    DefaultExt = '.txt'
+    Filter = 'Text files|*.txt|All files|*.*'
+    Options = [ofOverwritePrompt, ofHideReadOnly, ofEnableSizing]
+    Left = 104
+    Top = 232
+  end
+  object LoadTextDlg: TOpenDialog
+    DefaultExt = '.txt'
+    Filter = 'Text files|*.txt|All files|*.*'
+    Left = 32
+    Top = 232
+  end
+end

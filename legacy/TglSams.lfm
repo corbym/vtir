@@ -1,0 +1,19 @@
+object ToglSams: TToglSams
+  Left = 204
+  Height = 217
+  Top = 184
+  Width = 208
+  BorderStyle = bsToolWindow
+  Caption = 'Toggle samples'
+  Color = clBtnFace
+  Font.Color = clWindowText
+  Font.Height = -11
+  FormStyle = fsStayOnTop
+  KeyPreview = True
+  OnCreate = FormCreate
+  OnHide = FormHide
+  OnKeyDown = FormKeyDown
+  OnShow = FormShow
+  Position = poDefault
+  LCLVersion = '3.0.0.3'
+end

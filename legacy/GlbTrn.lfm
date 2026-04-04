@@ -1,0 +1,211 @@
+object GlbTrans: TGlbTrans
+  Left = 327
+  Height = 102
+  Top = 388
+  Width = 317
+  BorderStyle = bsToolWindow
+  Caption = 'Global Transposition'
+  ClientHeight = 102
+  ClientWidth = 317
+  Font.Color = clWindowText
+  Font.Height = -11
+  FormStyle = fsStayOnTop
+  KeyPreview = True
+  OnKeyDown = FormKeyDown
+  OnShow = FormShow
+  Position = poDefault
+  ShowHint = True
+  LCLVersion = '3.0.0.3'
+  object GroupBox1: TGroupBox
+    Left = 187
+    Height = 96
+    Top = 3
+    Width = 124
+    Caption = 'Tracks to transpose'
+    ClientHeight = 78
+    ClientWidth = 120
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 0
+    object CheckBox4: TCheckBox
+      Left = 6
+      Height = 17
+      Top = 56
+      Width = 93
+      Caption = 'Envelope track'
+      Checked = True
+      Color = clDefault
+      Font.Height = -11
+      ParentColor = False
+      ParentFont = False
+      State = cbChecked
+      TabOrder = 3
+    end
+    object CheckBox1: TCheckBox
+      Left = 6
+      Height = 17
+      Top = 2
+      Width = 99
+      Caption = 'Channel A track'
+      Checked = True
+      Color = clDefault
+      Font.Height = -11
+      ParentColor = False
+      ParentFont = False
+      State = cbChecked
+      TabOrder = 0
+    end
+    object CheckBox2: TCheckBox
+      Left = 6
+      Height = 17
+      Top = 20
+      Width = 98
+      Caption = 'Channel B track'
+      Checked = True
+      Color = clDefault
+      Font.Height = -11
+      ParentColor = False
+      ParentFont = False
+      State = cbChecked
+      TabOrder = 1
+    end
+    object CheckBox3: TCheckBox
+      Left = 6
+      Height = 17
+      Top = 38
+      Width = 99
+      Caption = 'Channel C track'
+      Checked = True
+      Color = clDefault
+      Font.Height = -11
+      ParentColor = False
+      ParentFont = False
+      State = cbChecked
+      TabOrder = 2
+    end
+  end
+  object GroupBox2: TGroupBox
+    Left = 5
+    Height = 73
+    Top = 3
+    Width = 177
+    Caption = 'Global options'
+    ClientHeight = 55
+    ClientWidth = 173
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 1
+    object Label8: TLabel
+      Left = 5
+      Height = 13
+      Top = 1
+      Width = 110
+      Caption = 'Number of semitones'
+      ParentColor = False
+    end
+    object UpDown8: TUpDown
+      Left = 144
+      Height = 21
+      Hint = 'Number of semitones to transpose: positive - up and negative - down'
+      Top = -3
+      Width = 15
+      Associate = Edit8
+      Max = 95
+      Min = -95
+      Position = 0
+      TabOrder = 0
+    end
+    object Edit8: TEdit
+      AnchorSideLeft.Control = Label8
+      AnchorSideLeft.Side = asrBottom
+      AnchorSideTop.Control = Label8
+      AnchorSideTop.Side = asrCenter
+      Left = 119
+      Height = 21
+      Hint = 'Number of semitones to transpose: positive - up and negative - down'
+      Top = -3
+      Width = 25
+      BorderSpacing.Left = 4
+      TabOrder = 1
+      Text = '0'
+      OnEditingDone = Edit8ExitOrDone
+      OnExit = Edit8ExitOrDone
+    end
+    object RadioButton1: TRadioButton
+      Left = 5
+      Height = 17
+      Hint = 'Warning: cannot be undo!'
+      Top = 15
+      Width = 94
+      Caption = 'Whole module'
+      Checked = True
+      Font.Height = -11
+      ParentColor = False
+      ParentFont = False
+      TabOrder = 2
+      TabStop = True
+    end
+    object RadioButton2: TRadioButton
+      Left = 5
+      Height = 17
+      Top = 34
+      Width = 93
+      Caption = 'Only pattern #'
+      Font.Height = -11
+      ParentColor = False
+      ParentFont = False
+      TabOrder = 3
+    end
+    object Edit2: TEdit
+      AnchorSideLeft.Control = RadioButton2
+      AnchorSideLeft.Side = asrBottom
+      AnchorSideTop.Control = RadioButton2
+      AnchorSideTop.Side = asrCenter
+      Left = 102
+      Height = 21
+      Hint = 'Pattern number to transpose'
+      Top = 32
+      Width = 33
+      BorderSpacing.Left = 4
+      TabOrder = 4
+      Text = '0'
+      OnChange = Edit2Change
+      OnEditingDone = Edit2ExitOrDone
+      OnExit = Edit2ExitOrDone
+    end
+    object UpDown1: TUpDown
+      Left = 135
+      Height = 21
+      Hint = 'Pattern number to transpose'
+      Top = 32
+      Width = 15
+      Associate = Edit2
+      Max = 84
+      Min = 0
+      Position = 0
+      TabOrder = 5
+    end
+  end
+  object Button1: TButton
+    Left = 5
+    Height = 20
+    Top = 79
+    Width = 108
+    Caption = 'Transpose'
+    Default = True
+    ModalResult = 1
+    TabOrder = 2
+    OnClick = Button1Click
+  end
+  object Button2: TButton
+    Left = 117
+    Height = 20
+    Top = 79
+    Width = 65
+    Cancel = True
+    Caption = 'Close'
+    ModalResult = 2
+    TabOrder = 3
+    OnClick = Button2Click
+  end
+end

@@ -1,0 +1,28 @@
+object NKChooseFrm: TNKChooseFrm
+  Left = 200
+  Height = 246
+  Top = 143
+  Width = 289
+  BorderStyle = bsToolWindow
+  Caption = 'Choose note key'
+  ClientHeight = 246
+  ClientWidth = 289
+  OnCreate = FormCreate
+  LCLVersion = '3.0.0.3'
+  object LBNKeys: TListBox
+    Left = 0
+    Height = 246
+    Hint = 'Enter or Click to choose, Esc to cancel'
+    Top = 0
+    Width = 289
+    Align = alClient
+    ClickOnSelChange = False
+    Columns = 3
+    ItemHeight = 0
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 0
+    OnClick = LBNKeysClick
+    OnKeyDown = LBNKeysKeyDown
+  end
+end

@@ -1,0 +1,28 @@
+object CatchSCFrm: TCatchSCFrm
+  Left = 177
+  Height = 73
+  Top = 138
+  Width = 404
+  BorderStyle = bsToolWindow
+  Caption = 'Shortcut catcher'
+  ClientHeight = 73
+  ClientWidth = 404
+  KeyPreview = True
+  OnClick = FormClick
+  OnKeyDown = FormKeyDown
+  LCLVersion = '3.0.0.3'
+  object Label1: TLabel
+    AnchorSideLeft.Control = Owner
+    AnchorSideLeft.Side = asrCenter
+    AnchorSideTop.Control = Owner
+    AnchorSideTop.Side = asrCenter
+    Left = 60
+    Height = 15
+    Top = 29
+    Width = 284
+    Alignment = taCenter
+    Caption = 'Press desired keys to create shortcut or Click to cancel'
+    ParentColor = False
+    OnClick = FormClick
+  end
+end

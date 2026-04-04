@@ -1,50 +1,57 @@
 {
 This is part of Vortex Tracker II project
-(c)2000-2009 S.V.Bulba
+(c)2000-2024 S.V.Bulba
 Author Sergey Bulba
-E-mail: vorobey@mail.khstu.ru
+E-mail: svbulba@gmail.com
 Support page: http://bulba.untergrund.net/
 }
 
 unit About;
 
+{$mode objfpc}{$H+}
+
 interface
 
-uses Windows, Classes, Graphics, Forms, Controls, StdCtrls,
-  Buttons, ExtCtrls;
+uses
+ Classes, Graphics, Forms, Controls, StdCtrls, Buttons, ExtCtrls;
 
 type
-  TAboutBox = class(TForm)
-    Panel1: TPanel;
-    OKButton: TButton;
-    ProgramIcon: TImage;
-    ProductName: TLabel;
-    Version: TLabel;
-    Copyright: TLabel;
-    Comments: TLabel;
-    Label1: TLabel;
-    Label3: TLabel;
-    Label2: TLabel;
-    Label5: TLabel;
-    procedure FormCreate(Sender: TObject);
-  private
-    { Private declarations }
-  public
-    { Public declarations }
-  end;
+
+ { TAboutBox }
+
+ TAboutBox = class(TForm)
+   Label4: TLabel;
+   Label5: TLabel;
+   Panel1: TPanel;
+   OKButton: TButton;
+   ProgramIcon: TImage;
+   ProductName: TLabel;
+   Version: TLabel;
+   Copyright: TLabel;
+   Comments: TLabel;
+   Label1: TLabel;
+   Label3: TLabel;
+   Label2: TLabel;
+   procedure FormCreate(Sender: TObject);
+ private
+   { Private declarations }
+ public
+   { Public declarations }
+ end;
 
 var
-  AboutBox: TAboutBox;
+ AboutBox: TAboutBox;
 
 implementation
 
-{$R *.DFM}
+{$R *.lfm}
 
 uses Main;
 
 procedure TAboutBox.FormCreate(Sender: TObject);
 begin
-  Version.Caption := HalfVersString
+ Version.Caption := HalfVersString;
 end;
 
 end.
+ 

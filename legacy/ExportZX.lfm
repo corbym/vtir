@@ -1,0 +1,475 @@
+object ExpDlg: TExpDlg
+  Left = 278
+  Height = 333
+  Top = 181
+  Width = 537
+  BorderStyle = bsDialog
+  Caption = 'ZX Spectrum PT3/TS player parameters'
+  ClientHeight = 333
+  ClientWidth = 537
+  Color = clBtnFace
+  Font.Color = clWindowText
+  Font.Height = -11
+  OnShow = FormShow
+  Position = poMainFormCenter
+  LCLVersion = '3.0.0.3'
+  object Button1: TButton
+    Left = 32
+    Height = 25
+    Top = 256
+    Width = 75
+    Caption = 'OK'
+    Default = True
+    ModalResult = 1
+    TabOrder = 1
+  end
+  object Button2: TButton
+    Left = 136
+    Height = 25
+    Top = 256
+    Width = 75
+    Cancel = True
+    Caption = 'Cancel'
+    ModalResult = 2
+    TabOrder = 2
+  end
+  object GroupBox1: TGroupBox
+    Left = 8
+    Height = 81
+    Top = 8
+    Width = 233
+    Caption = 'Parameters'
+    ClientHeight = 63
+    ClientWidth = 229
+    ParentBackground = False
+    TabOrder = 0
+    object Label3: TLabel
+      Left = 118
+      Height = 13
+      Top = 21
+      Width = 21
+      Caption = 'DEC'
+      ParentColor = False
+    end
+    object Label2: TLabel
+      Left = 14
+      Height = 13
+      Top = 21
+      Width = 20
+      Caption = 'HEX'
+      ParentColor = False
+    end
+    object Label15: TLabel
+      Left = 14
+      Height = 13
+      Top = 2
+      Width = 132
+      Caption = 'Compilation address (max'
+      ParentColor = False
+    end
+    object Label22: TLabel
+      AnchorSideLeft.Control = Label15
+      AnchorSideLeft.Side = asrBottom
+      Left = 150
+      Height = 1
+      Top = 2
+      Width = 1
+      BorderSpacing.Left = 4
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Style = [fsBold]
+      ParentColor = False
+      ParentFont = False
+    end
+    object Edit2: TEdit
+      Left = 142
+      Height = 21
+      Top = 18
+      Width = 57
+      TabOrder = 1
+      OnChange = Edit2Change
+    end
+    object Edit1: TEdit
+      Left = 38
+      Height = 21
+      Top = 18
+      Width = 57
+      TabOrder = 0
+      OnChange = Edit1Change
+    end
+    object LoopChk: TCheckBox
+      Left = 14
+      Height = 17
+      Top = 42
+      Width = 83
+      Caption = 'Disable loop'
+      TabOrder = 2
+    end
+  end
+  object RadioGroup1: TRadioGroup
+    Left = 8
+    Height = 136
+    Top = 96
+    Width = 233
+    AutoFill = True
+    Caption = 'Format'
+    ChildSizing.LeftRightSpacing = 6
+    ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
+    ChildSizing.EnlargeVertical = crsHomogenousChildResize
+    ChildSizing.ShrinkHorizontal = crsScaleChilds
+    ChildSizing.ShrinkVertical = crsScaleChilds
+    ChildSizing.Layout = cclLeftToRightThenTopToBottom
+    ChildSizing.ControlsPerLine = 1
+    ClientHeight = 118
+    ClientWidth = 229
+    ItemIndex = 0
+    Items.Strings = (
+      'Hobeta with player'
+      'Hobeta without player'
+      '.AY-file'
+      '.SCL-file (player and module separately)'
+      '.TAP-file (player and module separately)'
+    )
+    OnClick = RadioGroup1Click
+    ParentBackground = False
+    TabOrder = 3
+  end
+  object GroupBox2: TGroupBox
+    Left = 248
+    Height = 321
+    Top = 8
+    Width = 280
+    Caption = 'Hints'
+    ClientHeight = 303
+    ClientWidth = 276
+    ParentBackground = False
+    TabOrder = 4
+    object Label1: TLabel
+      Left = 14
+      Height = 13
+      Top = 2
+      Width = 50
+      Caption = 'INIT: CALL'
+      ParentColor = False
+    end
+    object Label4: TLabel
+      AnchorSideLeft.Control = Label1
+      AnchorSideLeft.Side = asrBottom
+      Left = 68
+      Height = 1
+      Top = 2
+      Width = 1
+      BorderSpacing.Left = 4
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Style = [fsBold]
+      ParentColor = False
+      ParentFont = False
+    end
+    object Label5: TLabel
+      Left = 14
+      Height = 13
+      Top = 18
+      Width = 52
+      Caption = 'PLAY: CALL'
+      ParentColor = False
+    end
+    object Label6: TLabel
+      AnchorSideLeft.Control = Label5
+      AnchorSideLeft.Side = asrBottom
+      Left = 70
+      Height = 1
+      Top = 18
+      Width = 1
+      BorderSpacing.Left = 4
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Style = [fsBold]
+      ParentColor = False
+      ParentFont = False
+    end
+    object Label7: TLabel
+      Left = 14
+      Height = 13
+      Top = 34
+      Width = 60
+      Caption = 'MUTE: CALL'
+      ParentColor = False
+    end
+    object Label8: TLabel
+      AnchorSideLeft.Control = Label7
+      AnchorSideLeft.Side = asrBottom
+      Left = 78
+      Height = 1
+      Top = 34
+      Width = 1
+      BorderSpacing.Left = 4
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Style = [fsBold]
+      ParentColor = False
+      ParentFont = False
+    end
+    object Label9: TLabel
+      Left = 14
+      Height = 13
+      Top = 50
+      Width = 58
+      Caption = 'Setup byte:'
+      ParentColor = False
+    end
+    object Label10: TLabel
+      AnchorSideLeft.Control = Label9
+      AnchorSideLeft.Side = asrBottom
+      Left = 76
+      Height = 1
+      Top = 50
+      Width = 1
+      BorderSpacing.Left = 4
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Style = [fsBold]
+      ParentColor = False
+      ParentFont = False
+    end
+    object Label11: TLabel
+      Left = 23
+      Height = 13
+      Top = 81
+      Width = 136
+      Caption = 'bit 7 is set after each loop.'
+      ParentColor = False
+    end
+    object Label12: TLabel
+      Left = 23
+      Height = 13
+      Top = 65
+      Width = 125
+      Caption = 'set bit 0 to disable loop;'
+      ParentColor = False
+    end
+    object Label13: TLabel
+      Left = 14
+      Height = 13
+      Top = 95
+      Width = 165
+      Caption = 'Current position pointer (word):'
+      ParentColor = False
+    end
+    object Label14: TLabel
+      AnchorSideLeft.Control = Label13
+      AnchorSideLeft.Side = asrBottom
+      Left = 183
+      Height = 1
+      Top = 95
+      Width = 1
+      BorderSpacing.Left = 4
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Style = [fsBold]
+      ParentColor = False
+      ParentFont = False
+    end
+    object Label16: TLabel
+      Left = 14
+      Height = 13
+      Top = 127
+      Width = 92
+      Caption = 'Variables address:'
+      ParentColor = False
+    end
+    object Label17: TLabel
+      AnchorSideLeft.Control = Label16
+      AnchorSideLeft.Side = asrBottom
+      Left = 110
+      Height = 1
+      Top = 127
+      Width = 1
+      BorderSpacing.Left = 4
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Style = [fsBold]
+      ParentColor = False
+      ParentFont = False
+    end
+    object Label18: TLabel
+      Left = 165
+      Height = 13
+      Top = 127
+      Width = 43
+      Caption = '; length:'
+      ParentColor = False
+    end
+    object Label19: TLabel
+      AnchorSideLeft.Control = Label18
+      AnchorSideLeft.Side = asrBottom
+      Left = 212
+      Height = 1
+      Top = 127
+      Width = 1
+      BorderSpacing.Left = 4
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Style = [fsBold]
+      ParentColor = False
+      ParentFont = False
+    end
+    object Label20: TLabel
+      Left = 14
+      Height = 13
+      Top = 111
+      Width = 103
+      Caption = 'Player codes length:'
+      ParentColor = False
+    end
+    object Label21: TLabel
+      AnchorSideLeft.Control = Label20
+      AnchorSideLeft.Side = asrBottom
+      Left = 121
+      Height = 1
+      Top = 111
+      Width = 1
+      BorderSpacing.Left = 4
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Style = [fsBold]
+      ParentColor = False
+      ParentFont = False
+    end
+    object Label26: TLabel
+      Left = 14
+      Height = 13
+      Top = 143
+      Width = 86
+      Caption = 'Module address:'
+      ParentColor = False
+    end
+    object Label27: TLabel
+      AnchorSideLeft.Control = Label26
+      AnchorSideLeft.Side = asrBottom
+      Left = 104
+      Height = 1
+      Top = 143
+      Width = 1
+      BorderSpacing.Left = 4
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Style = [fsBold]
+      ParentColor = False
+      ParentFont = False
+    end
+    object Label28: TLabel
+      Left = 165
+      Height = 13
+      Top = 143
+      Width = 43
+      Caption = '; length:'
+      ParentColor = False
+    end
+    object Label29: TLabel
+      AnchorSideLeft.Control = Label28
+      AnchorSideLeft.Side = asrBottom
+      Left = 212
+      Height = 1
+      Top = 143
+      Width = 1
+      BorderSpacing.Left = 4
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Style = [fsBold]
+      ParentColor = False
+      ParentFont = False
+    end
+    object Label23: TLabel
+      Left = 165
+      Height = 13
+      Top = 158
+      Width = 43
+      Caption = '; length:'
+      ParentColor = False
+    end
+    object Label24: TLabel
+      AnchorSideLeft.Control = Label25
+      AnchorSideLeft.Side = asrBottom
+      Left = 110
+      Height = 1
+      Top = 158
+      Width = 1
+      BorderSpacing.Left = 4
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Style = [fsBold]
+      ParentColor = False
+      ParentFont = False
+    end
+    object Label25: TLabel
+      Left = 14
+      Height = 13
+      Top = 158
+      Width = 92
+      Caption = 'Module2 address:'
+      ParentColor = False
+    end
+    object Label30: TLabel
+      AnchorSideLeft.Control = Label23
+      AnchorSideLeft.Side = asrBottom
+      Left = 212
+      Height = 1
+      Top = 158
+      Width = 1
+      BorderSpacing.Left = 4
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Style = [fsBold]
+      ParentColor = False
+      ParentFont = False
+    end
+    object Memo1: TMemo
+      Left = 8
+      Height = 118
+      Top = 177
+      Width = 260
+      Lines.Strings = (
+        'Classic example (START is player address):'
+        '        LD DE,Module2_Address ;for TS-player'
+        '        CALL START'
+        '        EI'
+        'LOOP:'
+        '        HALT'
+        '        CALL START+5'
+        '        JR LOOP'
+        ''
+        'No loop example (play once):'
+        '        LD A,1'
+        '        LD (START+10),A'
+        '        CALL START'
+        '        EI'
+        'LOOP:'
+        '        HALT'
+        '        CALL START+5'
+        '        LD A,(START+10)'
+        '        RLA'
+        '        JR NC,LOOP'
+        '        RET'
+        ''
+        'Pointing module address example:'
+        '        LD HL,PT3_Module_Address'
+        '        LD DE,Module2_Address ;for TS-player'
+        '        CALL START+3'
+        '        EI'
+        'LOOP:'
+        '        HALT'
+        '        CALL START+5'
+        '        JR LOOP'
+        ''
+        'Call MUTE (START+8) for sound off during '
+        'pause or after stoping playing. In last case '
+        'you can call START one more time to reinit '
+        'and sound off.'
+      )
+      ReadOnly = True
+      ScrollBars = ssVertical
+      TabOrder = 0
+    end
+  end
+end
