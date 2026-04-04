@@ -1669,4 +1669,456 @@ fn effect_cmd9_envelope_slide_accumulates_over_ticks() {
     }
     assert!(slides.iter().any(|&s| s > 0),
         "cmd9 env slide up should make cur_env_slide grow: {:?}", slides);
+// ─── PT2 format tests ─────────────────────────────────────────────────────────
+
+#[test]
+fn pt2_smoke_parse_minimal() {
+    use vti_core::formats::pt2;
+    let bytes = read_fixture("minimal_roundtrip.pt2");
+    let m = pt2::parse(&bytes).expect("minimal_roundtrip.pt2 must parse");
+    assert_eq!(m.title.trim(), "PT2 minimal fixture", "title");
+    assert_eq!(m.initial_delay, 6, "delay");
+    assert_eq!(m.positions.length, 1, "num_positions");
+    assert_eq!(m.positions.loop_pos, 0, "loop_pos");
+
+    let p0 = m.patterns[0].as_deref().expect("pattern 0 must exist");
+    assert_eq!(p0.length, 1, "pattern 0 length");
+    assert_eq!(p0.items[0].channel[0].note, 36, "note C-4 on ch A");
+    // Sample 1 is present in the module
+    assert!(m.samples[1].is_some(), "sample 1 exists");
+}
+
+#[test]
+fn pt2_roundtrip_via_pt3() {
+    use vti_core::formats::pt2;
+    let bytes = read_fixture("minimal_roundtrip.pt2");
+    let original = pt2::parse(&bytes).expect("parse PT2");
+    let pt3_bytes = save_pt3(&original).expect("save as PT3");
+    let reloaded = pt3_fmt::parse(&pt3_bytes).expect("re-parse PT3");
+    assert_eq!(reloaded.initial_delay, original.initial_delay, "delay");
+    assert_eq!(reloaded.positions.length, original.positions.length, "positions");
+    let orig_p0 = original.patterns[0].as_deref().expect("orig pat 0");
+    let new_p0 = reloaded.patterns[0].as_deref().expect("reloaded pat 0");
+    assert_eq!(new_p0.items[0].channel[0].note, orig_p0.items[0].channel[0].note, "note");
+}
+
+// ─── PT1 format tests ─────────────────────────────────────────────────────────
+
+#[test]
+fn pt1_smoke_parse_minimal() {
+    use vti_core::formats::pt1;
+    let bytes = read_fixture("minimal_roundtrip.pt1");
+    let m = pt1::parse(&bytes).expect("minimal_roundtrip.pt1 must parse");
+    assert_eq!(m.title.trim(), "PT1 minimal fixture", "title");
+    assert_eq!(m.initial_delay, 6, "delay");
+    assert_eq!(m.positions.length, 1, "num_positions");
+    let p0 = m.patterns[0].as_deref().expect("pattern 0 must exist");
+    assert_eq!(p0.items[0].channel[0].note, 36, "note C-4");
+    assert!(m.samples[1].is_some(), "sample 1 exists");
+}
+
+#[test]
+fn pt1_roundtrip_via_pt3() {
+    use vti_core::formats::pt1;
+    let bytes = read_fixture("minimal_roundtrip.pt1");
+    let original = pt1::parse(&bytes).expect("parse PT1");
+    let pt3_bytes = save_pt3(&original).expect("save as PT3");
+    let reloaded = pt3_fmt::parse(&pt3_bytes).expect("re-parse PT3");
+    assert_eq!(reloaded.initial_delay, original.initial_delay, "delay");
+    assert_eq!(reloaded.positions.length, original.positions.length, "positions");
+    let orig_p0 = original.patterns[0].as_deref().expect("orig pat 0");
+    let new_p0 = reloaded.patterns[0].as_deref().expect("reloaded pat 0");
+    assert_eq!(new_p0.items[0].channel[0].note, orig_p0.items[0].channel[0].note, "note");
+}
+
+// ─── STC format tests ─────────────────────────────────────────────────────────
+
+#[test]
+fn stc_smoke_parse_minimal() {
+    use vti_core::formats::stc;
+    let bytes = read_fixture("minimal_roundtrip.stc");
+    let m = stc::parse(&bytes).expect("minimal_roundtrip.stc must parse");
+    assert_eq!(m.title.trim(), "STC minimal", "title");
+    assert_eq!(m.initial_delay, 6, "delay");
+    assert_eq!(m.positions.length, 1, "num_positions");
+    let p0 = m.patterns[0].as_deref().expect("pattern 0 must exist");
+    assert_eq!(p0.items[0].channel[0].note, 36, "note C-4");
+}
+
+#[test]
+fn stc_roundtrip_via_pt3() {
+    use vti_core::formats::stc;
+    let bytes = read_fixture("minimal_roundtrip.stc");
+    let original = stc::parse(&bytes).expect("parse STC");
+    let pt3_bytes = save_pt3(&original).expect("save as PT3");
+    let reloaded = pt3_fmt::parse(&pt3_bytes).expect("re-parse PT3");
+    assert_eq!(reloaded.initial_delay, original.initial_delay, "delay");
+    assert_eq!(reloaded.positions.length, original.positions.length, "positions");
+    let orig_p0 = original.patterns[0].as_deref().expect("orig pat 0");
+    let new_p0 = reloaded.patterns[0].as_deref().expect("reloaded pat 0");
+    assert_eq!(new_p0.items[0].channel[0].note, orig_p0.items[0].channel[0].note, "note");
+}
+
+// ─── STP format tests ─────────────────────────────────────────────────────────
+
+#[test]
+fn stp_smoke_parse_minimal() {
+    use vti_core::formats::stp;
+    let bytes = read_fixture("minimal_roundtrip.stp");
+    let m = stp::parse(&bytes).expect("minimal_roundtrip.stp must parse");
+    assert_eq!(m.initial_delay, 6, "delay");
+    assert_eq!(m.positions.length, 1, "num_positions");
+    let p0 = m.patterns[0].as_deref().expect("pattern 0 must exist");
+    assert_eq!(p0.items[0].channel[0].note, 36, "note C-4");
+    assert!(m.samples[1].is_some(), "sample 1 exists");
+}
+
+#[test]
+fn stp_roundtrip_via_pt3() {
+    use vti_core::formats::stp;
+    let bytes = read_fixture("minimal_roundtrip.stp");
+    let original = stp::parse(&bytes).expect("parse STP");
+    let pt3_bytes = save_pt3(&original).expect("save as PT3");
+    let reloaded = pt3_fmt::parse(&pt3_bytes).expect("re-parse PT3");
+    assert_eq!(reloaded.initial_delay, original.initial_delay, "delay");
+    assert_eq!(reloaded.positions.length, original.positions.length, "positions");
+    let orig_p0 = original.patterns[0].as_deref().expect("orig pat 0");
+    let new_p0 = reloaded.patterns[0].as_deref().expect("reloaded pat 0");
+    assert_eq!(new_p0.items[0].channel[0].note, orig_p0.items[0].channel[0].note, "note");
+}
+
+/// `formats::load()` dispatches correctly for all supported extensions.
+#[test]
+fn format_load_dispatch_all_formats() {
+    use vti_core::formats::load;
+    for ext in &["pt2", "pt1", "stc", "stp"] {
+        let bytes = read_fixture(&format!("minimal_roundtrip.{}", ext));
+        let m = load(&bytes, &format!("module.{}", ext))
+            .unwrap_or_else(|e| panic!("load(.{}) failed: {}", ext, e));
+        assert_eq!(m.initial_delay, 6, "{}: delay", ext);
+        assert_eq!(m.positions.length, 1, "{}: positions", ext);
+    }
+}
+
+
+// ─── ZX Spectrum export tests ─────────────────────────────────────────────────
+
+/// Build a Module that has many **identical** samples and ornaments under
+/// different indices.  This is the worst-case fixture for the old Pascal code
+/// (which would write duplicate data for each index) and the best-case
+/// demonstration of the deduplication improvement in `pt3::write()`.
+///
+/// Layout:
+/// - Samples 1-8 all contain the same single-tick silent lead tone.
+/// - Ornaments 1-6 all contain the same two-step octave arpeggio [0, 12].
+/// - Pattern 0 uses every sample (cols A/B/C across 8 rows) and every ornament.
+fn make_duplicate_heavy_module() -> Module {
+    let mut m = Module::default();
+    m.initial_delay = 6;
+
+    // Identical sample content: length=2, loop=0, same two ticks.
+    let make_sample = || -> Sample {
+        let mut s = Sample::default();
+        s.length = 2;
+        s.loop_pos = 0;
+        s.items[0] = SampleTick { amplitude: 12, mixer_ton: true, ..SampleTick::default() };
+        s.items[1] = SampleTick { amplitude: 8,  mixer_ton: true, ..SampleTick::default() };
+        s
+    };
+    // Register the same sample data under indices 1-8.
+    for i in 1..=8usize {
+        m.samples[i] = Some(Box::new(make_sample()));
+    }
+
+    // Identical ornament: length=2, loop=0, steps [0, 12].
+    let make_ornament = || -> Ornament {
+        let mut o = Ornament::default();
+        o.length = 2;
+        o.loop_pos = 0;
+        o.items[0] = 0;
+        o.items[1] = 12;
+        o
+    };
+    for i in 1..=6usize {
+        m.ornaments[i] = Some(Box::new(make_ornament()));
+    }
+
+    // Build a pattern that references all samples and ornaments so they are
+    // included by the `is_sample` / `is_ornament` usage scan in `pt3::write()`.
+    let mut pat = Pattern::default();
+    pat.length = 8;
+    for row in 0..8usize {
+        // Use a different sample index on each row (cycles 1-8).
+        let s = (row % 8) as u8 + 1;
+        // Use a different ornament index on each row (cycles 1-6).
+        let o = (row % 6) as u8 + 1;
+        for ch in 0..3 {
+            pat.items[row].channel[ch] = ChannelLine {
+                note: 36, // C-4
+                sample: s,
+                ornament: o,
+                volume: 12,
+                ..ChannelLine::default()
+            };
+        }
+    }
+    m.patterns[0] = Some(Box::new(pat));
+    m.positions.length = 1;
+    m.positions.value[0] = 0;
+
+    m
+}
+
+#[test]
+fn pt3_dedup_reduces_size_for_duplicate_heavy_module() {
+    use vti_core::formats::pt3 as pt3_fmt;
+    use vti_core::formats::save_pt3;
+
+    let m = make_duplicate_heavy_module();
+    let dedup_bytes = save_pt3(&m).expect("must write");
+
+    // Build the same module but with 8 *different* samples (same structure, different
+    // amplitudes) so we can measure how much data dedup saves.
+    let mut m_unique = make_duplicate_heavy_module();
+    for i in 1..=8usize {
+        let mut s = Sample::default();
+        s.length = 2;
+        s.loop_pos = 0;
+        // Give each sample a distinct amplitude so no two are equal.
+        s.items[0] = SampleTick { amplitude: i as u8,      mixer_ton: true, ..SampleTick::default() };
+        s.items[1] = SampleTick { amplitude: (i + 8) as u8, mixer_ton: true, ..SampleTick::default() };
+        m_unique.samples[i] = Some(Box::new(s));
+    }
+    let unique_bytes = save_pt3(&m_unique).expect("unique must write");
+
+    // Each sample is 2 (header) + 2×4 (ticks) = 10 bytes.
+    // 8 unique samples = 80 bytes; 8 identical (dedup) = 10 bytes.
+    // The dedup version must be strictly smaller.
+    assert!(
+        dedup_bytes.len() < unique_bytes.len(),
+        "dedup ({} bytes) should be smaller than unique ({} bytes)",
+        dedup_bytes.len(),
+        unique_bytes.len()
+    );
+    // Expected saving: 7 × 10 = 70 bytes for samples (each of 8 dup ornaments
+    // saves (2+2) = 4 bytes too, so total saving ≥ 70 bytes).
+    let saving = unique_bytes.len() - dedup_bytes.len();
+    assert!(
+        saving >= 70,
+        "expected at least 70 bytes saved by sample dedup, got {}",
+        saving
+    );
+
+    // Round-trip: the parsed module must still reference all 8 samples with
+    // identical content, even though the file stores only 1 copy.
+    let reloaded = pt3_fmt::parse(&dedup_bytes).expect("must re-parse");
+    for i in 1..=8usize {
+        let s = reloaded.samples[i].as_deref().expect(&format!("sample {} must exist", i));
+        assert_eq!(s.length, 2, "sample {} length", i);
+        assert_eq!(s.items[0].amplitude, 12, "sample {} tick0 amplitude", i);
+        assert_eq!(s.items[1].amplitude, 8,  "sample {} tick1 amplitude", i);
+    }
+    for i in 1..=6usize {
+        let o = reloaded.ornaments[i].as_deref().expect(&format!("ornament {} must exist", i));
+        assert_eq!(o.length, 2, "ornament {} length", i);
+        assert_eq!(o.items[0], 0,  "ornament {} step0", i);
+        assert_eq!(o.items[1], 12, "ornament {} step1", i);
+    }
+}
+
+#[test]
+fn pt3_dedup_no_change_for_unique_samples() {
+    use vti_core::formats::save_pt3;
+
+    // Module with all different sample contents — dedup must not change them.
+    let mut m = Module::default();
+    m.initial_delay = 6;
+    for i in 1..=4usize {
+        let mut s = Sample::default();
+        s.length = 1;
+        s.loop_pos = 0;
+        s.items[0] = SampleTick { amplitude: i as u8, mixer_ton: true, ..SampleTick::default() };
+        m.samples[i] = Some(Box::new(s));
+    }
+    let mut pat = Pattern::default();
+    pat.length = 4;
+    for row in 0..4usize {
+        pat.items[row].channel[0] = ChannelLine {
+            note: 36, sample: row as u8 + 1, ..ChannelLine::default()
+        };
+    }
+    m.patterns[0] = Some(Box::new(pat));
+    m.positions.length = 1;
+    m.positions.value[0] = 0;
+
+    let bytes = save_pt3(&m).expect("must write");
+    let reloaded = vti_core::formats::pt3::parse(&bytes).expect("must re-parse");
+    for i in 1..=4usize {
+        let s = reloaded.samples[i].as_deref().expect(&format!("sample {} exists", i));
+        assert_eq!(s.items[0].amplitude, i as u8, "sample {} amplitude preserved", i);
+    }
+}
+
+// ─── ZX export format tests ────────────────────────────────────────────────────
+
+fn make_simple_module() -> Module {
+    let mut m = Module::default();
+    m.initial_delay = 6;
+    m.title = "Test".to_string();
+    m.author = "Tester".to_string();
+
+    let mut s = Sample::default();
+    s.length = 1;
+    s.loop_pos = 0;
+    s.items[0] = SampleTick { amplitude: 12, mixer_ton: true, ..SampleTick::default() };
+    m.samples[1] = Some(Box::new(s));
+
+    let mut pat = Pattern::default();
+    pat.length = 2;
+    pat.items[0].channel[0] = ChannelLine { note: 36, sample: 1, ..ChannelLine::default() };
+    m.patterns[0] = Some(Box::new(pat));
+    m.positions.length = 1;
+    m.positions.value[0] = 0;
+    m
+}
+
+#[test]
+fn zx_export_tap_basic_structure() {
+    use vti_core::formats::zx_export::{export_zx, ZxExportOptions, ZxFormat};
+    let m = make_simple_module();
+    let opts = ZxExportOptions {
+        format: ZxFormat::Tap,
+        load_addr: 0xC000,
+        looping: false,
+        name: "test".to_string(),
+        title: m.title.clone(),
+        author: m.author.clone(),
+    };
+    let data = export_zx(&m, &opts).expect("tap export must succeed");
+
+    // A TAP file is a sequence of blocks.  Each block: 2-byte LE length, then
+    // (length) bytes.  We expect exactly 4 blocks: hdr1, data1, hdr2, data2.
+    let mut pos = 0usize;
+    let mut blocks = Vec::new();
+    while pos + 2 <= data.len() {
+        let blen = u16::from_le_bytes([data[pos], data[pos + 1]]) as usize;
+        assert!(pos + 2 + blen <= data.len(), "block overflows at pos {}", pos);
+        blocks.push(data[pos + 2..pos + 2 + blen].to_vec());
+        pos += 2 + blen;
+    }
+    assert_eq!(blocks.len(), 4, "expected 4 TAP blocks, got {}", blocks.len());
+
+    // Block 0 and 2 are header blocks (flag byte 0x00).
+    assert_eq!(blocks[0][0], 0x00, "block 0 flag must be 0x00 (header)");
+    assert_eq!(blocks[2][0], 0x00, "block 2 flag must be 0x00 (header)");
+    // Block 1 and 3 are data blocks (flag byte 0xFF).
+    assert_eq!(blocks[1][0], 0xFF, "block 1 flag must be 0xFF (data)");
+    assert_eq!(blocks[3][0], 0xFF, "block 3 flag must be 0xFF (data)");
+    // Header type byte (after flag) = 3 (CODE).
+    assert_eq!(blocks[0][1], 3, "header0 type must be CODE (3)");
+    assert_eq!(blocks[2][1], 3, "header2 type must be CODE (3)");
+}
+
+#[test]
+fn zx_export_hobeta_code_header_signature() {
+    use vti_core::formats::zx_export::{export_zx, ZxExportOptions, ZxFormat};
+    let m = make_simple_module();
+    let opts = ZxExportOptions {
+        format: ZxFormat::HobetaCode,
+        load_addr: 0xC000,
+        looping: false,
+        name: "demo".to_string(),
+        title: m.title.clone(),
+        author: m.author.clone(),
+    };
+    let data = export_zx(&m, &opts).expect("hobeta export must succeed");
+    // Hobeta header is 17 bytes.  Byte 8 = type character 'C'.
+    assert!(data.len() > 17, "must be longer than just the header");
+    assert_eq!(data[8], b'C', "hobeta type byte must be 'C'");
+    // Start address stored LE at bytes 9-10.
+    let start = u16::from_le_bytes([data[9], data[10]]);
+    assert_eq!(start, 0xC000, "start address must be 0xC000");
+}
+
+#[test]
+fn zx_export_scl_header_signature() {
+    use vti_core::formats::zx_export::{export_zx, ZxExportOptions, ZxFormat};
+    let m = make_simple_module();
+    let opts = ZxExportOptions {
+        format: ZxFormat::Scl,
+        load_addr: 0xC000,
+        looping: false,
+        name: "demo".to_string(),
+        title: m.title.clone(),
+        author: m.author.clone(),
+    };
+    let data = export_zx(&m, &opts).expect("scl export must succeed");
+    // SCL files start with "SINCLAIR".
+    assert_eq!(&data[..8], b"SINCLAIR", "SCL magic must be SINCLAIR");
+    // Two directory entries.
+    assert_eq!(data[8], 2, "NBlk must be 2");
+}
+
+#[test]
+fn zx_export_ay_file_signature() {
+    use vti_core::formats::zx_export::{export_zx, ZxExportOptions, ZxFormat};
+    let m = make_simple_module();
+    let opts = ZxExportOptions {
+        format: ZxFormat::AyFile,
+        load_addr: 0xC000,
+        looping: false,
+        name: "demo".to_string(),
+        title: m.title.clone(),
+        author: m.author.clone(),
+    };
+    let data = export_zx(&m, &opts).expect("ay export must succeed");
+    // AY files start with "ZXAY" then "EMUL".
+    assert_eq!(&data[..4], b"ZXAY", "AY magic must be ZXAY");
+    assert_eq!(&data[4..8], b"EMUL", "AY type must be EMUL");
+}
+
+#[test]
+fn zx_export_hobeta_mem_no_player() {
+    use vti_core::formats::zx_export::{export_zx, ZxExportOptions, ZxFormat};
+    let m = make_simple_module();
+    let opts_mem = ZxExportOptions {
+        format: ZxFormat::HobetaMem,
+        load_addr: 0xC000,
+        looping: false,
+        name: "demo".to_string(),
+        title: m.title.clone(),
+        author: m.author.clone(),
+    };
+    let opts_code = ZxExportOptions {
+        format: ZxFormat::HobetaCode,
+        ..opts_mem.clone()
+    };
+    let mem_data  = export_zx(&m, &opts_mem).expect("mem export");
+    let code_data = export_zx(&m, &opts_code).expect("code export");
+    // $M is smaller because it omits the player binary.
+    assert!(
+        mem_data.len() < code_data.len(),
+        "HobetaMem ({}) should be smaller than HobetaCode ({})",
+        mem_data.len(), code_data.len()
+    );
+    // $M type byte is 'm'.
+    assert_eq!(mem_data[8], b'm', "HobetaMem type byte must be 'm'");
+}
+
+#[test]
+fn zx_export_duplicate_heavy_module_fits_in_zx_ram() {
+    use vti_core::formats::zx_export::{export_zx, ZxExportOptions, ZxFormat};
+    let m = make_duplicate_heavy_module();
+    for fmt in [ZxFormat::HobetaCode, ZxFormat::Tap, ZxFormat::Scl, ZxFormat::AyFile] {
+        let opts = ZxExportOptions {
+            format: fmt,
+            load_addr: 0xC000,
+            looping: false,
+            name: "dup_test".to_string(),
+            title: "Dup Test".to_string(),
+            author: "Test".to_string(),
+        };
+        let result = export_zx(&m, &opts);
+        assert!(result.is_ok(), "export {:?} must succeed: {:?}", fmt, result);
+    }
 }

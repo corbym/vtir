@@ -983,19 +983,19 @@ pub fn write(module: &Module) -> Result<Vec<u8>> {
         }
     }
 
+    // Build the binary content for every used sample, then deduplicate: if two
+    // samples have identical byte content, point them both at the same file offset.
+    // This is the key compactness improvement over the original Pascal code, which
+    // wrote each sample independently even when content was repeated.
+    let mut sample_bytes: Vec<Option<Vec<u8>>> = vec![None; 32];
     for i in 1..32usize {
         if !is_sample[i] {
             continue;
         }
-        if write_pos > 65533 {
-            bail!("PT3: output too large (samples)");
-        }
-        write_word(&mut out, OFF_SAM_PTRS + i * 2, write_pos as u16);
-
+        let mut buf: Vec<u8> = Vec::new();
         if let Some(sam) = module.samples[i].as_deref() {
-            out[write_pos] = sam.loop_pos;
-            out[write_pos + 1] = sam.length;
-            write_pos += 2;
+            buf.push(sam.loop_pos);
+            buf.push(sam.length);
             for j in 0..(sam.length as usize) {
                 let tick = &sam.items[j];
                 // b0: bit0=NOT(envelope_enabled), bits5:1=add_to_env&0x1F, bit6=amp_slide_up, bit7=amp_sliding
@@ -1021,24 +1021,36 @@ pub fn write(module: &Module) -> Result<Vec<u8>> {
                 if !tick.mixer_noise {
                     b1 |= 0x80;
                 }
-                out[write_pos] = b0;
-                out[write_pos + 1] = b1;
                 let ton_bytes = tick.add_to_ton.to_le_bytes();
-                out[write_pos + 2] = ton_bytes[0];
-                out[write_pos + 3] = ton_bytes[1];
-                write_pos += 4;
+                buf.extend_from_slice(&[b0, b1, ton_bytes[0], ton_bytes[1]]);
             }
         } else {
-            // Null sample placeholder: loop=0, length=1.
-            // One tick with envelope_enabled=false (bit0=1), amplitude=0, tone=off, noise=on.
-            // b0=0x01: bit0=1 → NOT(envelope_enabled); b1=0x90: bit7=1→NOT(mixer_noise) off, bit4=1→NOT(mixer_ton) off
-            out[write_pos] = 0;   // loop
-            out[write_pos + 1] = 1; // length=1
-            out[write_pos + 2] = 0x01; // b0: envelope_enabled=false
-            out[write_pos + 3] = 0x90; // b1: amplitude=0, mixer_ton=off, mixer_noise=off
-            out[write_pos + 4] = 0;
-            out[write_pos + 5] = 0;
-            write_pos += 6;
+            // Null sample placeholder: loop=0, length=1, silent tick.
+            buf.extend_from_slice(&[0x00, 0x01, 0x01, 0x90, 0x00, 0x00]);
+        }
+        sample_bytes[i] = Some(buf);
+    }
+
+    // Write samples, deduplicating identical content.
+    let mut sample_written_at: [Option<u16>; 32] = [None; 32];
+    for i in 1..32usize {
+        let Some(ref content) = sample_bytes[i] else {
+            continue;
+        };
+        // Check whether any earlier sample was identical.
+        let reuse = (1..i).find(|&j| sample_bytes[j].as_deref() == Some(content.as_slice()));
+        if let Some(j) = reuse {
+            // Point this sample at the same offset as the earlier identical one.
+            write_word(&mut out, OFF_SAM_PTRS + i * 2, sample_written_at[j].unwrap());
+        } else {
+            if write_pos > 65533 {
+                bail!("PT3: output too large (samples)");
+            }
+            let pos = write_pos as u16;
+            out[write_pos..write_pos + content.len()].copy_from_slice(content);
+            write_pos += content.len();
+            write_word(&mut out, OFF_SAM_PTRS + i * 2, pos);
+            sample_written_at[i] = Some(pos);
         }
     }
 
@@ -1072,27 +1084,43 @@ pub fn write(module: &Module) -> Result<Vec<u8>> {
         }
     }
 
+    // Build ornament byte content first, then deduplicate on write (same approach
+    // as for samples above).
+    let mut ornament_bytes: Vec<Option<Vec<u8>>> = vec![None; 16];
     for i in 1..16usize {
         if !is_ornament[i] {
             continue;
         }
-        if write_pos > 65533 {
-            bail!("PT3: output too large (ornaments)");
-        }
-        write_word(&mut out, OFF_ORN_PTRS + i * 2, write_pos as u16);
+        let mut buf: Vec<u8> = Vec::new();
         if let Some(orn) = module.ornaments[i].as_deref() {
-            out[write_pos] = orn.loop_pos as u8;
-            out[write_pos + 1] = orn.length as u8;
-            write_pos += 2;
+            buf.push(orn.loop_pos as u8);
+            buf.push(orn.length as u8);
             for j in 0..orn.length {
-                out[write_pos] = orn.items[j] as u8;
-                write_pos += 1;
+                buf.push(orn.items[j] as u8);
             }
         } else {
-            out[write_pos] = 0;
-            out[write_pos + 1] = 1;
-            out[write_pos + 2] = 0;
-            write_pos += 3;
+            buf.extend_from_slice(&[0x00, 0x01, 0x00]);
+        }
+        ornament_bytes[i] = Some(buf);
+    }
+
+    let mut orn_written_at: [Option<u16>; 16] = [None; 16];
+    for i in 1..16usize {
+        let Some(ref content) = ornament_bytes[i] else {
+            continue;
+        };
+        let reuse = (1..i).find(|&j| ornament_bytes[j].as_deref() == Some(content.as_slice()));
+        if let Some(j) = reuse {
+            write_word(&mut out, OFF_ORN_PTRS + i * 2, orn_written_at[j].unwrap());
+        } else {
+            if write_pos > 65533 {
+                bail!("PT3: output too large (ornaments)");
+            }
+            let pos = write_pos as u16;
+            out[write_pos..write_pos + content.len()].copy_from_slice(content);
+            write_pos += content.len();
+            write_word(&mut out, OFF_ORN_PTRS + i * 2, pos);
+            orn_written_at[i] = Some(pos);
         }
     }
 
@@ -1115,8 +1143,8 @@ fn write_word(buf: &mut [u8], off: usize, val: u16) {
 }
 
 fn trim_right_ascii(bytes: &[u8]) -> String {
-    let s = String::from_utf8_lossy(bytes);
-    s.trim_end().to_string()
+    let end = bytes.iter().rposition(|&b| b > 0x20).map_or(0, |i| i + 1);
+    String::from_utf8_lossy(&bytes[..end]).to_string()
 }
 
 /// Return the index in `strs` of a slice equal to `s`, inserting it if not found.

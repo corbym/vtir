@@ -265,15 +265,22 @@ impl VortexTrackerApp {
 
     /// Open a file-picker dialog and load the chosen module.
     ///
-    /// Supported extensions: `.vtm`, `.pt3`.
+    /// Supported extensions: `.vtm`, `.pt3`, `.pt2`, `.pt1`, `.stc`, `.stp`.
     /// On WASM this is a no-op (file access is handled separately via the
     /// browser `<input type="file">` element — see PLAN.md §8).
     #[cfg(not(target_arch = "wasm32"))]
-    fn open_file_dialog(&mut self) {
+    fn open_file_dialog(&mut self, _ctx: &egui::Context) {
         let path = rfd::FileDialog::new()
-            .add_filter("Tracker modules", &["vtm", "pt3"])
+            .add_filter(
+                "Tracker modules",
+                &["vtm", "pt3", "pt2", "pt1", "stc", "stp"],
+            )
             .add_filter("VTM text (*.vtm)", &["vtm"])
             .add_filter("Pro Tracker 3 (*.pt3)", &["pt3"])
+            .add_filter("Pro Tracker 2 (*.pt2)", &["pt2"])
+            .add_filter("Pro Tracker 1 (*.pt1)", &["pt1"])
+            .add_filter("Sound Tracker Compiled (*.stc)", &["stc"])
+            .add_filter("Sound Tracker Pro (*.stp)", &["stp"])
             .add_filter("All files", &["*"])
             .pick_file();
 
@@ -307,19 +314,19 @@ impl VortexTrackerApp {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn open_file_dialog(&mut self) {
+    fn open_file_dialog(&mut self, ctx: &egui::Context) {
         if !wasm_file::open_picker_supported() {
             self.status =
                 "File open: File System Access API not supported in this browser".to_string();
             return;
         }
         self.status = "Opening file…".to_string();
-        wasm_file::spawn_open_file();
+        wasm_file::spawn_open_file(ctx.clone());
     }
 
     /// Open a save-file dialog and write the current module as a VTM text file.
     #[cfg(not(target_arch = "wasm32"))]
-    fn save_vtm_dialog(&mut self) {
+    fn save_vtm_dialog(&mut self, _ctx: &egui::Context) {
         let path = rfd::FileDialog::new()
             .add_filter("VTM text (*.vtm)", &["vtm"])
             .set_file_name("module.vtm")
@@ -346,7 +353,7 @@ impl VortexTrackerApp {
 
     /// Open a save-file dialog and write the current module as a PT3 binary file.
     #[cfg(not(target_arch = "wasm32"))]
-    fn save_pt3_dialog(&mut self) {
+    fn save_pt3_dialog(&mut self, _ctx: &egui::Context) {
         let path = rfd::FileDialog::new()
             .add_filter("Pro Tracker 3 (*.pt3)", &["pt3"])
             .set_file_name("module.pt3")
@@ -375,15 +382,79 @@ impl VortexTrackerApp {
         }
     }
 
+    /// Open a save-file dialog and export the current module with the ZX
+    /// Spectrum player.  The output format is chosen by file extension:
+    /// `.$c` → Hobeta code, `.$m` → Hobeta mem, `.ay` → AY file,
+    /// `.scl` → Sinclair image, `.tap` → tape.  Defaults to `.tap`.
+    ///
+    /// This mirrors `SaveforZXMenuClick` in `legacy/main.pas`, placed under
+    /// the same `Exports` submenu as the original Pascal UI.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_zx_dialog(&mut self, _ctx: &egui::Context) {
+        use formats::zx_export::{ZxExportOptions, ZxFormat};
+
+        let module = &self.modules[self.active_module];
+        let opts_base = ZxExportOptions {
+            load_addr: 0xC000,
+            format: ZxFormat::Tap,
+            looping: false,
+            name: "module".to_string(),
+            title: module.title.clone(),
+            author: module.author.clone(),
+        };
+
+        let path = rfd::FileDialog::new()
+            .add_filter("ZX Spectrum tape (*.tap)", &["tap"])
+            .add_filter("AY emulator file (*.ay)", &["ay"])
+            .add_filter("Sinclair disc image (*.scl)", &["scl"])
+            .add_filter("Hobeta code block (*.$c)", &["$c"])
+            .add_filter("Hobeta memory block (*.$m)", &["$m"])
+            .set_file_name("module.tap")
+            .save_file();
+
+        let Some(path) = path else {
+            return; // user cancelled
+        };
+
+        // Choose format from the saved extension.
+        let ext = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+        let format = match ext.as_str() {
+            "ay"                                 => ZxFormat::AyFile,
+            "scl"                                => ZxFormat::Scl,
+            "$c" | "c"                           => ZxFormat::HobetaCode,
+            "$m" | "m"                           => ZxFormat::HobetaMem,
+            _                                    => ZxFormat::Tap,
+        };
+        let opts = ZxExportOptions { format, ..opts_base };
+
+        match formats::save_zx(module, &opts) {
+            Ok(bytes) => match std::fs::write(&path, &bytes) {
+                Ok(()) => {
+                    let name = path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("file");
+                    self.status = format!("Exported: {}", name);
+                }
+                Err(e) => self.status = format!("Export failed: {e}"),
+            },
+            Err(e) => self.status = format!("Export failed: {e}"),
+        }
+    }
+
     #[cfg(target_arch = "wasm32")]
-    fn save_vtm_dialog(&mut self) {
+    fn save_vtm_dialog(&mut self, ctx: &egui::Context) {
         let text = formats::save_vtm(&self.modules[self.active_module]);
         let bytes = text.into_bytes();
         let filename = "module.vtm".to_string();
 
         if wasm_file::save_picker_supported() {
             self.status = "Saving…".to_string();
-            wasm_file::spawn_save_file(filename, bytes);
+            wasm_file::spawn_save_file(ctx.clone(), filename, bytes);
         } else {
             // Fallback for browsers without the File System Access API
             // (e.g. Firefox).  Download via a temporary object URL with
@@ -404,13 +475,13 @@ impl VortexTrackerApp {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn save_pt3_dialog(&mut self) {
+    fn save_pt3_dialog(&mut self, ctx: &egui::Context) {
         let filename = "module.pt3".to_string();
         match formats::save_pt3(&self.modules[self.active_module]) {
             Ok(bytes) => {
                 if wasm_file::save_picker_supported() {
                     self.status = "Saving…".to_string();
-                    wasm_file::spawn_save_file(filename, bytes);
+                    wasm_file::spawn_save_file(ctx.clone(), filename, bytes);
                 } else {
                     match wasm_file::download_blob(&filename, &bytes) {
                         Ok(()) => self.status = format!("Saved: {filename}"),
@@ -426,6 +497,39 @@ impl VortexTrackerApp {
             Err(e) => {
                 self.status = format!("Export failed: {e}");
             }
+        }
+    }
+
+    /// WASM: export current module with ZX Spectrum player (downloads `.tap`).
+    #[cfg(target_arch = "wasm32")]
+    fn save_zx_dialog(&mut self, ctx: &egui::Context) {
+        use formats::zx_export::{ZxExportOptions, ZxFormat};
+        let module = &self.modules[self.active_module];
+        let opts = ZxExportOptions {
+            load_addr: 0xC000,
+            format: ZxFormat::Tap,
+            looping: false,
+            name: "module".to_string(),
+            title: module.title.clone(),
+            author: module.author.clone(),
+        };
+        let filename = "module.tap".to_string();
+        match formats::save_zx(module, &opts) {
+            Ok(bytes) => {
+                if wasm_file::save_picker_supported() {
+                    self.status = "Exporting…".to_string();
+                    wasm_file::spawn_save_file(ctx.clone(), filename, bytes);
+                } else {
+                    match wasm_file::download_blob(&filename, &bytes) {
+                        Ok(()) => self.status = format!("Exported: {filename}"),
+                        Err(e) => self.status = format!(
+                            "Export failed: {}",
+                            e.as_string().unwrap_or_else(|| format!("{e:?}"))
+                        ),
+                    }
+                }
+            }
+            Err(e) => self.status = format!("Export failed: {e}"),
         }
     }
 
@@ -564,17 +668,24 @@ impl eframe::App for VortexTrackerApp {
                         ui.close_menu();
                     }
                     if ui.button("Open…").clicked() {
-                        self.open_file_dialog();
+                        self.open_file_dialog(ctx);
                         ui.close_menu();
                     }
                     if ui.button("Save as VTM…").clicked() {
-                        self.save_vtm_dialog();
+                        self.save_vtm_dialog(ctx);
                         ui.close_menu();
                     }
                     if ui.button("Save as PT3…").clicked() {
-                        self.save_pt3_dialog();
+                        self.save_pt3_dialog(ctx);
                         ui.close_menu();
                     }
+                    // ── Exports submenu (matches legacy "Exports1" TMenuItem) ──
+                    ui.menu_button("Exports", |ui| {
+                        if ui.button("Save with ZX Spectrum player…").clicked() {
+                            self.save_zx_dialog(ctx);
+                            ui.close_menu();
+                        }
+                    });
                     ui.separator();
                     if ui.button("Quit").clicked() {
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);

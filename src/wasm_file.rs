@@ -11,6 +11,7 @@
 //!
 //! [File System Access API]: https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API
 
+use egui::Context;
 use js_sys::{Array, ArrayBuffer, Object, Promise, Reflect, Uint8Array};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -97,10 +98,17 @@ pub fn save_picker_supported() -> bool {
 /// file's bytes, and stores the result in `PENDING_OPEN` for the next frame.
 ///
 /// Silently ignores `AbortError` (user pressed Cancel).
-pub fn spawn_open_file() {
-    wasm_bindgen_futures::spawn_local(async {
+///
+/// The `ctx` is used to request a repaint after the async task completes so
+/// that [`crate::pending_file::take_pending_open`] is drained on the very next
+/// frame rather than waiting for the next user-input event.
+pub fn spawn_open_file(ctx: Context) {
+    wasm_bindgen_futures::spawn_local(async move {
         match do_open_file().await {
-            Ok(pf) => put_pending_open(pf),
+            Ok(pf) => {
+                put_pending_open(pf);
+                ctx.request_repaint();
+            }
             Err(e) => {
                 if !is_abort_error(&e) {
                     log::warn!("showOpenFilePicker error: {:?}", e);
@@ -131,10 +139,14 @@ async fn do_open_file() -> Result<PendingFile, JsValue> {
 }
 
 fn build_open_options() -> JsValue {
-    // { types: [{ description: "Tracker modules", accept: { "application/octet-stream": [".vtm", ".pt3"] } }], multiple: false }
+    // { types: [{ description: "Tracker modules", accept: { "application/octet-stream": [".vtm", ".pt3", ".pt2", ".pt1", ".stc", ".stp"] } }], multiple: false }
     let exts = Array::new();
     exts.push(&JsValue::from_str(".vtm"));
     exts.push(&JsValue::from_str(".pt3"));
+    exts.push(&JsValue::from_str(".pt2"));
+    exts.push(&JsValue::from_str(".pt1"));
+    exts.push(&JsValue::from_str(".stc"));
+    exts.push(&JsValue::from_str(".stp"));
 
     let accept = Object::new();
     let _ = Reflect::set(&accept, &JsValue::from_str("application/octet-stream"), &exts);
@@ -161,16 +173,21 @@ fn build_open_options() -> JsValue {
 /// Spawn an async task that opens the browser save picker and writes `bytes`
 /// to the chosen file.  Stores an `Ok(msg)` or `Err(msg)` in
 /// `PENDING_SAVE_STATUS` (not set on user cancel).
-pub fn spawn_save_file(suggested_name: String, bytes: Vec<u8>) {
+///
+/// The `ctx` is used to request a repaint after the async task completes so
+/// that the saved-file status message appears on the next frame.
+pub fn spawn_save_file(ctx: Context, suggested_name: String, bytes: Vec<u8>) {
     wasm_bindgen_futures::spawn_local(async move {
         match do_save_file(&suggested_name, &bytes).await {
             Ok(()) => {
                 put_pending_save_status(Ok(format!("Saved: {suggested_name}")));
+                ctx.request_repaint();
             }
             Err(e) => {
                 if !is_abort_error(&e) {
                     let msg = e.as_string().unwrap_or_else(|| format!("{e:?}"));
                     put_pending_save_status(Err(format!("Save failed: {msg}")));
+                    ctx.request_repaint();
                 }
             }
         }
