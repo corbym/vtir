@@ -312,3 +312,273 @@ fn synthesizer_two_chips_produce_more_signal() {
     let sum2: i64 = s2.output_buf.iter().map(|s| s.left.abs() as i64).sum();
     assert!(sum2 >= sum1, "two chips should be at least as loud as one");
 }
+
+// ─── EnvShape::from_register — all 16 values ────────────────────────────────
+
+#[test]
+fn env_shape_from_register_all_16_values() {
+    // Hold0: 0,1,2,3,9
+    for v in [0u8, 1, 2, 3, 9] {
+        assert_eq!(EnvShape::from_register(v), EnvShape::Hold0,
+            "register {v} should be Hold0");
+    }
+    // Hold31: 4,5,6,7,15
+    for v in [4u8, 5, 6, 7, 15] {
+        assert_eq!(EnvShape::from_register(v), EnvShape::Hold31,
+            "register {v} should be Hold31");
+    }
+    assert_eq!(EnvShape::from_register(8),  EnvShape::Saw8);
+    assert_eq!(EnvShape::from_register(10), EnvShape::Triangle10);
+    assert_eq!(EnvShape::from_register(11), EnvShape::DecayHold);
+    assert_eq!(EnvShape::from_register(12), EnvShape::Saw12);
+    assert_eq!(EnvShape::from_register(13), EnvShape::AttackHold);
+    assert_eq!(EnvShape::from_register(14), EnvShape::Triangle14);
+}
+
+// ─── SoundChip amplitude flag setters ────────────────────────────────────────
+
+#[test]
+fn set_ampl_b_sets_envelope_flag() {
+    let mut chip = SoundChip::default();
+    chip.set_ampl_b(0x10);
+    assert!(chip.envelope_en_b, "bit 4 of ampl_b sets envelope_en_b");
+    chip.set_ampl_b(0x0F);
+    assert!(!chip.envelope_en_b, "clearing bit 4 clears envelope_en_b");
+}
+
+#[test]
+fn set_ampl_c_sets_envelope_flag() {
+    let mut chip = SoundChip::default();
+    chip.set_ampl_c(0x10);
+    assert!(chip.envelope_en_c, "bit 4 of ampl_c sets envelope_en_c");
+    chip.set_ampl_c(0x0F);
+    assert!(!chip.envelope_en_c, "clearing bit 4 clears envelope_en_c");
+}
+
+// ─── Envelope shape end-to-end waveform tests ─────────────────────────────────
+
+/// Saw8 (type 8): decrements mod 32 continuously.
+///
+/// `set_envelope_register(8)` initialises `ampl = 32` — a pre-cycle sentinel
+/// (bit 2 of 8 is 0 → start high, matching the original Pascal `AY.pas`).
+/// After the first `step_envelope` the counter enters the 0..31 repeating cycle.
+#[test]
+fn envelope_saw8_cycles_through_all_32_values() {
+    let mut chip = SoundChip::default();
+    chip.set_envelope_register(8);
+    // One step to move from the 32 sentinel into the 0..31 cycle (→ 31).
+    chip.step_envelope();
+    let cycle_start = chip.ampl;
+    assert_eq!(cycle_start, 31, "Saw8 first in-cycle value should be 31");
+
+    let mut values = Vec::with_capacity(32);
+    for _ in 0..32 {
+        values.push(chip.ampl);
+        chip.step_envelope();
+    }
+    assert_eq!(chip.ampl, cycle_start, "Saw8 must be periodic with period 32");
+    for i in 0..31 {
+        assert_eq!(values[i + 1], (values[i] - 1) & 31,
+            "Saw8 must decrement mod 32 at step {i}");
+    }
+}
+
+/// Saw12 (type 12): increments mod 32 continuously.
+///
+/// `set_envelope_register(12)` initialises `ampl = -1` (bit 2 of 12 is 1 →
+/// start low, matching the original Pascal `AY.pas`).  After one step the
+/// counter is 0 and the ascending cycle begins.
+#[test]
+fn envelope_saw12_cycles_through_all_32_values() {
+    let mut chip = SoundChip::default();
+    chip.set_envelope_register(12);
+    // One step moves from the -1 sentinel into the 0..31 cycle (→ 0).
+    chip.step_envelope();
+    let cycle_start = chip.ampl;
+    assert_eq!(cycle_start, 0, "Saw12 first in-cycle value should be 0");
+
+    let mut values = Vec::with_capacity(32);
+    for _ in 0..32 {
+        values.push(chip.ampl);
+        chip.step_envelope();
+    }
+    assert_eq!(chip.ampl, cycle_start, "Saw12 must be periodic with period 32");
+    for i in 0..31 {
+        assert_eq!(values[i + 1], (values[i] + 1) & 31,
+            "Saw12 must increment mod 32 at step {i}");
+    }
+}
+
+/// Hold0 (type 0): decays from sentinel then holds.
+#[test]
+fn envelope_hold0_decays_then_holds() {
+    let mut chip = SoundChip::default();
+    chip.set_envelope_register(0);
+    for _ in 0..64 {
+        if !chip.first_period { break; }
+        chip.step_envelope();
+    }
+    assert!(!chip.first_period, "Hold0 should have completed its first period");
+    let held = chip.ampl;
+    for _ in 0..10 {
+        chip.step_envelope();
+        assert_eq!(chip.ampl, held, "Hold0 must hold after first period ends");
+    }
+}
+
+/// Hold31 (type 4): attacks then holds.
+#[test]
+fn envelope_hold31_holds_after_attack() {
+    let mut chip = SoundChip::default();
+    chip.set_envelope_register(4);
+    for _ in 0..64 {
+        if !chip.first_period { break; }
+        chip.step_envelope();
+    }
+    assert!(!chip.first_period, "Hold31 first period should end");
+    let held = chip.ampl;
+    for _ in 0..10 {
+        chip.step_envelope();
+        assert_eq!(chip.ampl, held, "Hold31 must hold after first period ends");
+    }
+}
+
+/// Triangle10 (type 10): down then up, bounces between 0 and 31.
+#[test]
+fn envelope_triangle10_bounces() {
+    let mut chip = SoundChip::default();
+    chip.set_envelope_register(10);
+    let mut values = Vec::new();
+    for _ in 0..64 {
+        values.push(chip.ampl);
+        chip.step_envelope();
+    }
+    assert!(values.windows(2).any(|w| w[1] < w[0]), "Triangle10 must have a decreasing phase");
+    assert!(values.windows(2).any(|w| w[1] > w[0]), "Triangle10 must have an increasing phase");
+}
+
+/// Triangle14 (type 14): up then down, bounces between 0 and 31.
+#[test]
+fn envelope_triangle14_bounces() {
+    let mut chip = SoundChip::default();
+    chip.set_envelope_register(14);
+    let mut values = Vec::new();
+    for _ in 0..64 {
+        values.push(chip.ampl);
+        chip.step_envelope();
+    }
+    assert!(values.windows(2).any(|w| w[1] < w[0]), "Triangle14 must have a decreasing phase");
+    assert!(values.windows(2).any(|w| w[1] > w[0]), "Triangle14 must have an increasing phase");
+}
+
+/// DecayHold (type 11): decays then holds at 31.
+#[test]
+fn envelope_decay_hold_holds_at_31() {
+    let mut chip = SoundChip::default();
+    chip.set_envelope_register(11);
+    for _ in 0..64 {
+        chip.step_envelope();
+        if !chip.first_period { break; }
+    }
+    assert!(!chip.first_period, "DecayHold first period should end");
+    assert_eq!(chip.ampl, 31, "DecayHold must hold at 31 after first period");
+    let held = chip.ampl;
+    for _ in 0..10 {
+        chip.step_envelope();
+        assert_eq!(chip.ampl, held, "DecayHold must stay at 31");
+    }
+}
+
+/// AttackHold (type 13): attacks then holds at 31.
+#[test]
+fn envelope_attack_hold_holds_at_31() {
+    let mut chip = SoundChip::default();
+    chip.set_envelope_register(13);
+    for _ in 0..64 {
+        chip.step_envelope();
+        if !chip.first_period { break; }
+    }
+    assert!(!chip.first_period, "AttackHold first period should end");
+    assert_eq!(chip.ampl, 31, "AttackHold must hold at 31 after first period");
+    let held = chip.ampl;
+    for _ in 0..10 {
+        chip.step_envelope();
+        assert_eq!(chip.ampl, held, "AttackHold must stay at 31");
+    }
+}
+
+// ─── synthesizer_logic_q — noise & envelope counter behaviour ────────────────
+
+#[test]
+fn synthesizer_logic_q_noise_seed_changes_over_time() {
+    let mut chip = SoundChip::default();
+    chip.registers.noise = 1;
+    chip.set_mixer_register(0b11_000_000); // noise A/B/C enabled
+    let initial_seed = chip.noise_seed;
+    for _ in 0..100 { chip.synthesizer_logic_q(); }
+    assert_ne!(chip.noise_seed, initial_seed,
+        "noise_seed must change after 100 synthesizer_logic_q steps");
+}
+
+#[test]
+fn synthesizer_logic_q_envelope_triggers_step() {
+    // With envelope period=1, the envelope steps on every chip clock.
+    let mut chip = SoundChip::default();
+    chip.registers.envelope = 1;
+    chip.set_envelope_register(12); // Saw12 — ascending
+    let initial = chip.ampl;
+    chip.synthesizer_logic_q();
+    assert_eq!(chip.ampl, (initial + 1) & 31,
+        "one synthesizer_logic_q step with period=1 should advance the envelope once");
+}
+
+#[test]
+fn synthesizer_logic_q_tone_b_toggles_with_period_1() {
+    let mut chip = SoundChip::default();
+    chip.registers.ton_b = 1;
+    assert_eq!(chip.ton_b, 0);
+    chip.synthesizer_logic_q(); assert_eq!(chip.ton_b, 1);
+    chip.synthesizer_logic_q(); assert_eq!(chip.ton_b, 0);
+}
+
+#[test]
+fn synthesizer_logic_q_tone_c_toggles_with_period_1() {
+    let mut chip = SoundChip::default();
+    chip.registers.ton_c = 1;
+    assert_eq!(chip.ton_c, 0);
+    chip.synthesizer_logic_q(); assert_eq!(chip.ton_c, 1);
+    chip.synthesizer_logic_q(); assert_eq!(chip.ton_c, 0);
+}
+
+// ─── Synthesizer: apply_registers + render smoke test ────────────────────────
+
+#[test]
+fn synthesizer_apply_registers_then_render_is_stable() {
+    use vti_core::AyRegisters;
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
+    let mut synth = Synthesizer::new(cfg, 1, ChipType::AY);
+
+    // mixer = 0b00_111_000: bits 3-5 set → noise A/B/C off; bits 0-2 clear → tone A/B/C on.
+    // Small periods (50, 60, 40) guarantee tone counters toggle within 256 frames.
+    let regs = AyRegisters {
+        ton_a: 50, ton_b: 60, ton_c: 40,
+        mixer: 0b00_111_000,
+        amplitude_a: 10, amplitude_b: 8, amplitude_c: 6,
+        ..AyRegisters::default()
+    };
+    synth.apply_registers(0, &regs);
+    synth.render_frame(256);
+
+    let total: i64 = synth.output_buf.iter()
+        .map(|s| s.left.abs() as i64 + s.right.abs() as i64)
+        .sum();
+    assert!(total > 0, "rendering with active tones should produce non-zero output");
+}
+
+#[test]
+fn synthesizer_render_frame_zero_is_noop() {
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
+    let mut synth = Synthesizer::new(cfg, 1, ChipType::YM);
+    synth.render_frame(0);
+    assert!(synth.output_buf.is_empty(), "rendering 0 frames should produce no output");
+}
