@@ -19,7 +19,9 @@ This Rust port exists only because of his extraordinary work. Sergey built
 an entire chip emulator, 13 file-format parsers, a complete tracker editor
 and the first cross-format ZX Spectrum music toolchain — all in 23,000 lines
 of hand-written Delphi/Pascal. The original `readme.txt` and `readme.rus.txt`
-are preserved in the `legacy/` directory of this repository. Sergey has a much more feature full player available on his site, namely [Ay_Emul](https://bulba.untergrund.net/emulator_e.htm). You should check it out.
+are preserved in the `legacy/` directory of this repository. 
+
+Sergey has a much more feature full player available on his site, namely [Ay_Emul](https://bulba.untergrund.net/emulator_e.htm). You should check it out.
 
 ---
 
