@@ -100,8 +100,9 @@
 - [x] Integration test + `minimal_roundtrip.stc` fixture
 - [x] STC → PT3 roundtrip test
 
-#### 2.5.5 ASC / ASC0 (`formats/asc.rs`) — `ASC2VTM`
-- [ ] Full parser
+#### 2.5.5 ASC / ASC0 (`formats/asc.rs`) — `ASC2VTM` / `ASC02VTM`
+- [x] Full parser (positions, patterns, samples, ornaments; v1 with loop-pos and v0 without)
+- [x] Smoke tests (error on empty, ok on minimal header)
 
 #### 2.5.6 STP (`formats/stp.rs`) — `STP2VTM`
 - [x] Full parser (pointer-based structure, glissando state, KSA metadata detection)
@@ -109,25 +110,28 @@
 - [x] STP → PT3 roundtrip test
 
 #### 2.5.7 SQT (`formats/sqt.rs`) — `SQT2VTM`
-- [ ] Full parser
+- [x] Full parser (pointer-based, position dedup, effects, envelope, orn2sam tracking)
+- [x] Smoke tests (error on empty/too-small, ok on minimal header)
 
 #### 2.5.8 GTR (`formats/gtr.rs`) — `GTR2VTM`
-- [ ] Full parser
+- [x] Full parser (fixed-offset header, pointer tables, GTR 1.x / 2.x ID detection)
+- [x] Smoke tests (error on empty, ok on minimal header)
 
 #### 2.5.9 FTC (`formats/ftc.rs`) — `FTC2VTM`
-- [ ] Full parser
+- [ ] Full parser (deferred — complex version-detection logic)
 
 #### 2.5.10 FLS (`formats/fls.rs`) — `FLS2VTM`
-- [ ] Full parser
+- [x] Full parser (pointer-based positions/patterns/samples/ornaments)
+- [x] Smoke tests (error on empty, ok on minimal header)
 
 #### 2.5.11 PSC (`formats/psc.rs`) — `PSC2VTM`
-- [ ] Full parser
+- [ ] Full parser (deferred — complex volume-curve and relative/absolute address logic)
 
 #### 2.5.12 PSM (`formats/psm.rs`) — `PSM2VTM`
-- [ ] Full parser
+- [ ] Full parser (deferred — unusual delta-note encoding, 2D sample arrays)
 
 #### 2.5.13 FXM (`formats/fxm.rs`) — `FXM2VTM`
-- [ ] Full parser
+- [ ] Full parser (deferred — requires ZX Spectrum memory-address loading model)
 
 #### 2.5.16 AY (`formats/ay.rs`) — ZXAY container — ST11 / AMAD / EMUL variants
 
@@ -176,7 +180,7 @@
 - [ ] `LoadModuleFromText()` — parse text format
 
 #### 2.5.15 Format auto-detection
-- [x] `load()` — detect file type from extension, dispatch to correct parser (vtm, pt3, pt2, pt1, stc, stp)
+- [x] `load()` — detect file type from extension, dispatch to correct parser (vtm, pt3, pt2, pt1, stc, stp, sqt, asc, as0, gtr, fls)
 - [ ] `LoadAndDetect()` — ZX Spectrum binary magic-number detection
 - [ ] `PrepareZXModule()` — ZX Spectrum memory layout handling
 

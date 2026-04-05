@@ -10,14 +10,22 @@
 //! - `stc`  — Sound Tracker Compiled binary (parse only)
 //! - `stp`  — Sound Tracker Pro binary (parse only)
 //! - `ay`   — ZXAY container (ST11 sub-format + EMUL embedded-module extraction)
+//! - `sqt`  — Square Tracker binary (parse only)
+//! - `asc` / `as0` — ASC Sound Master binary v1/v0 (parse only)
+//! - `gtr`  — Global Tracker binary (parse only)
+//! - `fls`  — Flying Ledger Sound binary (parse only)
 //!
-//! # Not yet implemented
-//! - `asc`, `sqt`, `gtr`, `ftc`, `fls`, `psc`, `psm`, `fxm` — see PLAN.md §2.5
+//! # Not yet implemented (deferred — complex formats)
+//! - `ftc`, `psc`, `psm`, `fxm` — see PLAN.md §2.5
 
+pub mod asc;
 pub mod ay;
+pub mod fls;
+pub mod gtr;
 pub mod pt1;
 pub mod pt2;
 pub mod pt3;
+pub mod sqt;
 pub mod stc;
 pub mod stp;
 pub mod vtm;
@@ -37,6 +45,11 @@ use anyhow::{bail, Result};
 /// - `.stc` — Sound Tracker Compiled binary
 /// - `.stp` — Sound Tracker Pro binary
 /// - `.ay`  — ZXAY container (ST11 sub-format; EMUL embedded-module extraction)
+/// - `.sqt` — Square Tracker binary
+/// - `.asc` — ASC Sound Master binary (v1, with loop position)
+/// - `.as0` — ASC Sound Master binary (v0, without loop position)
+/// - `.gtr` — Global Tracker binary
+/// - `.fls` — Flying Ledger Sound binary
 pub fn load(data: &[u8], filename: &str) -> Result<Module> {
     let ext = filename.rsplit('.').next().unwrap_or("").to_lowercase();
     match ext.as_str() {
@@ -51,6 +64,11 @@ pub fn load(data: &[u8], filename: &str) -> Result<Module> {
         "stc" => stc::parse(data),
         "stp" => stp::parse(data),
         "ay" => ay::parse(data, 0),
+        "sqt" => sqt::parse(data),
+        "asc" => asc::parse(data),
+        "as0" => asc::parse_asc0(data),
+        "gtr" => gtr::parse(data),
+        "fls" => fls::parse(data),
         _ => bail!("Unsupported file format: .{}", ext),
     }
 }
