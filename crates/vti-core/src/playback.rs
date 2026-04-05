@@ -477,6 +477,170 @@ impl<'a> Engine<'a> {
     }
 }
 
+// ─── Timing helpers ───────────────────────────────────────────────────────────
+
+/// Return the total duration of `module` in interrupt ticks.
+///
+/// Direct port of `GetModuleTime` in `trfuncs.pas`.
+///
+/// Each pattern row contributes exactly `d` ticks, where `d` starts at
+/// `module.initial_delay` and is updated whenever an effect command 11
+/// (delay change) is encountered in any channel of that row.  An `None`
+/// (nil) pattern contributes `DEF_PAT_LEN * d` ticks.
+pub fn get_module_time(module: &Module) -> u32 {
+    let mut ticks: u32 = 0;
+    let mut d = module.initial_delay as u32;
+    for pos_idx in 0..module.positions.length {
+        let pat_num = module.positions.value[pos_idx];
+        match module.patterns[pat_num].as_deref() {
+            None => {
+                ticks += d * DEF_PAT_LEN as u32;
+            }
+            Some(pat) => {
+                for row in 0..pat.length {
+                    // Effect command 11 with a non-zero parameter changes the delay
+                    // starting from the current row.  Scan channels in reverse order
+                    // (2→0) matching the Pascal `for k := 2 downto 0` loop.
+                    for ch in (0..3).rev() {
+                        let cmd = pat.items[row].channel[ch].additional_command;
+                        if cmd.number == 11 && cmd.parameter != 0 {
+                            d = cmd.parameter as u32;
+                            break;
+                        }
+                    }
+                    ticks += d;
+                }
+            }
+        }
+    }
+    ticks
+}
+
+/// Return the cumulative tick count at the *start* of position `pos`, plus the
+/// current delay value at that point.
+///
+/// Direct port of `GetPositionTime` in `trfuncs.pas`.
+///
+/// # Returns
+/// `(ticks_before_pos, delay_at_pos)` where:
+/// - `ticks_before_pos` is the number of interrupt ticks that occur before
+///   position `pos` begins,
+/// - `delay_at_pos` is the interrupt-delay value that will be in effect at the
+///   start of position `pos`.
+pub fn get_position_time(module: &Module, pos: usize) -> (u32, u8) {
+    let mut ticks: u32 = 0;
+    let mut d = module.initial_delay as u32;
+    for pos_idx in 0..pos {
+        if pos_idx >= module.positions.length {
+            break;
+        }
+        let pat_num = module.positions.value[pos_idx];
+        match module.patterns[pat_num].as_deref() {
+            None => {
+                ticks += d * DEF_PAT_LEN as u32;
+            }
+            Some(pat) => {
+                for row in 0..pat.length {
+                    for ch in (0..3).rev() {
+                        let cmd = pat.items[row].channel[ch].additional_command;
+                        if cmd.number == 11 && cmd.parameter != 0 {
+                            d = cmd.parameter as u32;
+                            break;
+                        }
+                    }
+                    ticks += d;
+                }
+            }
+        }
+    }
+    (ticks, d as u8)
+}
+
+/// Return the number of ticks consumed by the first `line` rows of position
+/// `pos`, given that the delay entering that position is `pos_delay`.
+///
+/// Direct port of `GetPositionTimeEx` in `trfuncs.pas`.
+///
+/// The delay may be updated by effect command 11 within the counted rows, so
+/// the result correctly accounts for mid-pattern tempo changes.
+pub fn get_position_time_ex(module: &Module, pos: usize, mut pos_delay: u8, line: usize) -> u32 {
+    let mut ticks: u32 = 0;
+    if pos >= module.positions.length {
+        return 0;
+    }
+    let pat_num = module.positions.value[pos];
+    match module.patterns[pat_num].as_deref() {
+        None => {
+            ticks += pos_delay as u32 * line as u32;
+        }
+        Some(pat) => {
+            for row in 0..line {
+                if row >= pat.length {
+                    break;
+                }
+                for ch in (0..3).rev() {
+                    let cmd = pat.items[row].channel[ch].additional_command;
+                    if cmd.number == 11 && cmd.parameter != 0 {
+                        pos_delay = cmd.parameter;
+                        break;
+                    }
+                }
+                ticks += pos_delay as u32;
+            }
+        }
+    }
+    ticks
+}
+
+/// Find the position index and row index within a module that correspond to a
+/// given cumulative tick time.
+///
+/// Direct port of `GetTimeParams` in `trfuncs.pas`.
+///
+/// # Returns
+/// - `Some((position, line))` — the position and row whose start tick is ≤
+///   `time` and whose end tick is > `time`.
+/// - `None` — `time` is at or past the end of the module (i.e., equal to or
+///   greater than [`get_module_time`]).
+///
+/// # Edge case: nil patterns
+/// A `None` (nil) pattern contributes `DEF_PAT_LEN * d` ticks and the row
+/// within it is estimated as `(time - ct) / d` (matching the Pascal fallback).
+pub fn get_time_params(module: &Module, time: u32) -> Option<(usize, usize)> {
+    let mut d = module.initial_delay as u32;
+    let mut ct: u32 = 0;
+    for pos_idx in 0..module.positions.length {
+        let pat_num = module.positions.value[pos_idx];
+        match module.patterns[pat_num].as_deref() {
+            None => {
+                let block = d * DEF_PAT_LEN as u32;
+                if ct + block < time {
+                    ct += block;
+                } else {
+                    let line = (time - ct) / d;
+                    return Some((pos_idx, line as usize));
+                }
+            }
+            Some(pat) => {
+                for row in 0..pat.length {
+                    if ct >= time {
+                        return Some((pos_idx, row));
+                    }
+                    for ch in (0..3).rev() {
+                        let cmd = pat.items[row].channel[ch].additional_command;
+                        if cmd.number == 11 && cmd.parameter != 0 {
+                            d = cmd.parameter as u32;
+                            break;
+                        }
+                    }
+                    ct += d;
+                }
+            }
+        }
+    }
+    None
+}
+
 /// Initialise playback variables for one chip slot.
 pub fn init_tracker_parameters(module: &mut Module, vars: &mut PlayVars, all: bool) {
     vars.delay_counter = 1;

@@ -132,7 +132,7 @@ The following categories of Pascal code require baselines (highest priority firs
 | **Reverse note lookup** | `legacy/trfuncs.pas` → `GetNoteByEnvelope2`, `GetNoteByEnvelope` | Floating-point rounding; used in envelope editor |
 | **Format parsers** (when ported) | `legacy/trfuncs.pas` → `PT32VTM`, `STC2VTM`, `SQT2VTM`, … | Binary → Module round-trip; wrong field decode is silent |
 
-> Functions already covered: `NoiseGenerator`, all 8 envelope shapes, `PT3_Vol` table, all 5 note tables, `Pattern_PlayCurrentLine` (basic, envelope, and 3-channel arpeggio + noise drum variants). See `PLAN.md §9` for the full status table.
+> Functions already covered: `NoiseGenerator`, all 8 envelope shapes, `PT3_Vol` table, all 5 note tables, `Pattern_PlayCurrentLine` (basic, envelope, and 3-channel arpeggio + noise drum variants), `GetModuleTime` / `GetPositionTime` / `GetPositionTimeEx` / `GetTimeParams`. See `PLAN.md §9` for the full status table.
 
 ### How to add a new baseline
 

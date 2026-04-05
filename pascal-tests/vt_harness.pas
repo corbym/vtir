@@ -1543,6 +1543,244 @@ begin
 end;
 
 { ═══════════════════════════════════════════════════════════════════════════
+  Song timing helpers (GetModuleTime, GetPositionTime, GetPositionTimeEx,
+  GetTimeParams) — ported from trfuncs.pas
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+{ ── Forward declarations ─────────────────────────────────────────── }
+
+function GetModuleTime(VTM: PModule): integer; forward;
+function GetPositionTime(VTM: PModule; Pos: integer; var PosDelay: integer): integer; forward;
+function GetPositionTimeEx(VTM: PModule; Pos, PosDelay, Line: integer): integer; forward;
+procedure GetTimeParams(VTM: PModule; Time: integer; var Pos, Line: integer); forward;
+
+{ ── Implementations (exact copies from trfuncs.pas) ─────────────── }
+
+function GetModuleTime(VTM: PModule): integer;
+var
+ i, j, k, d, p: integer;
+begin
+ Result := 0;
+ d := VTM^.Initial_Delay;
+ for i := 0 to VTM^.Positions.Length - 1 do
+  begin
+   p := VTM^.Positions.Value[i];
+   if VTM^.Patterns[p] = nil then
+     Inc(Result, d * DefPatLen)
+   else
+     for j := 0 to VTM^.Patterns[p]^.Length - 1 do
+      begin
+       for k := 2 downto 0 do
+         with VTM^.Patterns[p]^.Items[j].Channel[k].Additional_Command do
+           if (Number = 11) and (Parameter <> 0) then
+            begin
+             d := Parameter;
+             break;
+            end;
+       Inc(Result, d);
+      end;
+  end;
+end;
+
+function GetPositionTime(VTM: PModule; Pos: integer; var PosDelay: integer): integer;
+var
+ i, j, k, d, p: integer;
+begin
+ Result := 0;
+ d := VTM^.Initial_Delay;
+ for i := 0 to Pos - 1 do
+  begin
+   p := VTM^.Positions.Value[i];
+   if VTM^.Patterns[p] = nil then
+     Inc(Result, d * DefPatLen)
+   else
+     for j := 0 to VTM^.Patterns[p]^.Length - 1 do
+      begin
+       for k := 2 downto 0 do
+         with VTM^.Patterns[p]^.Items[j].Channel[k].Additional_Command do
+           if (Number = 11) and (Parameter <> 0) then
+            begin
+             d := Parameter;
+             Break;
+            end;
+       Inc(Result, d);
+      end;
+  end;
+ PosDelay := d;
+end;
+
+function GetPositionTimeEx(VTM: PModule; Pos, PosDelay, Line: integer): integer;
+var
+ j, k, p: integer;
+begin
+ Result := 0;
+ p := VTM^.Positions.Value[Pos];
+ if VTM^.Patterns[p] = nil then
+   Inc(Result, PosDelay * Line)
+ else
+   for j := 0 to Line - 1 do
+    begin
+     for k := 2 downto 0 do
+       with VTM^.Patterns[p]^.Items[j].Channel[k].Additional_Command do
+         if (Number = 11) and (Parameter <> 0) then
+          begin
+           PosDelay := Parameter;
+           Break;
+          end;
+     Inc(Result, PosDelay);
+    end;
+end;
+
+procedure GetTimeParams(VTM: PModule; Time: integer; var Pos, Line: integer);
+var
+ i, j, k, d, p, ct, tmp: integer;
+begin
+ Pos := -1;
+ Line := 0;
+ d := VTM^.Initial_Delay;
+ ct := 0;
+ for i := 0 to VTM^.Positions.Length - 1 do
+  begin
+   p := VTM^.Positions.Value[i];
+   if VTM^.Patterns[p] = nil then
+    begin
+     tmp := d * DefPatLen;
+     if ct + tmp < Time then
+       Inc(ct, tmp)
+     else
+      begin
+       Pos := i;
+       Line := (Time - ct) div d;
+       Exit;
+      end;
+    end
+   else
+     for j := 0 to VTM^.Patterns[p]^.Length - 1 do
+      begin
+       if ct >= Time then
+        begin
+         Pos := i;
+         Line := j;
+         Exit;
+        end;
+       for k := 2 downto 0 do
+         with VTM^.Patterns[p]^.Items[j].Channel[k].Additional_Command do
+           if (Number = 11) and (Parameter <> 0) then
+            begin
+             d := Parameter;
+             Break;
+            end;
+       Inc(ct, d);
+      end;
+  end;
+end;
+
+{ ── Test runner ──────────────────────────────────────────────────── }
+
+procedure RunSongTiming;
+{ Builds a two-position test module:
+    initial_delay = 3
+    position 0 → pattern 0: 4 rows, no delay changes
+    position 1 → pattern 1: 3 rows, row 1 ch 0 has delay command (cmd=11, param=5)
+  Then exercises all four timing helpers and emits a JSON fixture. }
+var
+  M: TModule;
+  Pat0, Pat1: TPattern;
+  PPat0, PPat1: PPattern;
+  Pos, Line, PosDelay, Ticks: integer;
+  i: integer;
+begin
+  FillChar(M, SizeOf(M), 0);
+  M.Initial_Delay := 3;
+  M.Positions.Length := 2;
+  M.Positions.Value[0] := 0;
+  M.Positions.Value[1] := 1;
+
+  { Pattern 0: 4 rows, all empty (no delay commands) }
+  FillChar(Pat0, SizeOf(Pat0), 0);
+  Pat0.Length := 4;
+  for i := 0 to 3 do
+  begin
+    Pat0.Items[i].Channel[0].Note := -1;
+    Pat0.Items[i].Channel[1].Note := -1;
+    Pat0.Items[i].Channel[2].Note := -1;
+  end;
+  PPat0 := @Pat0;
+  M.Patterns[0] := PPat0;
+
+  { Pattern 1: 3 rows; row 1 channel 0 has a delay-change command }
+  FillChar(Pat1, SizeOf(Pat1), 0);
+  Pat1.Length := 3;
+  for i := 0 to 2 do
+  begin
+    Pat1.Items[i].Channel[0].Note := -1;
+    Pat1.Items[i].Channel[1].Note := -1;
+    Pat1.Items[i].Channel[2].Note := -1;
+  end;
+  Pat1.Items[1].Channel[0].Additional_Command.Number    := 11;
+  Pat1.Items[1].Channel[0].Additional_Command.Parameter := 5;
+  PPat1 := @Pat1;
+  M.Patterns[1] := PPat1;
+
+  WriteLn('{');
+  WriteLn('  "generator": "vt_pascal_harness",');
+  WriteLn('  "test": "song_timing",');
+  WriteLn('  "comment": "Two-position module: initial_delay=3, pattern 0 has 4 rows (no delay changes), pattern 1 has 3 rows with a delay-change command (cmd=11, parameter=5) on row 1 channel 0.",');
+
+  { ── get_module_time ─────────────────────────────────────────────── }
+  WriteLn('  "module_time": ', GetModuleTime(@M), ',');
+
+  { ── get_position_time (pos 0, 1, 2) ─────────────────────────────── }
+  WriteLn('  "position_times": [');
+  for i := 0 to 2 do
+  begin
+    PosDelay := M.Initial_Delay;
+    Ticks := GetPositionTime(@M, i, PosDelay);
+    Write('    { "pos": ', i, ', "ticks": ', Ticks, ', "delay_at_pos": ', PosDelay, ' }');
+    if i < 2 then WriteLn(',') else WriteLn;
+  end;
+  WriteLn('  ],');
+
+  { ── get_position_time_ex ─────────────────────────────────────────── }
+  WriteLn('  "position_times_ex": [');
+  { (pos=0, pos_delay=3, line=2) }
+  WriteLn('    { "pos": 0, "pos_delay": 3, "line": 2, "ticks": ', GetPositionTimeEx(@M, 0, 3, 2), ' },');
+  { (pos=1, pos_delay=3, line=2) }
+  WriteLn('    { "pos": 1, "pos_delay": 3, "line": 2, "ticks": ', GetPositionTimeEx(@M, 1, 3, 2), ' },');
+  { (pos=1, pos_delay=3, line=3) -- full pattern 1 }
+  WriteLn('    { "pos": 1, "pos_delay": 3, "line": 3, "ticks": ', GetPositionTimeEx(@M, 1, 3, 3), ' }');
+  WriteLn('  ],');
+
+  { ── get_time_params ──────────────────────────────────────────────── }
+  WriteLn('  "time_params": [');
+  begin
+    { Emit each case as a JSON object }
+    procedure EmitTimeParamsCase(T: integer; IsLast: boolean);
+    var ResPos, ResLine: integer; Found: boolean;
+    begin
+      GetTimeParams(@M, T, ResPos, ResLine);
+      Found := ResPos <> -1;
+      Write('    { "time": ', T, ', "found": ');
+      if Found then Write('true') else Write('false');
+      Write(', "pos": ', ResPos, ', "line": ', ResLine, ' }');
+      if IsLast then WriteLn else WriteLn(',');
+    end;
+  end;
+  { Manual inlining since FPC doesn't support nested procedures easily }
+  GetTimeParams(@M, 0,  Pos, Line); Write('    { "time": 0,  "found": '); if Pos<>-1 then Write('true') else Write('false'); WriteLn(', "pos": ', Pos, ', "line": ', Line, ' },');
+  GetTimeParams(@M, 3,  Pos, Line); Write('    { "time": 3,  "found": '); if Pos<>-1 then Write('true') else Write('false'); WriteLn(', "pos": ', Pos, ', "line": ', Line, ' },');
+  GetTimeParams(@M, 6,  Pos, Line); Write('    { "time": 6,  "found": '); if Pos<>-1 then Write('true') else Write('false'); WriteLn(', "pos": ', Pos, ', "line": ', Line, ' },');
+  GetTimeParams(@M, 9,  Pos, Line); Write('    { "time": 9,  "found": '); if Pos<>-1 then Write('true') else Write('false'); WriteLn(', "pos": ', Pos, ', "line": ', Line, ' },');
+  GetTimeParams(@M, 12, Pos, Line); Write('    { "time": 12, "found": '); if Pos<>-1 then Write('true') else Write('false'); WriteLn(', "pos": ', Pos, ', "line": ', Line, ' },');
+  GetTimeParams(@M, 15, Pos, Line); Write('    { "time": 15, "found": '); if Pos<>-1 then Write('true') else Write('false'); WriteLn(', "pos": ', Pos, ', "line": ', Line, ' },');
+  GetTimeParams(@M, 20, Pos, Line); Write('    { "time": 20, "found": '); if Pos<>-1 then Write('true') else Write('false'); WriteLn(', "pos": ', Pos, ', "line": ', Line, ' },');
+  GetTimeParams(@M, 24, Pos, Line); Write('    { "time": 24, "found": '); if Pos<>-1 then Write('true') else Write('false'); WriteLn(', "pos": ', Pos, ', "line": ', Line, ' },');
+  GetTimeParams(@M, 25, Pos, Line); Write('    { "time": 25, "found": '); if Pos<>-1 then Write('true') else Write('false'); WriteLn(', "pos": ', Pos, ', "line": ', Line, ' }');
+  WriteLn('  ]');
+  WriteLn('}');
+end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
   Main
   ═══════════════════════════════════════════════════════════════════════════ }
 
@@ -1554,7 +1792,7 @@ begin
     WriteLn(StdErr, 'Usage: vt_harness <test>');
     WriteLn(StdErr, 'Tests: noise_lfsr | envelopes | pt3_vol | note_tables |');
     WriteLn(StdErr, '       pattern_basic | pattern_envelope | pattern_arpeggio |');
-    WriteLn(StdErr, '       level_tables');
+    WriteLn(StdErr, '       level_tables | song_timing');
     Halt(1);
   end;
 
@@ -1568,6 +1806,7 @@ begin
   else if Cmd = 'pattern_envelope'  then RunPatternPlay(True,  'pattern_envelope')
   else if Cmd = 'pattern_arpeggio'  then RunPatternArpeggio
   else if Cmd = 'level_tables'      then RunLevelTables
+  else if Cmd = 'song_timing'       then RunSongTiming
   else
   begin
     WriteLn(StdErr, 'Unknown test: ', Cmd);

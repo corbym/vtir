@@ -82,14 +82,15 @@ source. See [`PLAN.md`](PLAN.md) for a detailed, checked-off task list.
 - ✅ Full AY/YM chip emulator (all 8 envelope shapes, noise LFSR, mixer)
 - ✅ Stereo-16 PCM synthesizer with FIR low-pass filter
 - ✅ Tracker playback engine (note entry, all 11 effect commands, ornaments)
+- ✅ Song timing helpers: `get_module_time`, `get_position_time`, `get_position_time_ex`, `get_time_params` (Pascal-baseline verified)
 - ✅ Cross-platform audio output via `cpal`
-- ✅ egui-based GUI skeleton (pattern view, sample view, ornament view, toolbar)
-- ✅ Terminal CLI tracker diagnostics tool (`vti-cli`) with keyboard navigation + headless tick harness
+- ✅ egui-based GUI skeleton (pattern view, sample view, ornament view, toolbar) with status bar showing current position + elapsed / total time
+- ✅ Terminal CLI tracker diagnostics tool (`vti-cli`) — keyboard navigation + headless tick harness; header shows elapsed / total time
 - ✅ Playback cursor follow — pattern editor highlights and scrolls to the playing row in real time
 - ✅ File open / save: PT3, PT2, PT1, STC, STP, VTM text, AY (ZXAY ST11 + EMUL embedded-module extraction)
 - ✅ PT3 round-trip writer (parse → write → parse verified)
 - ✅ ZX Spectrum export (`.tap`, `.scl`, `.ay`, Hobeta `.$ ` header)
-- ✅ 180 tests across vti-core and vti-ay, 0 failing
+- ✅ 181 tests across vti-core and vti-ay, 0 failing
 
 ### Still in progress
 - Remaining 8 format parsers: ASC, SQT, GTR, FTC, FLS, PSC, PSM, FXM
@@ -98,8 +99,7 @@ source. See [`PLAN.md`](PLAN.md) for a detailed, checked-off task list.
 - Position list editor
 - Options dialog (sample rate, chip type, panning, buffer settings)
 - Channel panning selector (Mono / ABC / ACB / …)
-- `GetModuleTime` / `GetPositionTime` — song timing helpers (used for seek/scrub)
-- `AudioPlayer` command channel — Play/Pause/Stop wired to the render thread
+- Seek-to-time UI (scrub bar) — timing helpers are now ready to drive this
 - GitHub Actions release pipeline (Mac `.dmg`, Windows `.exe`, Linux binary)
 
 ---

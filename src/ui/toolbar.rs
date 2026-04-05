@@ -20,7 +20,6 @@ impl Toolbar {
             if ui.button(play_label).clicked() {
                 *is_playing = !*is_playing;
                 *status = if *is_playing { "Playing".to_string() } else { "Paused".to_string() };
-                // TODO: wire up AudioPlayer command channel (PLAN.md §4.1)
             }
             if ui.button("⏹ Stop").clicked() {
                 *is_playing = false;

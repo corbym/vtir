@@ -60,9 +60,9 @@
 - [x] `Engine::pattern_interpreter()` — note/sample/ornament/effect decode
 - [x] `Engine::get_channel_registers()` — sample/ornament/tone/amp computation
 - [x] All effect commands (1–11): glide up, glide down, tone-slide, sample pos, orn pos, on/off, env slide up/down, delay
-- [ ] `GetModuleTime()` — total song duration in ticks
-- [ ] `GetPositionTime()` / `GetPositionTimeEx()` — per-position timing
-- [ ] `GetTimeParams()` — seek to time position
+- [x] `GetModuleTime()` — total song duration in ticks
+- [x] `GetPositionTime()` / `GetPositionTimeEx()` — per-position timing
+- [x] `GetTimeParams()` — seek to time position
 
 ### 2.4 Utility Functions (`util.rs`)
 - [x] `note_to_str()` — note index → "C-4" display string (inline)
@@ -568,6 +568,7 @@ truth as committed JSON fixtures and asserts that the Rust code matches them.
 | `crates/vti-core/tests/fixtures/pascal-baselines/pattern_play_basic.json` | `vti-core` | 20 ticks of pure-tone 4-row pattern |
 | `crates/vti-core/tests/fixtures/pascal-baselines/pattern_play_envelope.json` | `vti-core` | Same pattern + AY envelope type 8 |
 | `crates/vti-core/tests/fixtures/pascal-baselines/pattern_play_arpeggio.json` | `vti-core` | 54 ticks: 3-ch arpeggio + noise drum (ornament stepping, noise mixer path) |
+| `crates/vti-core/tests/fixtures/pascal-baselines/song_timing.json` | `vti-core` | `GetModuleTime`, `GetPositionTime`, `GetPositionTimeEx`, `GetTimeParams` on a 2-position module with a mid-pattern delay change |
 
 ### 9.3 Rust tests (`tests/pascal_baseline_tests.rs` in each crate)
 
@@ -580,6 +581,7 @@ truth as committed JSON fixtures and asserts that the Rust code matches them.
 - [x] `vti-core::pattern_play_basic_matches_pascal_baseline` — passing
 - [x] `vti-core::pattern_play_envelope_matches_pascal_baseline` — passing
 - [x] `vti-core::pattern_play_arpeggio_matches_pascal_baseline` — passing (covers ornament stepping and noise mixer path)
+- [x] `vti-core::song_timing_matches_pascal_baseline` — passing (covers all four timing helpers)
 
 ### 9.4 Known bugs exposed by baselines
 
@@ -612,7 +614,7 @@ should be treated as regressions and investigated before merging.
 | Project setup | ✅ complete | — |
 | `vti-core` data types | ✅ complete | — |
 | `vti-core` note tables | ✅ complete | — |
-| `vti-core` playback engine | ~85% | timing helpers (`GetModuleTime`/`GetPositionTime`), effect edge-case tests |
+| `vti-core` playback engine | ~90% | effect edge-case tests, seek integration |
 | `vti-core` util | ~70% | `get_pattern_line_string`, `get_sample_string` |
 | **PT3 format parser + writer** | ✅ complete | full parse + write (round-trip tested) |
 | PT2, PT1, STC, STP parsers | ✅ complete | parse + round-trip tested |
@@ -624,7 +626,7 @@ should be treated as regressions and investigated before merging.
 | `vti-app` GUI skeleton | ~35% | all editing interaction, dialogs |
 | Build pipeline | ~50% | GitHub Actions release workflow |
 | README | ✅ complete | — |
-| **Integration tests** | ✅ 180 passing | effect-command edge cases (see §2.6) |
+| **Integration tests** | ✅ 181 passing | effect-command edge cases (see §2.6) |
 | **Pascal parity baselines** | ✅ all passing | — |
 | **Web target (eframe WASM)** | ✅ ~95% | file-dialog fallback done via File System Access API |
 | **Web target (KMP/Compose)** | 0% | `vti-ffi` WASM bindings, Kotlin/Wasm UI (long-term) |
