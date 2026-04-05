@@ -53,6 +53,10 @@ pub struct VortexTrackerApp {
     /// If `Some`, an egui modal error dialog is shown with this message.
     /// Mirrors the Delphi `MessageBox(…, MB_ICONEXCLAMATION)` on load failure.
     pub error_dialog: Option<String>,
+
+    /// The filename of the currently loaded module (without directory path),
+    /// e.g. `"mysong.pt3"`.  `None` for a new unsaved module.
+    pub current_filename: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -250,6 +254,7 @@ impl VortexTrackerApp {
             last_tick_time: 0.0,
             status: "Ready".to_string(),
             error_dialog: None,
+            current_filename: None,
         }
     }
 
@@ -324,6 +329,7 @@ impl VortexTrackerApp {
                         self.playback_state = PlaybackState::Stopped;
                         self.modules = vec![module];
                         self.active_module = 0;
+                        self.current_filename = Some(filename.to_string());
                         self.reset_playback();
                         self.status = format!("Loaded: {}", filename);
                     }
@@ -346,12 +352,26 @@ impl VortexTrackerApp {
         wasm_file::spawn_open_file(ctx.clone());
     }
 
+    /// Return the stem (name without extension) of `current_filename`, or
+    /// `"module"` as a fallback for new/unnamed modules.
+    fn filename_stem(&self) -> String {
+        self.current_filename
+            .as_deref()
+            .and_then(|n| {
+                let p = std::path::Path::new(n);
+                p.file_stem().and_then(|s| s.to_str())
+            })
+            .unwrap_or("module")
+            .to_string()
+    }
+
     /// Open a save-file dialog and write the current module as a VTM text file.
     #[cfg(not(target_arch = "wasm32"))]
     fn save_vtm_dialog(&mut self, _ctx: &egui::Context) {
+        let default_name = format!("{}.vtm", self.filename_stem());
         let path = rfd::FileDialog::new()
             .add_filter("VTM text (*.vtm)", &["vtm"])
-            .set_file_name("module.vtm")
+            .set_file_name(&default_name)
             .save_file();
 
         let Some(path) = path else {
@@ -376,9 +396,10 @@ impl VortexTrackerApp {
     /// Open a save-file dialog and write the current module as a PT3 binary file.
     #[cfg(not(target_arch = "wasm32"))]
     fn save_pt3_dialog(&mut self, _ctx: &egui::Context) {
+        let default_name = format!("{}.pt3", self.filename_stem());
         let path = rfd::FileDialog::new()
             .add_filter("Pro Tracker 3 (*.pt3)", &["pt3"])
-            .set_file_name("module.pt3")
+            .set_file_name(&default_name)
             .save_file();
 
         let Some(path) = path else {
@@ -415,23 +436,25 @@ impl VortexTrackerApp {
     fn save_zx_dialog(&mut self, _ctx: &egui::Context) {
         use formats::zx_export::{ZxExportOptions, ZxFormat};
 
+        let stem = self.filename_stem();
         let module = &self.modules[self.active_module];
         let opts_base = ZxExportOptions {
             load_addr: 0xC000,
             format: ZxFormat::Tap,
             looping: false,
-            name: "module".to_string(),
+            name: stem.clone(),
             title: module.title.clone(),
             author: module.author.clone(),
         };
 
+        let default_name = format!("{stem}.tap");
         let path = rfd::FileDialog::new()
             .add_filter("ZX Spectrum tape (*.tap)", &["tap"])
             .add_filter("AY emulator file (*.ay)", &["ay"])
             .add_filter("Sinclair disc image (*.scl)", &["scl"])
             .add_filter("Hobeta code block (*.$c)", &["$c"])
             .add_filter("Hobeta memory block (*.$m)", &["$m"])
-            .set_file_name("module.tap")
+            .set_file_name(&default_name)
             .save_file();
 
         let Some(path) = path else {
@@ -472,7 +495,7 @@ impl VortexTrackerApp {
     fn save_vtm_dialog(&mut self, ctx: &egui::Context) {
         let text = formats::save_vtm(&self.modules[self.active_module]);
         let bytes = text.into_bytes();
-        let filename = "module.vtm".to_string();
+        let filename = format!("{}.vtm", self.filename_stem());
 
         if wasm_file::save_picker_supported() {
             self.status = "Saving…".to_string();
@@ -498,7 +521,7 @@ impl VortexTrackerApp {
 
     #[cfg(target_arch = "wasm32")]
     fn save_pt3_dialog(&mut self, ctx: &egui::Context) {
-        let filename = "module.pt3".to_string();
+        let filename = format!("{}.pt3", self.filename_stem());
         match formats::save_pt3(&self.modules[self.active_module]) {
             Ok(bytes) => {
                 if wasm_file::save_picker_supported() {
@@ -526,16 +549,17 @@ impl VortexTrackerApp {
     #[cfg(target_arch = "wasm32")]
     fn save_zx_dialog(&mut self, ctx: &egui::Context) {
         use formats::zx_export::{ZxExportOptions, ZxFormat};
+        let stem = self.filename_stem();
         let module = &self.modules[self.active_module];
         let opts = ZxExportOptions {
             load_addr: 0xC000,
             format: ZxFormat::Tap,
             looping: false,
-            name: "module".to_string(),
+            name: stem.clone(),
             title: module.title.clone(),
             author: module.author.clone(),
         };
-        let filename = "module.tap".to_string();
+        let filename = format!("{stem}.tap");
         match formats::save_zx(module, &opts) {
             Ok(bytes) => {
                 if wasm_file::save_picker_supported() {
@@ -581,6 +605,7 @@ impl VortexTrackerApp {
                     self.playback_state = PlaybackState::Stopped;
                     self.modules = vec![module];
                     self.active_module = 0;
+                    self.current_filename = Some(pf.name.clone());
                     self.reset_playback();
                     self.status = format!("Loaded: {}", pf.name);
                 }
@@ -638,6 +663,22 @@ impl eframe::App for VortexTrackerApp {
         #[cfg(target_arch = "wasm32")]
         self.poll_wasm_file_ops();
 
+        // ── Window title: show filename or module title ────────────────────
+        {
+            let title = match &self.current_filename {
+                Some(name) => format!("Vortex Tracker II — {name}"),
+                None => {
+                    let t = &self.modules[self.active_module].title;
+                    if t.is_empty() {
+                        "Vortex Tracker II".to_string()
+                    } else {
+                        format!("Vortex Tracker II — {t}")
+                    }
+                }
+            };
+            ctx.send_viewport_cmd(egui::ViewportCommand::Title(title));
+        }
+
         // ── Load error dialog ──────────────────────────────────────────────
         // Mirrors the Delphi `MessageBox(…, MB_ICONEXCLAMATION)` shown when a
         // file fails to open or parse.  The dialog is modal: other UI is still
@@ -688,6 +729,7 @@ impl eframe::App for VortexTrackerApp {
                         self.modules = vec![Module::default()];
                         self.active_module = 0;
                         self.playback_state = PlaybackState::Stopped;
+                        self.current_filename = None;
                         self.reset_playback();
                         self.status = "New module created".to_string();
                         ui.close_menu();
