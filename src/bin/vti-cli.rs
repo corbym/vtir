@@ -16,7 +16,8 @@ use crossterm::terminal::{
 use vti_ay::{AyConfig, ChipType, Synthesizer};
 use vti_audio::AudioPlayer;
 use vti_core::formats;
-use vti_core::playback::{init_tracker_parameters, Engine, PlayVars};
+use vti_core::playback::{init_tracker_parameters, Engine, PlayVars,
+    get_module_time, get_position_time, get_position_time_ex};
 use vti_core::util::note_to_str;
 use vti_core::{AyRegisters, Module};
 
@@ -294,9 +295,21 @@ impl CliTracker {
     fn draw(&mut self, out: &mut impl Write) -> Result<()> {
         let (term_w, term_h) = terminal::size().unwrap_or((120, 30));
 
+        // Compute timing for the header line.
+        let total_ticks = get_module_time(&self.module);
+        let play_pos  = if self.playing { self.vars.current_position } else { self.selected_position };
+        let play_line = if self.playing { self.vars.current_line.saturating_sub(1) } else { self.selected_row };
+        let (pos_ticks, pos_delay) = get_position_time(&self.module, play_pos);
+        let row_ticks = get_position_time_ex(&self.module, play_pos, pos_delay, play_line);
+        let elapsed = pos_ticks + row_ticks;
+        let fmt_ticks = |t: u32| -> String {
+            let secs = t / 50;
+            format!("{:02}:{:02}", secs / 60, secs % 60)
+        };
+
         let mut lines = Vec::new();
         lines.push(format!("VTI CLI  file={}  title={}  author={}", self.file_name, self.module.title, self.module.author));
-        lines.push(format!("play={}  follow={}  tick={}  pos={}/{}  pat={}  row={}  ch={}",
+        lines.push(format!("play={}  follow={}  tick={}  pos={}/{}  pat={}  row={}  ch={}  time={}/{}",
             if self.playing { "on" } else { "off" },
             if self.follow_playhead { "on" } else { "off" },
             self.tick_count,
@@ -305,6 +318,8 @@ impl CliTracker {
             self.current_pattern_index(),
             self.selected_row,
             self.selected_channel,
+            fmt_ticks(elapsed),
+            fmt_ticks(total_ticks),
         ));
         let audio_state = if self.audio.is_some() {
             "on".to_string()

@@ -1,0 +1,27 @@
+{
+  "generator": "vt_pascal_harness",
+  "test": "song_timing",
+  "comment": "Two-position module: initial_delay=3, pattern 0 has 4 rows (no delay changes), pattern 1 has 3 rows with a delay-change command (cmd=11, parameter=5) on row 1 channel 0.",
+  "module_time": 25,
+  "position_times": [
+    { "pos": 0, "ticks": 0,  "delay_at_pos": 3 },
+    { "pos": 1, "ticks": 12, "delay_at_pos": 3 },
+    { "pos": 2, "ticks": 25, "delay_at_pos": 5 }
+  ],
+  "position_times_ex": [
+    { "pos": 0, "pos_delay": 3, "line": 2, "ticks": 6  },
+    { "pos": 1, "pos_delay": 3, "line": 2, "ticks": 8  },
+    { "pos": 1, "pos_delay": 3, "line": 3, "ticks": 13 }
+  ],
+  "time_params": [
+    { "time": 0,  "found": true,  "pos": 0, "line": 0 },
+    { "time": 3,  "found": true,  "pos": 0, "line": 1 },
+    { "time": 6,  "found": true,  "pos": 0, "line": 2 },
+    { "time": 9,  "found": true,  "pos": 0, "line": 3 },
+    { "time": 12, "found": true,  "pos": 1, "line": 0 },
+    { "time": 15, "found": true,  "pos": 1, "line": 1 },
+    { "time": 20, "found": true,  "pos": 1, "line": 2 },
+    { "time": 24, "found": false, "pos": -1, "line": 0 },
+    { "time": 25, "found": false, "pos": -1, "line": 0 }
+  ]
+}

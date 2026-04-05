@@ -5,7 +5,8 @@ use vti_core::{Module, Pattern, Sample, SampleTick, Ornament, ChannelLine, Addit
 use vti_ay::chip::ChipType;
 use vti_ay::config::AyConfig;
 use vti_ay::synth::Synthesizer;
-use vti_core::playback::{Engine, PlayVars, init_tracker_parameters, PlayResult};
+use vti_core::playback::{Engine, PlayVars, init_tracker_parameters, PlayResult,
+    get_module_time, get_position_time, get_position_time_ex};
 use vti_audio::AudioPlayer;
 use vti_ay::config::SAMPLE_RATE_DEF;
 use vti_core::formats;
@@ -702,7 +703,7 @@ impl eframe::App for VortexTrackerApp {
                 });
                 ui.menu_button("Help", |ui| {
                     if ui.button("About").clicked() {
-                        // TODO: about dialog (PLAN.md §6)
+                        // TODO: about dialog (PLAN.md §5.1)
                         self.status = "Vortex Tracker II — Rust port. Original by Sergey Bulba.".to_string();
                         ui.close_menu();
                     }
@@ -736,7 +737,30 @@ impl eframe::App for VortexTrackerApp {
         // ── Status bar ─────────────────────────────────────────────────────
         egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.label(&self.status);
+                // When playing, show "pos X/N  MM:SS / MM:SS" alongside the status.
+                if self.is_playing {
+                    let module = &self.modules[self.active_module];
+                    let total_ticks = get_module_time(module);
+                    let pos = self.play_vars.current_position;
+                    let line = self.play_vars.current_line.saturating_sub(1);
+                    let (pos_ticks, pos_delay) = get_position_time(module, pos);
+                    let row_ticks = get_position_time_ex(module, pos, pos_delay, line);
+                    let elapsed = pos_ticks + row_ticks;
+                    let fmt_ticks = |t: u32| -> String {
+                        let secs = t / 50;
+                        format!("{:02}:{:02}", secs / 60, secs % 60)
+                    };
+                    ui.label(format!(
+                        "pos {}/{}  {}  {} / {}",
+                        pos,
+                        module.positions.length.saturating_sub(1),
+                        &self.status,
+                        fmt_ticks(elapsed),
+                        fmt_ticks(total_ticks),
+                    ));
+                } else {
+                    ui.label(&self.status);
+                }
             });
         });
 

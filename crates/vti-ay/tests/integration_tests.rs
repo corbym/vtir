@@ -99,18 +99,18 @@ fn env_shape_saw8_decrements_mod32() {
     // After set_envelope_register with type 8, ampl = 32 (bit 2 of 8 is set → -1 start, then mod 32)
     // Actually: (8 & 4) != 0 → ampl = -1; but Saw8 does (ampl-1)&31
     // Let's verify it counts down cyclically
-    let initial = chip.ampl;
+    let initial = chip.envelope_step;
     chip.step_envelope();
-    assert_eq!(chip.ampl, (initial - 1) & 31);
+    assert_eq!(chip.envelope_step, (initial - 1) & 31);
 }
 
 #[test]
 fn env_shape_saw12_increments_mod32() {
     let mut chip = SoundChip::default();
     chip.set_envelope_register(12); // Saw12
-    let initial = chip.ampl;
+    let initial = chip.envelope_step;
     chip.step_envelope();
-    assert_eq!(chip.ampl, (initial + 1) & 31);
+    assert_eq!(chip.envelope_step, (initial + 1) & 31);
 }
 
 #[test]
@@ -125,9 +125,9 @@ fn env_shape_hold0_decays_to_silence() {
     }
     assert!(!chip.first_period);
     // Further steps should not change ampl
-    let saved = chip.ampl;
+    let saved = chip.envelope_step;
     chip.step_envelope();
-    assert_eq!(chip.ampl, saved);
+    assert_eq!(chip.envelope_step, saved);
 }
 
 // ─── SoundChip register setters ──────────────────────────────────────────────
@@ -368,15 +368,15 @@ fn envelope_saw8_cycles_through_all_32_values() {
     chip.set_envelope_register(8);
     // One step to move from the 32 sentinel into the 0..31 cycle (→ 31).
     chip.step_envelope();
-    let cycle_start = chip.ampl;
+    let cycle_start = chip.envelope_step;
     assert_eq!(cycle_start, 31, "Saw8 first in-cycle value should be 31");
 
     let mut values = Vec::with_capacity(32);
     for _ in 0..32 {
-        values.push(chip.ampl);
+        values.push(chip.envelope_step);
         chip.step_envelope();
     }
-    assert_eq!(chip.ampl, cycle_start, "Saw8 must be periodic with period 32");
+    assert_eq!(chip.envelope_step, cycle_start, "Saw8 must be periodic with period 32");
     for i in 0..31 {
         assert_eq!(values[i + 1], (values[i] - 1) & 31,
             "Saw8 must decrement mod 32 at step {i}");
@@ -394,15 +394,15 @@ fn envelope_saw12_cycles_through_all_32_values() {
     chip.set_envelope_register(12);
     // One step moves from the -1 sentinel into the 0..31 cycle (→ 0).
     chip.step_envelope();
-    let cycle_start = chip.ampl;
+    let cycle_start = chip.envelope_step;
     assert_eq!(cycle_start, 0, "Saw12 first in-cycle value should be 0");
 
     let mut values = Vec::with_capacity(32);
     for _ in 0..32 {
-        values.push(chip.ampl);
+        values.push(chip.envelope_step);
         chip.step_envelope();
     }
-    assert_eq!(chip.ampl, cycle_start, "Saw12 must be periodic with period 32");
+    assert_eq!(chip.envelope_step, cycle_start, "Saw12 must be periodic with period 32");
     for i in 0..31 {
         assert_eq!(values[i + 1], (values[i] + 1) & 31,
             "Saw12 must increment mod 32 at step {i}");
@@ -419,10 +419,10 @@ fn envelope_hold0_decays_then_holds() {
         chip.step_envelope();
     }
     assert!(!chip.first_period, "Hold0 should have completed its first period");
-    let held = chip.ampl;
+    let held = chip.envelope_step;
     for _ in 0..10 {
         chip.step_envelope();
-        assert_eq!(chip.ampl, held, "Hold0 must hold after first period ends");
+        assert_eq!(chip.envelope_step, held, "Hold0 must hold after first period ends");
     }
 }
 
@@ -436,10 +436,10 @@ fn envelope_hold31_holds_after_attack() {
         chip.step_envelope();
     }
     assert!(!chip.first_period, "Hold31 first period should end");
-    let held = chip.ampl;
+    let held = chip.envelope_step;
     for _ in 0..10 {
         chip.step_envelope();
-        assert_eq!(chip.ampl, held, "Hold31 must hold after first period ends");
+        assert_eq!(chip.envelope_step, held, "Hold31 must hold after first period ends");
     }
 }
 
@@ -450,7 +450,7 @@ fn envelope_triangle10_bounces() {
     chip.set_envelope_register(10);
     let mut values = Vec::new();
     for _ in 0..64 {
-        values.push(chip.ampl);
+        values.push(chip.envelope_step);
         chip.step_envelope();
     }
     assert!(values.windows(2).any(|w| w[1] < w[0]), "Triangle10 must have a decreasing phase");
@@ -464,7 +464,7 @@ fn envelope_triangle14_bounces() {
     chip.set_envelope_register(14);
     let mut values = Vec::new();
     for _ in 0..64 {
-        values.push(chip.ampl);
+        values.push(chip.envelope_step);
         chip.step_envelope();
     }
     assert!(values.windows(2).any(|w| w[1] < w[0]), "Triangle14 must have a decreasing phase");
@@ -481,11 +481,11 @@ fn envelope_decay_hold_holds_at_31() {
         if !chip.first_period { break; }
     }
     assert!(!chip.first_period, "DecayHold first period should end");
-    assert_eq!(chip.ampl, 31, "DecayHold must hold at 31 after first period");
-    let held = chip.ampl;
+    assert_eq!(chip.envelope_step, 31, "DecayHold must hold at 31 after first period");
+    let held = chip.envelope_step;
     for _ in 0..10 {
         chip.step_envelope();
-        assert_eq!(chip.ampl, held, "DecayHold must stay at 31");
+        assert_eq!(chip.envelope_step, held, "DecayHold must stay at 31");
     }
 }
 
@@ -499,11 +499,11 @@ fn envelope_attack_hold_holds_at_31() {
         if !chip.first_period { break; }
     }
     assert!(!chip.first_period, "AttackHold first period should end");
-    assert_eq!(chip.ampl, 31, "AttackHold must hold at 31 after first period");
-    let held = chip.ampl;
+    assert_eq!(chip.envelope_step, 31, "AttackHold must hold at 31 after first period");
+    let held = chip.envelope_step;
     for _ in 0..10 {
         chip.step_envelope();
-        assert_eq!(chip.ampl, held, "AttackHold must stay at 31");
+        assert_eq!(chip.envelope_step, held, "AttackHold must stay at 31");
     }
 }
 
@@ -526,9 +526,9 @@ fn synthesizer_logic_q_envelope_triggers_step() {
     let mut chip = SoundChip::default();
     chip.registers.envelope = 1;
     chip.set_envelope_register(12); // Saw12 — ascending
-    let initial = chip.ampl;
+    let initial = chip.envelope_step;
     chip.synthesizer_logic_q();
-    assert_eq!(chip.ampl, (initial + 1) & 31,
+    assert_eq!(chip.envelope_step, (initial + 1) & 31,
         "one synthesizer_logic_q step with period=1 should advance the envelope once");
 }
 

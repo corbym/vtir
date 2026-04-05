@@ -519,3 +519,149 @@ fn pattern_play_arpeggio_matches_pascal_baseline() {
             "tick {}: delay_counter", expected_tick.tick);
     }
 }
+
+// ─── Song timing baseline ─────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct SongTimingFixture {
+    module_time: u32,
+    position_times: Vec<PositionTimeCase>,
+    position_times_ex: Vec<PositionTimeExCase>,
+    time_params: Vec<TimeParamsCase>,
+}
+
+#[derive(Deserialize)]
+struct PositionTimeCase {
+    pos: usize,
+    ticks: u32,
+    delay_at_pos: u8,
+}
+
+#[derive(Deserialize)]
+struct PositionTimeExCase {
+    pos: usize,
+    pos_delay: u8,
+    line: usize,
+    ticks: u32,
+}
+
+#[derive(Deserialize)]
+struct TimeParamsCase {
+    time: u32,
+    found: bool,
+    pos: i32,
+    line: usize,
+}
+
+/// Build the two-position test module used by the Pascal `song_timing` harness:
+///   - initial_delay = 3
+///   - positions [0, 1]
+///   - Pattern 0: 4 rows, no delay commands
+///   - Pattern 1: 3 rows; row 1 channel 0 has delay-change command (11, param=5)
+fn make_song_timing_module() -> Module {
+    let mut m = Module::default();
+    m.initial_delay = 3;
+    m.positions.length = 2;
+    m.positions.value[0] = 0;
+    m.positions.value[1] = 1;
+
+    // Pattern 0: 4 empty rows
+    let mut pat0 = Pattern::default();
+    pat0.length = 4;
+    for row in 0..4 {
+        for ch in 0..3 {
+            pat0.items[row].channel[ch].note = -1;
+        }
+    }
+    m.patterns[0] = Some(Box::new(pat0));
+
+    // Pattern 1: 3 rows; row 1 ch 0 has delay-change command
+    let mut pat1 = Pattern::default();
+    pat1.length = 3;
+    for row in 0..3 {
+        for ch in 0..3 {
+            pat1.items[row].channel[ch].note = -1;
+        }
+    }
+    pat1.items[1].channel[0].additional_command = AdditionalCommand {
+        number: 11,
+        delay: 0,
+        parameter: 5,
+    };
+    m.patterns[1] = Some(Box::new(pat1));
+
+    m
+}
+
+/// Verify `get_module_time`, `get_position_time`, `get_position_time_ex`, and
+/// `get_time_params` match the Pascal baseline.
+#[test]
+fn song_timing_matches_pascal_baseline() {
+    use vti_core::playback::{get_module_time, get_position_time, get_position_time_ex, get_time_params};
+
+    let raw = load_core_fixture("song_timing");
+    let fixture: SongTimingFixture =
+        serde_json::from_str(&raw).expect("parse song_timing.json");
+
+    let m = make_song_timing_module();
+
+    // ── get_module_time ───────────────────────────────────────────────────────
+    let got_mt = get_module_time(&m);
+    assert_eq!(
+        got_mt, fixture.module_time,
+        "get_module_time: got {}, want {}",
+        got_mt, fixture.module_time
+    );
+
+    // ── get_position_time ─────────────────────────────────────────────────────
+    for case in &fixture.position_times {
+        let (got_ticks, got_delay) = get_position_time(&m, case.pos);
+        assert_eq!(
+            got_ticks, case.ticks,
+            "get_position_time({}): ticks: got {}, want {}",
+            case.pos, got_ticks, case.ticks
+        );
+        assert_eq!(
+            got_delay, case.delay_at_pos,
+            "get_position_time({}): delay: got {}, want {}",
+            case.pos, got_delay, case.delay_at_pos
+        );
+    }
+
+    // ── get_position_time_ex ──────────────────────────────────────────────────
+    for case in &fixture.position_times_ex {
+        let got = get_position_time_ex(&m, case.pos, case.pos_delay, case.line);
+        assert_eq!(
+            got, case.ticks,
+            "get_position_time_ex({}, {}, {}): got {}, want {}",
+            case.pos, case.pos_delay, case.line, got, case.ticks
+        );
+    }
+
+    // ── get_time_params ───────────────────────────────────────────────────────
+    for case in &fixture.time_params {
+        let got = get_time_params(&m, case.time);
+        if case.found {
+            let (got_pos, got_line) = got.expect(&format!(
+                "get_time_params({}): expected Some, got None",
+                case.time
+            ));
+            assert_eq!(
+                got_pos, case.pos as usize,
+                "get_time_params({}): pos: got {}, want {}",
+                case.time, got_pos, case.pos
+            );
+            assert_eq!(
+                got_line, case.line,
+                "get_time_params({}): line: got {}, want {}",
+                case.time, got_line, case.line
+            );
+        } else {
+            assert!(
+                got.is_none(),
+                "get_time_params({}): expected None, got {:?}",
+                case.time, got
+            );
+        }
+    }
+}

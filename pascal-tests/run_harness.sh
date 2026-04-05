@@ -50,6 +50,7 @@ echo "Generating core fixtures ..."
 ./vt_harness pattern_basic     > "$CORE_FIXTURES/pattern_play_basic.json"
 ./vt_harness pattern_envelope  > "$CORE_FIXTURES/pattern_play_envelope.json"
 ./vt_harness pattern_arpeggio  > "$CORE_FIXTURES/pattern_play_arpeggio.json"
+./vt_harness song_timing       > "$CORE_FIXTURES/song_timing.json"
 
 echo ""
 echo "Fixtures written to:"

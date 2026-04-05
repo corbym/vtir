@@ -94,7 +94,7 @@ pub fn noise_generator(seed: u32) -> u32 {
 pub struct SoundChip {
     pub registers: AyRegisters,
     pub first_period: bool,
-    pub ampl: i32,
+    pub envelope_step: i32,
 
     // Tone counters (split into lo:u16 / hi:u16 words for sub-sample accuracy)
     pub ton_counter_a: u32,
@@ -134,13 +134,19 @@ pub struct SoundChip {
     pub right_chan: i32,
     pub tick_counter: u8,
 
-    // Fixed-point tick accumulator
+    // Bresenham-upsampler fixed-point state (mirrors Tik/Tik_C etc. in Pascal)
+    /// Next audio-sample trigger point in AY-tick units (reset to `delay_in_tiks` on each reset).
     pub tik: u32,
+    /// AY ticks per audio sample (fixed; set from `AyConfig` during init).
     pub delay_in_tiks: u32,
+    /// Running AY-tick counter within the current interrupt period.
     pub current_tik: u32,
+    /// Total AY ticks elapsed since last reset (64-bit to avoid wraparound in long songs).
     pub number_of_tiks: u64,
     pub int_flag: bool,
+    /// Number of AY chip ticks per 50 Hz interrupt period (≈ 4434 at 3.5 MHz / 50 Hz).
     pub ay_tiks_in_interrupt: u32,
+    /// Number of audio samples per 50 Hz interrupt period (≈ 960 at 48 kHz / 50 Hz).
     pub sample_tiks_in_interrupt: u32,
 }
 
@@ -149,7 +155,7 @@ impl Default for SoundChip {
         Self {
             registers: AyRegisters::default(),
             first_period: false,
-            ampl: 0,
+            envelope_step: 0,
             ton_counter_a: 0,
             ton_counter_b: 0,
             ton_counter_c: 0,
@@ -190,7 +196,7 @@ impl SoundChip {
         self.registers = AyRegisters::default();
         self.set_envelope_register(0);
         self.first_period = false;
-        self.ampl = 0;
+        self.envelope_step = 0;
         self.set_mixer_register(0);
         self.set_ampl_a(0);
         self.set_ampl_b(0);
@@ -231,7 +237,7 @@ impl SoundChip {
     pub fn set_envelope_register(&mut self, value: u8) {
         self.envelope_counter = 0;
         self.first_period = true;
-        self.ampl = if (value & 4) == 0 { 32 } else { -1 };
+        self.envelope_step = if (value & 4) == 0 { 32 } else { -1 };
         self.registers.env_type = value;
         self.env_shape = EnvShape::from_register(value);
     }
@@ -262,50 +268,50 @@ impl SoundChip {
         match self.env_shape {
             EnvShape::Hold0 => {
                 if self.first_period {
-                    self.ampl -= 1;
-                    if self.ampl == 0 { self.first_period = false; }
+                    self.envelope_step -= 1;
+                    if self.envelope_step == 0 { self.first_period = false; }
                 }
             }
             EnvShape::Hold31 => {
                 if self.first_period {
-                    self.ampl += 1;
-                    if self.ampl == 32 { self.first_period = false; self.ampl = 0; }
+                    self.envelope_step += 1;
+                    if self.envelope_step == 32 { self.first_period = false; self.envelope_step = 0; }
                 }
             }
             EnvShape::Saw8 => {
-                self.ampl = (self.ampl - 1) & 31;
+                self.envelope_step = (self.envelope_step - 1) & 31;
             }
             EnvShape::Triangle10 => {
                 if self.first_period {
-                    self.ampl -= 1;
-                    if self.ampl < 0 { self.first_period = false; self.ampl = 0; }
+                    self.envelope_step -= 1;
+                    if self.envelope_step < 0 { self.first_period = false; self.envelope_step = 0; }
                 } else {
-                    self.ampl += 1;
-                    if self.ampl == 32 { self.first_period = true; self.ampl = 31; }
+                    self.envelope_step += 1;
+                    if self.envelope_step == 32 { self.first_period = true; self.envelope_step = 31; }
                 }
             }
             EnvShape::DecayHold => {
                 if self.first_period {
-                    self.ampl -= 1;
-                    if self.ampl < 0 { self.first_period = false; self.ampl = 31; }
+                    self.envelope_step -= 1;
+                    if self.envelope_step < 0 { self.first_period = false; self.envelope_step = 31; }
                 }
             }
             EnvShape::Saw12 => {
-                self.ampl = (self.ampl + 1) & 31;
+                self.envelope_step = (self.envelope_step + 1) & 31;
             }
             EnvShape::AttackHold => {
                 if self.first_period {
-                    self.ampl += 1;
-                    if self.ampl == 32 { self.first_period = false; self.ampl = 31; }
+                    self.envelope_step += 1;
+                    if self.envelope_step == 32 { self.first_period = false; self.envelope_step = 31; }
                 }
             }
             EnvShape::Triangle14 => {
                 if !self.first_period {
-                    self.ampl -= 1;
-                    if self.ampl < 0 { self.first_period = true; self.ampl = 0; }
+                    self.envelope_step -= 1;
+                    if self.envelope_step < 0 { self.first_period = true; self.envelope_step = 0; }
                 } else {
-                    self.ampl += 1;
-                    if self.ampl == 32 { self.first_period = false; self.ampl = 31; }
+                    self.envelope_step += 1;
+                    if self.envelope_step == 32 { self.first_period = false; self.envelope_step = 31; }
                 }
             }
         }
@@ -387,7 +393,7 @@ impl SoundChip {
         lev_l: &mut i32,
         lev_r: &mut i32,
     ) {
-        let ampl = self.ampl.clamp(0, 31) as usize;
+        let ampl = self.envelope_step.clamp(0, 31) as usize;
 
         // Channel A
         let mut k = 1i32;

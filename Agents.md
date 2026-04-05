@@ -132,7 +132,7 @@ The following categories of Pascal code require baselines (highest priority firs
 | **Reverse note lookup** | `legacy/trfuncs.pas` → `GetNoteByEnvelope2`, `GetNoteByEnvelope` | Floating-point rounding; used in envelope editor |
 | **Format parsers** (when ported) | `legacy/trfuncs.pas` → `PT32VTM`, `STC2VTM`, `SQT2VTM`, … | Binary → Module round-trip; wrong field decode is silent |
 
-> Functions already covered: `NoiseGenerator`, all 8 envelope shapes, `PT3_Vol` table, all 5 note tables, `Pattern_PlayCurrentLine` (basic and envelope variants). See `PLAN.md §9` for the full status table.
+> Functions already covered: `NoiseGenerator`, all 8 envelope shapes, `PT3_Vol` table, all 5 note tables, `Pattern_PlayCurrentLine` (basic, envelope, and 3-channel arpeggio + noise drum variants), `GetModuleTime` / `GetPositionTime` / `GetPositionTimeEx` / `GetTimeParams`. See `PLAN.md §9` for the full status table.
 
 ### How to add a new baseline
 
@@ -170,6 +170,19 @@ The GUI layer (`src/`) uses **egui / eframe**, which is a single cross-platform 
 - **Web (WASM)**: deployed to GitHub Pages (see `pages.yml` workflow)
 
 There are **no separate platform-specific UI files**. Any feature or bug fix committed to `src/ui/*.rs` is live on all platforms simultaneously — no per-platform follow-up is needed.
+
+### WASM file I/O
+
+On the WASM target, the browser's native file dialogs (`rfd`) are not available. Instead:
+
+- `src/wasm_file.rs` — wraps the browser File System Access API (`showOpenFilePicker` / `showSaveFilePicker`) via `wasm-bindgen`.
+- `src/pending_file.rs` — a one-shot channel that bridges the async JS promise result back into the egui update loop.
+
+These two modules are compiled in only for `cfg(target_arch = "wasm32")`.  Native code continues to use `rfd` directly.
+
+### Error dialog
+
+`VortexTrackerApp` has an `error_dialog: Option<String>` field. When set to `Some(message)`, the `update()` loop renders a modal `egui::Window` with that message. Use this for all load/parse failures — it matches the Delphi `MessageBox(MB_ICONEXCLAMATION)` pattern from the original.
 
 ---
 
