@@ -47,20 +47,20 @@ These formats can be **opened and loaded** into the editor. They are all
 one-way imports — the file is converted into the internal VTM representation
 on load, but the original format cannot be written back out.
 
-| # | Format | Extension |
-|---|--------|-----------|
-| 1 | Pro Tracker 2.xx | `.pt2` |
-| 2 | Pro Tracker 1.xx | `.pt1` |
-| 3 | Flash Tracker | `.fls` |
-| 4 | Fast Tracker | `.ftc` |
-| 5 | Global Tracker 1.x | `.gtr` |
-| 6 | Pro Sound Creator 1.xx | `.psc` |
-| 7 | Pro Sound Maker (compiled) | `.psm` |
-| 8 | ASC Sound Master (compiled) | `.asc` |
-| 9 | Sound Tracker / Super Sonic (compiled) | `.stc` |
-| 10 | Sound Tracker Pro (compiled) | `.stp` |
-| 11 | SQ-Tracker (compiled) | `.sqt` |
-| 12 | Amadeus / Fuxoft AY Language | `.fxm`, `.ay` |
+| # | Format | Extension | Implemented |
+|---|--------|-----------|:-----------:|
+| 1 | Pro Tracker 2.xx | `.pt2` | ☑ |
+| 2 | Pro Tracker 1.xx | `.pt1` | ☑ |
+| 3 | Flash Tracker | `.fls` | ☑ |
+| 4 | Fast Tracker | `.ftc` | ☐ |
+| 5 | Global Tracker 1.x | `.gtr` | ☑ |
+| 6 | Pro Sound Creator 1.xx | `.psc` | ☐ |
+| 7 | Pro Sound Maker (compiled) | `.psm` | ☐ |
+| 8 | ASC Sound Master (compiled) | `.asc`, `.as0` | ☑ |
+| 9 | Sound Tracker / Super Sonic (compiled) | `.stc` | ☑ |
+| 10 | Sound Tracker Pro (compiled) | `.stp` | ☑ |
+| 11 | SQ-Tracker (compiled) | `.sqt` | ☑ |
+| 12 | Amadeus / Fuxoft AY Language | `.fxm`, `.ay` | ☑ `.ay` / ☐ `.fxm` |
 
 ## Supported Export Formats
 
@@ -68,10 +68,10 @@ These are the only formats that can be **saved back to disk**. This matches
 the design of the original Delphi/Pascal application, which only ever wrote
 VTM and PT3 — all other formats were strictly read-only imports.
 
-| Format | Extension | Notes |
-|--------|-----------|-------|
-| Vortex Tracker Module (text) | `.vtm` | Native format — full round-trip, no data loss |
-| Pro Tracker 3.xx | `.pt3` | ZX Spectrum binary — playable on real hardware and emulators |
+| Format | Extension | Implemented | Notes |
+|--------|-----------|:-----------:|-------|
+| Pro Tracker 3.xx | `.pt3` | ☑ | ZX Spectrum binary — playable on real hardware and emulators |
+| Vortex Tracker Module (text) | `.vtm` | ☑ | Native format — full round-trip, no data loss |
 
 > **Why only PT3 and VTM?**  
 > The original Pascal source (`legacy/trfuncs.pas`) defines conversion
