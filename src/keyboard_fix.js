@@ -50,8 +50,23 @@ function attach(input, canvas, options) {
     var timer        = null;
 
     // Ensure the hidden text-agent stays visually hidden even when focused.
+    // Some browsers still paint a caret/focus ring unless we clear multiple
+    // style properties (including WebKit-specific text fill).
+    input.style.position = 'fixed';
+    input.style.top = '0';
+    input.style.right = '0';
+    input.style.width = '1px';
+    input.style.height = '1px';
+    input.style.padding = '0';
+    input.style.margin = '0';
+    input.style.border = '0';
+    input.style.outline = 'none';
+    input.style.boxShadow = 'none';
+    input.style.background = 'transparent';
+    input.style.opacity = '0';
     input.style.caretColor = 'transparent';
     input.style.color = 'transparent';
+    input.style.setProperty('-webkit-text-fill-color', 'transparent');
 
     /* Patch canvas.focus() to a no-op while keep=true.
      * eframe calls canvas.focus() from handle_platform_output when ime=None.

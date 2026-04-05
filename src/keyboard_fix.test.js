@@ -209,4 +209,15 @@ describe('attach() — default mode (no global keyboard popup)', () => {
 
         expect(document.activeElement).toBe(input);
     });
+
+    test('hidden input gets strict invisible styles (no visible caret/ring)', () => {
+        const { canvas, input } = makeDOM();
+        attach(input, canvas, { keepMs: 100 });
+
+        expect(input.style.outline).toBe('none');
+        expect(input.style.opacity).toBe('0');
+        expect(input.style.caretColor).toBe('transparent');
+        expect(input.style.color).toBe('transparent');
+        expect(input.style.getPropertyValue('-webkit-text-fill-color')).toBe('transparent');
+    });
 });
