@@ -7,15 +7,14 @@ use vti_core::AyRegisters;
 // ─── Amplitude tables (© Hacker KAY) ─────────────────────────────────────────
 
 pub static AMPLITUDES_AY: [u16; 16] = [
-    0, 836, 1212, 1773, 2619, 3875, 5397, 8823,
-    10392, 16706, 23339, 29292, 36969, 46421, 55195, 65535,
+    0, 836, 1212, 1773, 2619, 3875, 5397, 8823, 10392, 16706, 23339, 29292, 36969, 46421, 55195,
+    65535,
 ];
 
 pub static AMPLITUDES_YM: [u16; 32] = [
-    0, 0, 0xF8, 0x1C2, 0x29E, 0x33A, 0x3F2, 0x4D7,
-    0x610, 0x77F, 0x90A, 0xA42, 0xC3B, 0xEC2, 0x1137, 0x13A7,
-    0x1750, 0x1BF9, 0x20DF, 0x2596, 0x2C9D, 0x3579, 0x3E55, 0x4768,
-    0x54FF, 0x6624, 0x773B, 0x883F, 0xA1DA, 0xC0FC, 0xE094, 0xFFFF,
+    0, 0, 0xF8, 0x1C2, 0x29E, 0x33A, 0x3F2, 0x4D7, 0x610, 0x77F, 0x90A, 0xA42, 0xC3B, 0xEC2,
+    0x1137, 0x13A7, 0x1750, 0x1BF9, 0x20DF, 0x2596, 0x2C9D, 0x3579, 0x3E55, 0x4768, 0x54FF, 0x6624,
+    0x773B, 0x883F, 0xA1DA, 0xC0FC, 0xE094, 0xFFFF,
 ];
 
 // ─── Chip type ────────────────────────────────────────────────────────────────
@@ -56,15 +55,15 @@ impl EnvShape {
     #[inline]
     pub fn from_register(v: u8) -> Self {
         match v {
-            0..=3 | 9        => EnvShape::Hold0,
-            4..=7 | 15       => EnvShape::Hold31,
-            8                => EnvShape::Saw8,
-            10               => EnvShape::Triangle10,
-            11               => EnvShape::DecayHold,
-            12               => EnvShape::Saw12,
-            13               => EnvShape::AttackHold,
-            14               => EnvShape::Triangle14,
-            _                => EnvShape::Hold0,
+            0..=3 | 9 => EnvShape::Hold0,
+            4..=7 | 15 => EnvShape::Hold31,
+            8 => EnvShape::Saw8,
+            10 => EnvShape::Triangle10,
+            11 => EnvShape::DecayHold,
+            12 => EnvShape::Saw12,
+            13 => EnvShape::AttackHold,
+            14 => EnvShape::Triangle14,
+            _ => EnvShape::Hold0,
         }
     }
 }
@@ -225,11 +224,11 @@ impl SoundChip {
     #[inline]
     pub fn set_mixer_register(&mut self, value: u8) {
         self.registers.mixer = value;
-        self.ton_en_a   = (value & 0x01) == 0;
+        self.ton_en_a = (value & 0x01) == 0;
         self.noise_en_a = (value & 0x08) == 0;
-        self.ton_en_b   = (value & 0x02) == 0;
+        self.ton_en_b = (value & 0x02) == 0;
         self.noise_en_b = (value & 0x10) == 0;
-        self.ton_en_c   = (value & 0x04) == 0;
+        self.ton_en_c = (value & 0x04) == 0;
         self.noise_en_c = (value & 0x20) == 0;
     }
 
@@ -269,13 +268,18 @@ impl SoundChip {
             EnvShape::Hold0 => {
                 if self.first_period {
                     self.envelope_step -= 1;
-                    if self.envelope_step == 0 { self.first_period = false; }
+                    if self.envelope_step == 0 {
+                        self.first_period = false;
+                    }
                 }
             }
             EnvShape::Hold31 => {
                 if self.first_period {
                     self.envelope_step += 1;
-                    if self.envelope_step == 32 { self.first_period = false; self.envelope_step = 0; }
+                    if self.envelope_step == 32 {
+                        self.first_period = false;
+                        self.envelope_step = 0;
+                    }
                 }
             }
             EnvShape::Saw8 => {
@@ -284,16 +288,25 @@ impl SoundChip {
             EnvShape::Triangle10 => {
                 if self.first_period {
                     self.envelope_step -= 1;
-                    if self.envelope_step < 0 { self.first_period = false; self.envelope_step = 0; }
+                    if self.envelope_step < 0 {
+                        self.first_period = false;
+                        self.envelope_step = 0;
+                    }
                 } else {
                     self.envelope_step += 1;
-                    if self.envelope_step == 32 { self.first_period = true; self.envelope_step = 31; }
+                    if self.envelope_step == 32 {
+                        self.first_period = true;
+                        self.envelope_step = 31;
+                    }
                 }
             }
             EnvShape::DecayHold => {
                 if self.first_period {
                     self.envelope_step -= 1;
-                    if self.envelope_step < 0 { self.first_period = false; self.envelope_step = 31; }
+                    if self.envelope_step < 0 {
+                        self.first_period = false;
+                        self.envelope_step = 31;
+                    }
                 }
             }
             EnvShape::Saw12 => {
@@ -302,16 +315,25 @@ impl SoundChip {
             EnvShape::AttackHold => {
                 if self.first_period {
                     self.envelope_step += 1;
-                    if self.envelope_step == 32 { self.first_period = false; self.envelope_step = 31; }
+                    if self.envelope_step == 32 {
+                        self.first_period = false;
+                        self.envelope_step = 31;
+                    }
                 }
             }
             EnvShape::Triangle14 => {
                 if !self.first_period {
                     self.envelope_step -= 1;
-                    if self.envelope_step < 0 { self.first_period = true; self.envelope_step = 0; }
+                    if self.envelope_step < 0 {
+                        self.first_period = true;
+                        self.envelope_step = 0;
+                    }
                 } else {
                     self.envelope_step += 1;
-                    if self.envelope_step == 32 { self.first_period = false; self.envelope_step = 31; }
+                    if self.envelope_step == 32 {
+                        self.first_period = false;
+                        self.envelope_step = 31;
+                    }
                 }
             }
         }
@@ -397,8 +419,12 @@ impl SoundChip {
 
         // Channel A
         let mut k = 1i32;
-        if self.ton_en_a { k = self.ton_a; }
-        if self.noise_en_a { k &= self.noise_val as i32; }
+        if self.ton_en_a {
+            k = self.ton_a;
+        }
+        if self.noise_en_a {
+            k &= self.noise_val as i32;
+        }
         if k != 0 {
             // envelope_en_a=false → fixed amplitude (bit 4 clear) → use register value
             // envelope_en_a=true  → envelope controls level     → use envelope counter
@@ -413,8 +439,12 @@ impl SoundChip {
 
         // Channel B
         let mut k = 1i32;
-        if self.ton_en_b { k = self.ton_b; }
-        if self.noise_en_b { k &= self.noise_val as i32; }
+        if self.ton_en_b {
+            k = self.ton_b;
+        }
+        if self.noise_en_b {
+            k &= self.noise_val as i32;
+        }
         if k != 0 {
             let idx = if self.envelope_en_b {
                 ampl
@@ -427,8 +457,12 @@ impl SoundChip {
 
         // Channel C
         let mut k = 1i32;
-        if self.ton_en_c { k = self.ton_c; }
-        if self.noise_en_c { k &= self.noise_val as i32; }
+        if self.ton_en_c {
+            k = self.ton_c;
+        }
+        if self.noise_en_c {
+            k &= self.noise_val as i32;
+        }
         if k != 0 {
             let idx = if self.envelope_en_c {
                 ampl

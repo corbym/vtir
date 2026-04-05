@@ -259,12 +259,7 @@ fn hobeta_checksum(hdr: &[u8; 17]) -> u16 {
 }
 
 /// Build a 17-byte Hobeta header.
-fn make_hobeta_hdr(
-    name: &str,
-    typ: u8,
-    start: u16,
-    len: usize,
-) -> [u8; 17] {
+fn make_hobeta_hdr(name: &str, typ: u8, start: u16, len: usize) -> [u8; 17] {
     let mut hdr = [0u8; 17];
     // Name: 8 bytes, space-padded
     let name_bytes = name.as_bytes();
@@ -314,11 +309,7 @@ fn build_hobeta_code(
 
 // ── Hobeta $M (memory dump, no player) ───────────────────────────────────────
 
-fn build_hobeta_mem(
-    pt3: &[u8],
-    mod_size: usize,
-    opts: &ZxExportOptions,
-) -> Result<Vec<u8>> {
+fn build_hobeta_mem(pt3: &[u8], mod_size: usize, opts: &ZxExportOptions) -> Result<Vec<u8>> {
     let hdr = make_hobeta_hdr(&opts.name, b'm', opts.load_addr, mod_size);
     let sect_len = ((mod_size + 255) & !255) as usize;
 
@@ -367,7 +358,7 @@ fn build_ay_file(
     // FileVersion, PlayerVersion
     out.push(0u8); // FileVersion
     out.push(0u8); // PlayerVersion
-    // PSpecialPlayer (BE signed, 0 = no special player)
+                   // PSpecialPlayer (BE signed, 0 = no special player)
     out.extend_from_slice(&be16(0));
     // PAuthor: from field position 12, offset to author string
     //   author string is at: 58 + title.len()+1
@@ -401,7 +392,7 @@ fn build_ay_file(
     out.push(1u8); // ChanB
     out.push(2u8); // ChanC
     out.push(3u8); // Noise
-    // SongLength (BE) — use 0 to let AY emulators loop indefinitely
+                   // SongLength (BE) — use 0 to let AY emulators loop indefinitely
     out.extend_from_slice(&be16(0));
     // FadeLength
     out.extend_from_slice(&be16(0));
@@ -419,28 +410,28 @@ fn build_ay_file(
     let player_file_pos = 58 + strings_len;
 
     // Stek = Init = load_addr (big-endian absolute)
-    out.extend_from_slice(&be16(opts.load_addr));         // Stek
-    out.extend_from_slice(&be16(opts.load_addr));         // Init
-    out.extend_from_slice(&be16(opts.load_addr + 5));     // Inter (play entry = START+5)
-    // Adr1: load address for player block
-    out.extend_from_slice(&be16(opts.load_addr));         // Adr1
-    out.extend_from_slice(&be16(zxplsz as u16));          // Len1
-    // Offs1 (at file offset 48): relative to 48 → player_file_pos
+    out.extend_from_slice(&be16(opts.load_addr)); // Stek
+    out.extend_from_slice(&be16(opts.load_addr)); // Init
+    out.extend_from_slice(&be16(opts.load_addr + 5)); // Inter (play entry = START+5)
+                                                      // Adr1: load address for player block
+    out.extend_from_slice(&be16(opts.load_addr)); // Adr1
+    out.extend_from_slice(&be16(zxplsz as u16)); // Len1
+                                                 // Offs1 (at file offset 48): relative to 48 → player_file_pos
     let offs1 = (player_file_pos - 48) as u16;
-    out.extend_from_slice(&be16(offs1));                  // Offs1
-    // Adr2: load address for PT3 data (after player + variables)
+    out.extend_from_slice(&be16(offs1)); // Offs1
+                                         // Adr2: load address for PT3 data (after player + variables)
     let adr2 = opts.load_addr as usize + zxplsz + zxdtsz;
-    out.extend_from_slice(&be16(adr2 as u16));            // Adr2
-    out.extend_from_slice(&be16(pt3.len() as u16));       // Len2
-    // Offs2 (at file offset 54): relative to 54 → pt3 file position.
-    // In the AY file the variables area (zxdtsz bytes) is NOT written to the
-    // file — the AY emulator loads each TPoints block at its stated ZX address,
-    // so the gap between Adr1+Len1 and Adr2 is already zeroed ZX RAM.
+    out.extend_from_slice(&be16(adr2 as u16)); // Adr2
+    out.extend_from_slice(&be16(pt3.len() as u16)); // Len2
+                                                    // Offs2 (at file offset 54): relative to 54 → pt3 file position.
+                                                    // In the AY file the variables area (zxdtsz bytes) is NOT written to the
+                                                    // file — the AY emulator loads each TPoints block at its stated ZX address,
+                                                    // so the gap between Adr1+Len1 and Adr2 is already zeroed ZX RAM.
     let pt3_file_pos = player_file_pos + zxplsz;
     let offs2 = (pt3_file_pos - 54) as u16;
-    out.extend_from_slice(&be16(offs2));                  // Offs2
-    out.extend_from_slice(&be16(0));                      // Zero (terminator)
-    // total TPoints: 20 bytes ✓
+    out.extend_from_slice(&be16(offs2)); // Offs2
+    out.extend_from_slice(&be16(0)); // Zero (terminator)
+                                     // total TPoints: 20 bytes ✓
 
     // ── String table ─────────────────────────────────────────────────────────
     out.extend_from_slice(title);
@@ -471,7 +462,11 @@ fn build_scl(
     zxdtsz: usize,
     opts: &ZxExportOptions,
 ) -> Result<Vec<u8>> {
-    let player_name = if opts.name.is_empty() { "vtplayer" } else { &opts.name };
+    let player_name = if opts.name.is_empty() {
+        "vtplayer"
+    } else {
+        &opts.name
+    };
     let data_start = opts.load_addr as usize + zxplsz + zxdtsz;
 
     // Player sectors (rounded up to 256-byte boundary)
@@ -489,7 +484,7 @@ fn build_scl(
     let mut hdr = [0u8; 37];
     hdr[..8].copy_from_slice(b"SINCLAIR");
     hdr[8] = 2; // two directory entries
-    // Entry 1: player
+                // Entry 1: player
     let pl_name = b"vtplayer";
     hdr[9..17].copy_from_slice(pl_name);
     hdr[17] = b'C';
@@ -587,7 +582,11 @@ fn build_tap(
     };
 
     let player_name = "vtplayer";
-    let data_name = if opts.name.is_empty() { "module    " } else { &opts.name };
+    let data_name = if opts.name.is_empty() {
+        "module    "
+    } else {
+        &opts.name
+    };
 
     let mut out: Vec<u8> = Vec::new();
 

@@ -18,7 +18,7 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Blob, BlobPropertyBag, HtmlAnchorElement, Url};
 
-use crate::pending_file::{PendingFile, put_pending_open, put_pending_save_status};
+use crate::pending_file::{put_pending_open, put_pending_save_status, PendingFile};
 
 // ── extern "C" bindings ───────────────────────────────────────────────────────
 
@@ -82,14 +82,12 @@ extern "C" {
 
 /// Returns `true` if `window.showOpenFilePicker` is available in this browser.
 pub fn open_picker_supported() -> bool {
-    Reflect::has(&js_sys::global(), &JsValue::from_str("showOpenFilePicker"))
-        .unwrap_or(false)
+    Reflect::has(&js_sys::global(), &JsValue::from_str("showOpenFilePicker")).unwrap_or(false)
 }
 
 /// Returns `true` if `window.showSaveFilePicker` is available in this browser.
 pub fn save_picker_supported() -> bool {
-    Reflect::has(&js_sys::global(), &JsValue::from_str("showSaveFilePicker"))
-        .unwrap_or(false)
+    Reflect::has(&js_sys::global(), &JsValue::from_str("showSaveFilePicker")).unwrap_or(false)
 }
 
 // ── Open ──────────────────────────────────────────────────────────────────────
@@ -155,7 +153,11 @@ fn build_open_options() -> JsValue {
     exts.push(&JsValue::from_str(".fls"));
 
     let accept = Object::new();
-    let _ = Reflect::set(&accept, &JsValue::from_str("application/octet-stream"), &exts);
+    let _ = Reflect::set(
+        &accept,
+        &JsValue::from_str("application/octet-stream"),
+        &exts,
+    );
 
     let type_entry = Object::new();
     let _ = Reflect::set(
@@ -170,7 +172,11 @@ fn build_open_options() -> JsValue {
 
     let opts = Object::new();
     let _ = Reflect::set(&opts, &JsValue::from_str("types"), &types_arr);
-    let _ = Reflect::set(&opts, &JsValue::from_str("multiple"), &JsValue::from_bool(false));
+    let _ = Reflect::set(
+        &opts,
+        &JsValue::from_str("multiple"),
+        &JsValue::from_bool(false),
+    );
     opts.into()
 }
 
@@ -225,7 +231,11 @@ fn build_save_options(filename: &str) -> JsValue {
     exts.push(&JsValue::from_str(".vtm"));
 
     let accept = Object::new();
-    let _ = Reflect::set(&accept, &JsValue::from_str("application/octet-stream"), &exts);
+    let _ = Reflect::set(
+        &accept,
+        &JsValue::from_str("application/octet-stream"),
+        &exts,
+    );
 
     let type_entry = Object::new();
     let _ = Reflect::set(
@@ -239,7 +249,11 @@ fn build_save_options(filename: &str) -> JsValue {
     types_arr.push(&type_entry);
 
     let opts = Object::new();
-    let _ = Reflect::set(&opts, &JsValue::from_str("suggestedName"), &JsValue::from_str(filename));
+    let _ = Reflect::set(
+        &opts,
+        &JsValue::from_str("suggestedName"),
+        &JsValue::from_str(filename),
+    );
     let _ = Reflect::set(&opts, &JsValue::from_str("types"), &types_arr);
     opts.into()
 }
@@ -278,9 +292,7 @@ pub fn download_blob(filename: &str, bytes: &[u8]) -> Result<(), JsValue> {
     let document = window
         .document()
         .ok_or_else(|| JsValue::from_str("no document"))?;
-    let anchor: HtmlAnchorElement = document
-        .create_element("a")?
-        .unchecked_into();
+    let anchor: HtmlAnchorElement = document.create_element("a")?.unchecked_into();
     anchor.set_href(&url);
     anchor.set_download(filename);
 

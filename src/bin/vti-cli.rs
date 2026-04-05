@@ -10,14 +10,16 @@ use crossterm::execute;
 use crossterm::queue;
 use crossterm::style::Print;
 use crossterm::terminal::{
-    self, BeginSynchronizedUpdate, Clear, ClearType, EndSynchronizedUpdate,
-    EnterAlternateScreen, LeaveAlternateScreen,
+    self, BeginSynchronizedUpdate, Clear, ClearType, EndSynchronizedUpdate, EnterAlternateScreen,
+    LeaveAlternateScreen,
 };
-use vti_ay::{AyConfig, ChipType, Synthesizer};
 use vti_audio::AudioPlayer;
+use vti_ay::{AyConfig, ChipType, Synthesizer};
 use vti_core::formats;
-use vti_core::playback::{init_tracker_parameters, Engine, PlayVars,
-    get_module_time, get_position_time, get_position_time_ex};
+use vti_core::playback::{
+    get_module_time, get_position_time, get_position_time_ex, init_tracker_parameters, Engine,
+    PlayVars,
+};
 use vti_core::util::note_to_str;
 use vti_core::{AyRegisters, Module};
 
@@ -64,7 +66,8 @@ impl CliArgs {
                     let Some(v) = args.next() else {
                         bail!("--ticks expects a numeric value");
                     };
-                    let parsed = v.parse::<usize>()
+                    let parsed = v
+                        .parse::<usize>()
                         .with_context(|| format!("invalid --ticks value: {v}"))?;
                     ticks = Some(parsed);
                 }
@@ -96,7 +99,11 @@ impl CliArgs {
             bail!("missing module file path");
         };
 
-        Ok(Self { module_path, ticks, play })
+        Ok(Self {
+            module_path,
+            ticks,
+            play,
+        })
     }
 }
 
@@ -130,8 +137,8 @@ struct CliTracker {
 
 impl CliTracker {
     fn load(path: &Path, start_playing: bool) -> Result<Self> {
-        let bytes = std::fs::read(path)
-            .with_context(|| format!("cannot read file: {}", path.display()))?;
+        let bytes =
+            std::fs::read(path).with_context(|| format!("cannot read file: {}", path.display()))?;
         let file_name = path
             .file_name()
             .and_then(|s| s.to_str())
@@ -242,10 +249,7 @@ impl CliTracker {
         self.synth.apply_registers(0, &regs);
         self.synth.render_frame(self.samples_per_tick);
         let pcm = self.synth.drain(self.samples_per_tick as usize);
-        self.last_pcm_nonzero = pcm
-            .iter()
-            .filter(|s| s.left != 0 || s.right != 0)
-            .count();
+        self.last_pcm_nonzero = pcm.iter().filter(|s| s.left != 0 || s.right != 0).count();
         self.total_pcm_nonzero += self.last_pcm_nonzero;
 
         if let Some(audio) = &self.audio {
@@ -297,8 +301,16 @@ impl CliTracker {
 
         // Compute timing for the header line.
         let total_ticks = get_module_time(&self.module);
-        let play_pos  = if self.playing { self.vars.current_position } else { self.selected_position };
-        let play_line = if self.playing { self.vars.current_line.saturating_sub(1) } else { self.selected_row };
+        let play_pos = if self.playing {
+            self.vars.current_position
+        } else {
+            self.selected_position
+        };
+        let play_line = if self.playing {
+            self.vars.current_line.saturating_sub(1)
+        } else {
+            self.selected_row
+        };
         let (pos_ticks, pos_delay) = get_position_time(&self.module, play_pos);
         let row_ticks = get_position_time_ex(&self.module, play_pos, pos_delay, play_line);
         let elapsed = pos_ticks + row_ticks;
@@ -308,8 +320,12 @@ impl CliTracker {
         };
 
         let mut lines = Vec::new();
-        lines.push(format!("VTI CLI  file={}  title={}  author={}", self.file_name, self.module.title, self.module.author));
-        lines.push(format!("play={}  follow={}  tick={}  pos={}/{}  pat={}  row={}  ch={}  time={}/{}",
+        lines.push(format!(
+            "VTI CLI  file={}  title={}  author={}",
+            self.file_name, self.module.title, self.module.author
+        ));
+        lines.push(format!(
+            "play={}  follow={}  tick={}  pos={}/{}  pat={}  row={}  ch={}  time={}/{}",
             if self.playing { "on" } else { "off" },
             if self.follow_playhead { "on" } else { "off" },
             self.tick_count,
@@ -358,12 +374,28 @@ impl CliTracker {
 
         for row in first_row..last_row {
             let cursor_mark = if row == self.selected_row { '>' } else { ' ' };
-            let play_mark = if play_pos == self.selected_position && row == play_row { '*' } else { ' ' };
-            let ch0 = format_channel(&pattern.items[row].channel[0], self.selected_channel == 0 && row == self.selected_row);
-            let ch1 = format_channel(&pattern.items[row].channel[1], self.selected_channel == 1 && row == self.selected_row);
-            let ch2 = format_channel(&pattern.items[row].channel[2], self.selected_channel == 2 && row == self.selected_row);
+            let play_mark = if play_pos == self.selected_position && row == play_row {
+                '*'
+            } else {
+                ' '
+            };
+            let ch0 = format_channel(
+                &pattern.items[row].channel[0],
+                self.selected_channel == 0 && row == self.selected_row,
+            );
+            let ch1 = format_channel(
+                &pattern.items[row].channel[1],
+                self.selected_channel == 1 && row == self.selected_row,
+            );
+            let ch2 = format_channel(
+                &pattern.items[row].channel[2],
+                self.selected_channel == 2 && row == self.selected_row,
+            );
 
-            lines.push(format!("{}{} {:02X}|{}|{}|{}", cursor_mark, play_mark, row, ch0, ch1, ch2));
+            lines.push(format!(
+                "{}{} {:02X}|{}|{}|{}",
+                cursor_mark, play_mark, row, ch0, ch1, ch2
+            ));
         }
 
         render_lines(out, &lines, term_w, term_h, &mut self.last_drawn_lines)?;
@@ -409,7 +441,10 @@ fn clip_to_width(s: &str, max: usize) -> String {
 fn format_channel(line: &vti_core::ChannelLine, selected: bool) -> String {
     let note = note_to_str(line.note);
     let sel = if selected { '>' } else { ' ' };
-    format!("{}{} s{:02X} o{:02X} v{:X}", sel, note, line.sample, line.ornament, line.volume)
+    format!(
+        "{}{} s{:02X} o{:02X} v{:X}",
+        sel, note, line.sample, line.ornament, line.volume
+    )
 }
 
 fn command_from_key(key: KeyEvent) -> Option<Command> {
@@ -435,8 +470,7 @@ struct TerminalGuard;
 impl TerminalGuard {
     fn enter(out: &mut impl Write) -> Result<Self> {
         terminal::enable_raw_mode().context("failed to enable raw mode")?;
-        execute!(out, EnterAlternateScreen, Hide)
-            .context("failed to enter alternate screen")?;
+        execute!(out, EnterAlternateScreen, Hide).context("failed to enter alternate screen")?;
         Ok(Self)
     }
 }
@@ -580,10 +614,22 @@ mod tests {
 
     #[test]
     fn key_mapping_is_intuitive_for_core_controls() {
-        assert_eq!(command_from_key(KeyEvent::from(KeyCode::Char('q'))), Some(Command::Quit));
-        assert_eq!(command_from_key(KeyEvent::from(KeyCode::Char(' '))), Some(Command::TogglePlay));
-        assert_eq!(command_from_key(KeyEvent::from(KeyCode::Up)), Some(Command::MoveUp));
-        assert_eq!(command_from_key(KeyEvent::from(KeyCode::PageDown)), Some(Command::NextPosition));
+        assert_eq!(
+            command_from_key(KeyEvent::from(KeyCode::Char('q'))),
+            Some(Command::Quit)
+        );
+        assert_eq!(
+            command_from_key(KeyEvent::from(KeyCode::Char(' '))),
+            Some(Command::TogglePlay)
+        );
+        assert_eq!(
+            command_from_key(KeyEvent::from(KeyCode::Up)),
+            Some(Command::MoveUp)
+        );
+        assert_eq!(
+            command_from_key(KeyEvent::from(KeyCode::PageDown)),
+            Some(Command::NextPosition)
+        );
     }
 
     #[test]
@@ -609,7 +655,10 @@ mod tests {
         let mut t = tracker_for_test();
         t.apply_command(Command::Step);
         assert_eq!(t.tick_count, 1);
-        assert!(t.last_pcm_nonzero > 0, "expected non-zero PCM from test module step");
+        assert!(
+            t.last_pcm_nonzero > 0,
+            "expected non-zero PCM from test module step"
+        );
     }
 
     #[test]
@@ -627,15 +676,14 @@ mod tests {
     // harness keeps the tests independent of any UI framework.
 
     use vti_core::editor::{
-        compute_note, hex_digit_entry, note_key_result, piano_key_to_semitone_offset,
-        NoteKeyResult,
+        compute_note, hex_digit_entry, note_key_result, piano_key_to_semitone_offset, NoteKeyResult,
     };
 
     #[test]
     fn piano_layout_z_at_octave4_is_c4() {
         // z → C, octave 4 → note 36  (C-4 in VT2 1-based notation)
         let offset = piano_key_to_semitone_offset('z').expect("z should be a note key");
-        let note   = compute_note(offset, 4).expect("should be in range");
+        let note = compute_note(offset, 4).expect("should be in range");
         assert_eq!(note, 36);
     }
 
@@ -649,10 +697,7 @@ mod tests {
     #[test]
     fn piano_layout_u_at_octave3_is_b4() {
         // u → B+1 (offset 23), octave 3 → 23 + (3-1)*12 = 23+24 = 47 = B-4
-        assert_eq!(
-            note_key_result('u', 3),
-            Some(NoteKeyResult::Note(47))
-        );
+        assert_eq!(note_key_result('u', 3), Some(NoteKeyResult::Note(47)));
     }
 
     #[test]
@@ -717,10 +762,7 @@ mod tests {
         // Write the note to row 1, channel 0.
         m.patterns[0].as_mut().unwrap().items[1].channel[0].note = note;
 
-        assert_eq!(
-            m.patterns[0].as_ref().unwrap().items[1].channel[0].note,
-            36
-        );
+        assert_eq!(m.patterns[0].as_ref().unwrap().items[1].channel[0].note, 36);
     }
 
     #[test]
@@ -753,4 +795,3 @@ mod tests {
         assert_eq!(cell.volume, 15);
     }
 }
-

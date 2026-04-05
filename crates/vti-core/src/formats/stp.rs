@@ -43,12 +43,10 @@ pub fn parse(data: &[u8]) -> Result<Module> {
     module.ton_table = 1;
 
     // ── KSA metadata detection & title ────────────────────────────────────────
-    if data.len() >= KSA_ID_OFF + KSA_ID_LEN
-        && &data[KSA_ID_OFF..KSA_ID_OFF + KSA_ID_LEN] == KSA_ID
+    if data.len() >= KSA_ID_OFF + KSA_ID_LEN && &data[KSA_ID_OFF..KSA_ID_OFF + KSA_ID_LEN] == KSA_ID
     {
         if data.len() >= KSA_TITLE_OFF + KSA_TITLE_LEN {
-            module.title =
-                trim_right_ascii(&data[KSA_TITLE_OFF..KSA_TITLE_OFF + KSA_TITLE_LEN]);
+            module.title = trim_right_ascii(&data[KSA_TITLE_OFF..KSA_TITLE_OFF + KSA_TITLE_LEN]);
         }
     } else {
         module.title = String::new();

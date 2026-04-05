@@ -147,8 +147,8 @@ pub fn parse(data: &[u8]) -> Result<Module> {
             break;
         }
         let j = b as usize; // pattern index
-        // Guard: positions.value has MAX_NUM_OF_PATS slots; patterns has MAX_NUM_OF_PATS+1.
-        // Pattern index bytes 85–127 are invalid — skip them rather than panicking.
+                            // Guard: positions.value has MAX_NUM_OF_PATS slots; patterns has MAX_NUM_OF_PATS+1.
+                            // Pattern index bytes 85–127 are invalid — skip them rather than panicking.
         if pos >= crate::MAX_NUM_OF_PATS || j > crate::MAX_NUM_OF_PATS {
             break;
         }
@@ -156,8 +156,7 @@ pub fn parse(data: &[u8]) -> Result<Module> {
         pos += 1;
 
         if module.patterns[j].is_none() {
-            let pattern =
-                decode_pattern(data, pat_ptr, j).unwrap_or_else(|_| Pattern::default());
+            let pattern = decode_pattern(data, pat_ptr, j).unwrap_or_else(|_| Pattern::default());
             module.patterns[j] = Some(Box::new(pattern));
         }
     }

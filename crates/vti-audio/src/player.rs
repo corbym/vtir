@@ -131,16 +131,22 @@ impl AudioPlayer {
                 &config,
                 move |output: &mut [f32], _| {
                     let mut ring = buf_cb.lock().unwrap();
-                    diagnostics_cb.callback_count.fetch_add(1, Ordering::Relaxed);
+                    diagnostics_cb
+                        .callback_count
+                        .fetch_add(1, Ordering::Relaxed);
                     for frame in output.chunks_exact_mut(2) {
                         let s = if let Some(s) = ring.pop() {
-                            diagnostics_cb.popped_samples.fetch_add(1, Ordering::Relaxed);
+                            diagnostics_cb
+                                .popped_samples
+                                .fetch_add(1, Ordering::Relaxed);
                             s
                         } else {
-                            diagnostics_cb.underrun_frames.fetch_add(1, Ordering::Relaxed);
+                            diagnostics_cb
+                                .underrun_frames
+                                .fetch_add(1, Ordering::Relaxed);
                             StereoSample::default()
                         };
-                        frame[0] = s.left  as f32 / 32768.0;
+                        frame[0] = s.left as f32 / 32768.0;
                         frame[1] = s.right as f32 / 32768.0;
                     }
                 },

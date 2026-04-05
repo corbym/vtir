@@ -1,22 +1,24 @@
 //! Root application state and eframe `App` implementation.
 
 use eframe::egui;
-use vti_core::{Module, Pattern, Sample, SampleTick, Ornament, ChannelLine, AdditionalCommand};
+use vti_audio::AudioPlayer;
 use vti_ay::chip::ChipType;
 use vti_ay::config::AyConfig;
-use vti_ay::synth::Synthesizer;
-use vti_core::playback::{Engine, PlayVars, init_tracker_parameters, PlayResult,
-    get_module_time, get_position_time, get_position_time_ex};
-use vti_audio::AudioPlayer;
 use vti_ay::config::SAMPLE_RATE_DEF;
+use vti_ay::synth::Synthesizer;
 use vti_core::formats;
+use vti_core::playback::{
+    get_module_time, get_position_time, get_position_time_ex, init_tracker_parameters, Engine,
+    PlayResult, PlayVars,
+};
+use vti_core::{AdditionalCommand, ChannelLine, Module, Ornament, Pattern, Sample, SampleTick};
 
-#[cfg(target_arch = "wasm32")]
-use crate::wasm_file;
 #[cfg(target_arch = "wasm32")]
 use crate::pending_file;
+#[cfg(target_arch = "wasm32")]
+use crate::wasm_file;
 
-use crate::ui::{PatternEditor, SampleEditor, OrnamentEditor, Toolbar};
+use crate::ui::{OrnamentEditor, PatternEditor, SampleEditor, Toolbar};
 
 /// Top-level application state.
 pub struct VortexTrackerApp {
@@ -192,7 +194,7 @@ fn make_demo_module() -> Module {
     // Row 0: C major (I)
     pat.items[0].channel[0] = make_chan(48, 1, 1, 15); // C-5 lead
     pat.items[0].channel[1] = make_chan(24, 2, 1, 12); // C-3 bass
-    pat.items[0].channel[2] = make_chan(0,  3, 0, 15); // noise drum
+    pat.items[0].channel[2] = make_chan(0, 3, 0, 15); // noise drum
 
     // Row 4: G major (V)
     pat.items[4].channel[0] = make_chan(43, 1, 1, 15); // G-4 lead
@@ -201,7 +203,7 @@ fn make_demo_module() -> Module {
     // Row 8: A minor (vi)
     pat.items[8].channel[0] = make_chan(45, 1, 2, 15); // A-4 lead (minor arpeggio)
     pat.items[8].channel[1] = make_chan(33, 2, 2, 12); // A-3 bass
-    pat.items[8].channel[2] = make_chan(0,  3, 0, 15); // noise drum
+    pat.items[8].channel[2] = make_chan(0, 3, 0, 15); // noise drum
 
     // Row 12: F major (IV)
     pat.items[12].channel[0] = make_chan(41, 1, 1, 15); // F-4 lead
@@ -283,8 +285,14 @@ impl VortexTrackerApp {
         // device expects.  Using 44100 here while the synth runs at 48000 caused
         // all music to play at 44100/48000 ≈ 0.92× speed (about 1.5 semitones flat).
         match AudioPlayer::start(SAMPLE_RATE_DEF) {
-            Ok(p)  => { log::info!("audio player started"); Some(p) }
-            Err(e) => { log::warn!("audio unavailable: {e}"); None }
+            Ok(p) => {
+                log::info!("audio player started");
+                Some(p)
+            }
+            Err(e) => {
+                log::warn!("audio unavailable: {e}");
+                None
+            }
         }
     }
 
@@ -300,8 +308,8 @@ impl VortexTrackerApp {
             .add_filter(
                 "Tracker modules",
                 &[
-                    "vtm", "pt3", "pt2", "pt1", "stc", "stp", "ay",
-                    "sqt", "asc", "as0", "gtr", "fls",
+                    "vtm", "pt3", "pt2", "pt1", "stc", "stp", "ay", "sqt", "asc", "as0", "gtr",
+                    "fls",
                 ],
             )
             .add_filter("VTM text (*.vtm)", &["vtm"])
@@ -328,10 +336,7 @@ impl VortexTrackerApp {
                 self.set_error(format!("Open failed: {e}"));
             }
             Ok(bytes) => {
-                let filename = path
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("file");
+                let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("file");
                 match formats::load(&bytes, filename) {
                     Ok(module) => {
                         self.playback_state = PlaybackState::Stopped;
@@ -389,10 +394,7 @@ impl VortexTrackerApp {
         let text = formats::save_vtm(&self.modules[self.active_module]);
         match std::fs::write(&path, text.as_bytes()) {
             Ok(()) => {
-                let name = path
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("file");
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("file");
                 self.status = format!("Saved: {}", name);
             }
             Err(e) => {
@@ -417,10 +419,7 @@ impl VortexTrackerApp {
         match formats::save_pt3(&self.modules[self.active_module]) {
             Ok(bytes) => match std::fs::write(&path, &bytes) {
                 Ok(()) => {
-                    let name = path
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("file");
+                    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("file");
                     self.status = format!("Saved: {}", name);
                 }
                 Err(e) => {
@@ -476,21 +475,21 @@ impl VortexTrackerApp {
             .unwrap_or("")
             .to_lowercase();
         let format = match ext.as_str() {
-            "ay"                                 => ZxFormat::AyFile,
-            "scl"                                => ZxFormat::Scl,
-            "$c" | "c"                           => ZxFormat::HobetaCode,
-            "$m" | "m"                           => ZxFormat::HobetaMem,
-            _                                    => ZxFormat::Tap,
+            "ay" => ZxFormat::AyFile,
+            "scl" => ZxFormat::Scl,
+            "$c" | "c" => ZxFormat::HobetaCode,
+            "$m" | "m" => ZxFormat::HobetaMem,
+            _ => ZxFormat::Tap,
         };
-        let opts = ZxExportOptions { format, ..opts_base };
+        let opts = ZxExportOptions {
+            format,
+            ..opts_base
+        };
 
         match formats::save_zx(module, &opts) {
             Ok(bytes) => match std::fs::write(&path, &bytes) {
                 Ok(()) => {
-                    let name = path
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("file");
+                    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("file");
                     self.status = format!("Exported: {}", name);
                 }
                 Err(e) => self.status = format!("Export failed: {e}"),
@@ -576,10 +575,12 @@ impl VortexTrackerApp {
                 } else {
                     match wasm_file::download_blob(&filename, &bytes) {
                         Ok(()) => self.status = format!("Exported: {filename}"),
-                        Err(e) => self.status = format!(
-                            "Export failed: {}",
-                            e.as_string().unwrap_or_else(|| format!("{e:?}"))
-                        ),
+                        Err(e) => {
+                            self.status = format!(
+                                "Export failed: {}",
+                                e.as_string().unwrap_or_else(|| format!("{e:?}"))
+                            )
+                        }
                     }
                 }
             }
@@ -589,15 +590,18 @@ impl VortexTrackerApp {
 
     /// Re-initialise playback state so the next Play starts from the beginning.
     fn reset_playback(&mut self) {
-        init_tracker_parameters(&mut self.modules[self.active_module], &mut self.play_vars, true);
+        init_tracker_parameters(
+            &mut self.modules[self.active_module],
+            &mut self.play_vars,
+            true,
+        );
         self.play_vars.delay = self.modules[self.active_module].initial_delay as i8;
         self.play_vars.current_position = 0;
-        self.play_vars.current_pattern =
-            if self.modules[self.active_module].positions.length > 0 {
-                self.modules[self.active_module].positions.value[0] as i32
-            } else {
-                0
-            };
+        self.play_vars.current_pattern = if self.modules[self.active_module].positions.length > 0 {
+            self.modules[self.active_module].positions.value[0] as i32
+        } else {
+            0
+        };
     }
 
     /// Drain any pending WASM file-operation results and apply them to app state.
@@ -618,8 +622,8 @@ impl VortexTrackerApp {
                     self.status = format!("Loaded: {}", pf.name);
                 }
                 Err(e) => {
-                        self.set_error(format!("Parse error: {e}"));
-                    }
+                    self.set_error(format!("Parse error: {e}"));
+                }
             }
         }
 
@@ -637,12 +641,12 @@ impl VortexTrackerApp {
 
         let result = {
             let module = &mut self.modules[self.active_module];
-            let vars   = &mut self.play_vars;
+            let vars = &mut self.play_vars;
             let mut engine = Engine { module, vars };
             match self.play_mode {
-                PlayMode::Module  => engine.module_play_current_line(&mut ay_regs),
+                PlayMode::Module => engine.module_play_current_line(&mut ay_regs),
                 PlayMode::Pattern => engine.pattern_play_current_line(&mut ay_regs),
-                PlayMode::Line    => {
+                PlayMode::Line => {
                     engine.pattern_play_only_current_line(&mut ay_regs);
                     PlayResult::Updated
                 }
@@ -769,7 +773,8 @@ impl eframe::App for VortexTrackerApp {
                 ui.menu_button("Help", |ui| {
                     if ui.button("About").clicked() {
                         // TODO: about dialog (PLAN.md §5.1)
-                        self.status = "Vortex Tracker II — Rust port. Original by Sergey Bulba.".to_string();
+                        self.status =
+                            "Vortex Tracker II — Rust port. Original by Sergey Bulba.".to_string();
                         ui.close_menu();
                     }
                 });
@@ -779,7 +784,12 @@ impl eframe::App for VortexTrackerApp {
         // ── Toolbar ────────────────────────────────────────────────────────
         egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
             let prev_state = self.playback_state;
-            self.toolbar.show(ui, &mut self.playback_state, &mut self.play_mode, &mut self.status);
+            self.toolbar.show(
+                ui,
+                &mut self.playback_state,
+                &mut self.play_mode,
+                &mut self.status,
+            );
 
             match (prev_state, self.playback_state) {
                 // Stopped → Playing: reset position and start audio from the beginning.
@@ -791,7 +801,11 @@ impl eframe::App for VortexTrackerApp {
                     if self.audio.is_none() {
                         self.audio = Self::try_open_audio();
                     }
-                    let audio_status = if self.audio.is_some() { "Playing" } else { "Playing (no audio device)" };
+                    let audio_status = if self.audio.is_some() {
+                        "Playing"
+                    } else {
+                        "Playing (no audio device)"
+                    };
                     self.status = audio_status.to_string();
                 }
                 // Paused → Playing: resume from the current position (no reset).
@@ -802,13 +816,18 @@ impl eframe::App for VortexTrackerApp {
                     if self.audio.is_none() {
                         self.audio = Self::try_open_audio();
                     }
-                    let audio_status = if self.audio.is_some() { "Playing" } else { "Playing (no audio device)" };
+                    let audio_status = if self.audio.is_some() {
+                        "Playing"
+                    } else {
+                        "Playing (no audio device)"
+                    };
                     self.status = audio_status.to_string();
                 }
                 // Playing → Paused: freeze at current position; silence the AY chip
                 // so no stale tone leaks through the audio buffer while paused.
                 (PlaybackState::Playing, PlaybackState::Paused) => {
-                    self.synth.apply_registers(0, &vti_core::AyRegisters::default());
+                    self.synth
+                        .apply_registers(0, &vti_core::AyRegisters::default());
                 }
                 // Any → Stopped: reset position so next Play starts from the beginning.
                 (_, PlaybackState::Stopped) => {
@@ -853,7 +872,7 @@ impl eframe::App for VortexTrackerApp {
         // ── Bottom editor panel switcher ───────────────────────────────────
         egui::TopBottomPanel::bottom("bottom_tabs").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.selectable_value(&mut self.bottom_panel, BottomPanel::Sample,   "Samples");
+                ui.selectable_value(&mut self.bottom_panel, BottomPanel::Sample, "Samples");
                 ui.selectable_value(&mut self.bottom_panel, BottomPanel::Ornament, "Ornaments");
             });
         });
@@ -929,7 +948,10 @@ pub(crate) fn collapse_focus_ping_pong(events: &mut Vec<egui::Event>) {
     while i + 1 < events.len() {
         let is_pair = matches!(
             (&events[i], &events[i + 1]),
-            (egui::Event::WindowFocused(false), egui::Event::WindowFocused(true))
+            (
+                egui::Event::WindowFocused(false),
+                egui::Event::WindowFocused(true)
+            )
         );
         if is_pair {
             events.remove(i + 1);
@@ -964,10 +986,7 @@ mod tests {
 
     #[test]
     fn collapse_removes_multiple_adjacent_pairs() {
-        let mut events = vec![
-            focused(false), focused(true),
-            focused(false), focused(true),
-        ];
+        let mut events = vec![focused(false), focused(true), focused(false), focused(true)];
         collapse_focus_ping_pong(&mut events);
         assert!(events.is_empty(), "both pairs should be removed");
     }
@@ -1004,7 +1023,11 @@ mod tests {
             egui::Event::PointerGone,
         ];
         collapse_focus_ping_pong(&mut events);
-        assert_eq!(events.len(), 2, "only the false/true pair should be removed");
+        assert_eq!(
+            events.len(),
+            2,
+            "only the false/true pair should be removed"
+        );
         assert!(matches!(events[0], egui::Event::PointerGone));
         assert!(matches!(events[1], egui::Event::PointerGone));
     }

@@ -29,46 +29,46 @@ pub enum NoteKeyResult {
 pub fn piano_key_to_semitone_offset(ch: char) -> Option<i8> {
     match ch {
         // ── Bottom row — current octave (C .. B) ──────────────────────
-        'z' => Some(0),   // C    (NK_DO)
-        's' => Some(1),   // C#   (NK_DODiesis)
-        'x' => Some(2),   // D    (NK_RE)
-        'd' => Some(3),   // D#   (NK_REDiesis)
-        'c' => Some(4),   // E    (NK_MI)
-        'v' => Some(5),   // F    (NK_FA)
-        'g' => Some(6),   // F#   (NK_FADiesis)
-        'b' => Some(7),   // G    (NK_SOL)
-        'h' => Some(8),   // G#   (NK_SOLDiesis)
-        'n' => Some(9),   // A    (NK_LA)
-        'j' => Some(10),  // A#   (NK_LADiesis)
-        'm' => Some(11),  // B    (NK_SI)
+        'z' => Some(0),  // C    (NK_DO)
+        's' => Some(1),  // C#   (NK_DODiesis)
+        'x' => Some(2),  // D    (NK_RE)
+        'd' => Some(3),  // D#   (NK_REDiesis)
+        'c' => Some(4),  // E    (NK_MI)
+        'v' => Some(5),  // F    (NK_FA)
+        'g' => Some(6),  // F#   (NK_FADiesis)
+        'b' => Some(7),  // G    (NK_SOL)
+        'h' => Some(8),  // G#   (NK_SOLDiesis)
+        'n' => Some(9),  // A    (NK_LA)
+        'j' => Some(10), // A#   (NK_LADiesis)
+        'm' => Some(11), // B    (NK_SI)
         // ── Bottom row extended — octave+1 (lower position) ───────────
-        ',' => Some(12),  // C+1  (NK_DO2,       VK_OEM_COMMA)
-        'l' => Some(13),  // C#+1 (NK_DODiesis2, VK_L)
-        '.' => Some(14),  // D+1  (NK_RE2,        VK_OEM_PERIOD)
-        ';' => Some(15),  // D#+1 (NK_REDiesis2,  VK_OEM_1)
-        '/' => Some(16),  // E+1  (NK_MI2,         VK_OEM_2)
+        ',' => Some(12), // C+1  (NK_DO2,       VK_OEM_COMMA)
+        'l' => Some(13), // C#+1 (NK_DODiesis2, VK_L)
+        '.' => Some(14), // D+1  (NK_RE2,        VK_OEM_PERIOD)
+        ';' => Some(15), // D#+1 (NK_REDiesis2,  VK_OEM_1)
+        '/' => Some(16), // E+1  (NK_MI2,         VK_OEM_2)
         // ── Top row — octave+1 (duplicates + extension) ───────────────
-        'q' => Some(12),  // C+1  (NK_DO2)
-        '2' => Some(13),  // C#+1 (NK_DODiesis2)
-        'w' => Some(14),  // D+1  (NK_RE2)
-        '3' => Some(15),  // D#+1 (NK_REDiesis2)
-        'e' => Some(16),  // E+1  (NK_MI2)
-        'r' => Some(17),  // F+1  (NK_FA2)
-        '5' => Some(18),  // F#+1 (NK_FADiesis2)
-        't' => Some(19),  // G+1  (NK_SOL2)
-        '6' => Some(20),  // G#+1 (NK_SOLDiesis2)
-        'y' => Some(21),  // A+1  (NK_LA2)
-        '7' => Some(22),  // A#+1 (NK_LADiesis2)
-        'u' => Some(23),  // B+1  (NK_SI2)
+        'q' => Some(12), // C+1  (NK_DO2)
+        '2' => Some(13), // C#+1 (NK_DODiesis2)
+        'w' => Some(14), // D+1  (NK_RE2)
+        '3' => Some(15), // D#+1 (NK_REDiesis2)
+        'e' => Some(16), // E+1  (NK_MI2)
+        'r' => Some(17), // F+1  (NK_FA2)
+        '5' => Some(18), // F#+1 (NK_FADiesis2)
+        't' => Some(19), // G+1  (NK_SOL2)
+        '6' => Some(20), // G#+1 (NK_SOLDiesis2)
+        'y' => Some(21), // A+1  (NK_LA2)
+        '7' => Some(22), // A#+1 (NK_LADiesis2)
+        'u' => Some(23), // B+1  (NK_SI2)
         // ── Top row extended — octave+2 ───────────────────────────────
-        'i' => Some(24),  // C+2  (NK_DO3)
-        '9' => Some(25),  // C#+2 (NK_DODiesis3)
-        'o' => Some(26),  // D+2  (NK_RE3)
-        '0' => Some(27),  // D#+2 (NK_REDiesis3)
-        'p' => Some(28),  // E+2  (NK_MI3)
-        '[' => Some(29),  // F+2  (NK_FA3,        VK_OEM_4)
-        '=' => Some(30),  // F#+2 (NK_FADiesis3,  VK_OEM_PLUS)
-        ']' => Some(31),  // G+2  (NK_SOL3,        VK_OEM_6)
+        'i' => Some(24), // C+2  (NK_DO3)
+        '9' => Some(25), // C#+2 (NK_DODiesis3)
+        'o' => Some(26), // D+2  (NK_RE3)
+        '0' => Some(27), // D#+2 (NK_REDiesis3)
+        'p' => Some(28), // E+2  (NK_MI3)
+        '[' => Some(29), // F+2  (NK_FA3,        VK_OEM_4)
+        '=' => Some(30), // F#+2 (NK_FADiesis3,  VK_OEM_PLUS)
+        ']' => Some(31), // G+2  (NK_SOL3,        VK_OEM_6)
         _ => None,
     }
 }
@@ -132,50 +132,50 @@ mod tests {
 
     #[test]
     fn bottom_row_white_keys() {
-        assert_eq!(piano_key_to_semitone_offset('z'), Some(0));   // C
-        assert_eq!(piano_key_to_semitone_offset('x'), Some(2));   // D
-        assert_eq!(piano_key_to_semitone_offset('c'), Some(4));   // E
-        assert_eq!(piano_key_to_semitone_offset('v'), Some(5));   // F
-        assert_eq!(piano_key_to_semitone_offset('b'), Some(7));   // G
-        assert_eq!(piano_key_to_semitone_offset('n'), Some(9));   // A
-        assert_eq!(piano_key_to_semitone_offset('m'), Some(11));  // B
+        assert_eq!(piano_key_to_semitone_offset('z'), Some(0)); // C
+        assert_eq!(piano_key_to_semitone_offset('x'), Some(2)); // D
+        assert_eq!(piano_key_to_semitone_offset('c'), Some(4)); // E
+        assert_eq!(piano_key_to_semitone_offset('v'), Some(5)); // F
+        assert_eq!(piano_key_to_semitone_offset('b'), Some(7)); // G
+        assert_eq!(piano_key_to_semitone_offset('n'), Some(9)); // A
+        assert_eq!(piano_key_to_semitone_offset('m'), Some(11)); // B
     }
 
     #[test]
     fn bottom_row_black_keys() {
-        assert_eq!(piano_key_to_semitone_offset('s'), Some(1));   // C#
-        assert_eq!(piano_key_to_semitone_offset('d'), Some(3));   // D#
-        assert_eq!(piano_key_to_semitone_offset('g'), Some(6));   // F#
-        assert_eq!(piano_key_to_semitone_offset('h'), Some(8));   // G#
-        assert_eq!(piano_key_to_semitone_offset('j'), Some(10));  // A#
+        assert_eq!(piano_key_to_semitone_offset('s'), Some(1)); // C#
+        assert_eq!(piano_key_to_semitone_offset('d'), Some(3)); // D#
+        assert_eq!(piano_key_to_semitone_offset('g'), Some(6)); // F#
+        assert_eq!(piano_key_to_semitone_offset('h'), Some(8)); // G#
+        assert_eq!(piano_key_to_semitone_offset('j'), Some(10)); // A#
     }
 
     #[test]
     fn top_row_octave_plus1() {
-        assert_eq!(piano_key_to_semitone_offset('q'), Some(12));  // C+1
-        assert_eq!(piano_key_to_semitone_offset('2'), Some(13));  // C#+1
-        assert_eq!(piano_key_to_semitone_offset('w'), Some(14));  // D+1
-        assert_eq!(piano_key_to_semitone_offset('3'), Some(15));  // D#+1
-        assert_eq!(piano_key_to_semitone_offset('e'), Some(16));  // E+1
-        assert_eq!(piano_key_to_semitone_offset('r'), Some(17));  // F+1
-        assert_eq!(piano_key_to_semitone_offset('5'), Some(18));  // F#+1
-        assert_eq!(piano_key_to_semitone_offset('t'), Some(19));  // G+1
-        assert_eq!(piano_key_to_semitone_offset('6'), Some(20));  // G#+1
-        assert_eq!(piano_key_to_semitone_offset('y'), Some(21));  // A+1
-        assert_eq!(piano_key_to_semitone_offset('7'), Some(22));  // A#+1
-        assert_eq!(piano_key_to_semitone_offset('u'), Some(23));  // B+1
+        assert_eq!(piano_key_to_semitone_offset('q'), Some(12)); // C+1
+        assert_eq!(piano_key_to_semitone_offset('2'), Some(13)); // C#+1
+        assert_eq!(piano_key_to_semitone_offset('w'), Some(14)); // D+1
+        assert_eq!(piano_key_to_semitone_offset('3'), Some(15)); // D#+1
+        assert_eq!(piano_key_to_semitone_offset('e'), Some(16)); // E+1
+        assert_eq!(piano_key_to_semitone_offset('r'), Some(17)); // F+1
+        assert_eq!(piano_key_to_semitone_offset('5'), Some(18)); // F#+1
+        assert_eq!(piano_key_to_semitone_offset('t'), Some(19)); // G+1
+        assert_eq!(piano_key_to_semitone_offset('6'), Some(20)); // G#+1
+        assert_eq!(piano_key_to_semitone_offset('y'), Some(21)); // A+1
+        assert_eq!(piano_key_to_semitone_offset('7'), Some(22)); // A#+1
+        assert_eq!(piano_key_to_semitone_offset('u'), Some(23)); // B+1
     }
 
     #[test]
     fn top_row_octave_plus2() {
-        assert_eq!(piano_key_to_semitone_offset('i'), Some(24));  // C+2
-        assert_eq!(piano_key_to_semitone_offset('9'), Some(25));  // C#+2
-        assert_eq!(piano_key_to_semitone_offset('o'), Some(26));  // D+2
-        assert_eq!(piano_key_to_semitone_offset('0'), Some(27));  // D#+2
-        assert_eq!(piano_key_to_semitone_offset('p'), Some(28));  // E+2
-        assert_eq!(piano_key_to_semitone_offset('['), Some(29));  // F+2
-        assert_eq!(piano_key_to_semitone_offset('='), Some(30));  // F#+2
-        assert_eq!(piano_key_to_semitone_offset(']'), Some(31));  // G+2
+        assert_eq!(piano_key_to_semitone_offset('i'), Some(24)); // C+2
+        assert_eq!(piano_key_to_semitone_offset('9'), Some(25)); // C#+2
+        assert_eq!(piano_key_to_semitone_offset('o'), Some(26)); // D+2
+        assert_eq!(piano_key_to_semitone_offset('0'), Some(27)); // D#+2
+        assert_eq!(piano_key_to_semitone_offset('p'), Some(28)); // E+2
+        assert_eq!(piano_key_to_semitone_offset('['), Some(29)); // F+2
+        assert_eq!(piano_key_to_semitone_offset('='), Some(30)); // F#+2
+        assert_eq!(piano_key_to_semitone_offset(']'), Some(31)); // G+2
     }
 
     #[test]
@@ -275,7 +275,7 @@ mod tests {
         // Volume/ornament/envelope: max = 15
         assert_eq!(hex_digit_entry(0, 7, 15), 7);
         assert_eq!(hex_digit_entry(7, 15, 15), 15);
-        assert_eq!(hex_digit_entry(7, 3, 15), 3);   // overwrites, not shifts
+        assert_eq!(hex_digit_entry(7, 3, 15), 3); // overwrites, not shifts
     }
 
     #[test]
@@ -286,10 +286,10 @@ mod tests {
     #[test]
     fn two_digit_sample_field() {
         // Sample: max = 31 (0x1F)
-        assert_eq!(hex_digit_entry(0, 1, 31), 0x01);  // type '1' → 1
-        assert_eq!(hex_digit_entry(1, 5, 31), 0x15);  // type '5' → 21
+        assert_eq!(hex_digit_entry(0, 1, 31), 0x01); // type '1' → 1
+        assert_eq!(hex_digit_entry(1, 5, 31), 0x15); // type '5' → 21
         assert_eq!(hex_digit_entry(1, 15, 31), 0x1F); // type 'F' → 31 (max)
-        assert_eq!(hex_digit_entry(2, 0, 31), 31);    // (0x20=32) clamped to 31
+        assert_eq!(hex_digit_entry(2, 0, 31), 31); // (0x20=32) clamped to 31
     }
 
     #[test]

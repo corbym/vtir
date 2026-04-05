@@ -64,8 +64,7 @@ fn load_ay_fixture(name: &str) -> String {
         env!("CARGO_MANIFEST_DIR"),
         name
     );
-    std::fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("Cannot read fixture {}: {}", path, e))
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("Cannot read fixture {}: {}", path, e))
 }
 
 // ─── Noise LFSR ──────────────────────────────────────────────────────────────
@@ -78,8 +77,7 @@ fn load_ay_fixture(name: &str) -> String {
 #[test]
 fn noise_lfsr_matches_pascal_baseline() {
     let raw = load_ay_fixture("noise_lfsr");
-    let fixture: NoiseLfsrFixture =
-        serde_json::from_str(&raw).expect("parse noise_lfsr.json");
+    let fixture: NoiseLfsrFixture = serde_json::from_str(&raw).expect("parse noise_lfsr.json");
 
     let mut seed = fixture.initial_seed;
     for (i, expected) in fixture.steps.iter().enumerate() {
@@ -141,9 +139,9 @@ fn envelope_shape_from_register_matches_baseline() {
         serde_json::from_str(&raw).expect("parse envelope_shapes.json");
 
     let expected_shapes: &[(u8, EnvShape)] = &[
-        (0,  EnvShape::Hold0),
-        (4,  EnvShape::Hold31),
-        (8,  EnvShape::Saw8),
+        (0, EnvShape::Hold0),
+        (4, EnvShape::Hold31),
+        (8, EnvShape::Saw8),
         (10, EnvShape::Triangle10),
         (11, EnvShape::DecayHold),
         (12, EnvShape::Saw12),
@@ -202,8 +200,7 @@ struct LevelTableCase {
 #[test]
 fn level_tables_match_pascal_baseline() {
     let raw = load_ay_fixture("level_tables");
-    let fixture: LevelTablesFixture =
-        serde_json::from_str(&raw).expect("parse level_tables.json");
+    let fixture: LevelTablesFixture = serde_json::from_str(&raw).expect("parse level_tables.json");
 
     for case in &fixture.cases {
         let chip_type = match case.chip.as_str() {

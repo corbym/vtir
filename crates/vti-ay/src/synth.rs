@@ -66,29 +66,35 @@ impl Default for LevelTables {
 pub fn calculate_level_tables(cfg: &AyConfig, chip_type: ChipType) -> LevelTables {
     let mut t = LevelTables::default();
 
-    let ia   = cfg.index_al as i32;
+    let ia = cfg.index_al as i32;
     let ia_r = cfg.index_ar as i32;
-    let ib   = cfg.index_bl as i32;
+    let ib = cfg.index_bl as i32;
     let ib_r = cfg.index_br as i32;
-    let ic   = cfg.index_cl as i32;
+    let ic = cfg.index_cl as i32;
     let ic_r = cfg.index_cr as i32;
 
     // Pascal stereo:  Index_A = Index_AL; l = max(sum_L, sum_R) * 2
     // Pascal mono:    Index_A = Index_AL + Index_AR; l = sum_combined * 2
     let (index_a, index_b, index_c, mut l) = if cfg.num_channels == 2 {
-        let l_left  = (ia   + ib   + ic)   * 2;
+        let l_left = (ia + ib + ic) * 2;
         let l_right = (ia_r + ib_r + ic_r) * 2;
         (ia, ib, ic, l_left.max(l_right))
     } else {
-        let index_a = ia   + ia_r;
-        let index_b = ib   + ib_r;
-        let index_c = ic   + ic_r;
-        let l       = (index_a + index_b + index_c) * 2;
+        let index_a = ia + ia_r;
+        let index_b = ib + ib_r;
+        let index_c = ic + ic_r;
+        let l = (index_a + index_b + index_c) * 2;
         (index_a, index_b, index_c, l)
     };
-    if l == 0 { l = 1; }
+    if l == 0 {
+        l = 1;
+    }
 
-    let max_out = if cfg.sample_bit == 8 { 127i32 } else { 32767i32 };
+    let max_out = if cfg.sample_bit == 8 {
+        127i32
+    } else {
+        32767i32
+    };
 
     let k = (cfg.global_volume * 2_f64.ln() / cfg.global_volume_max).exp() - 1.0;
 
@@ -102,23 +108,35 @@ pub fn calculate_level_tables(cfg: &AyConfig, chip_type: ChipType) -> LevelTable
         ChipType::AY => {
             for i in 0..16usize {
                 let amp = AMPLITUDES_AY[i] as f64;
-                let v = fill(index_a, amp); t.al[i * 2] = v; t.al[i * 2 + 1] = v;
-                let v = fill(ia_r,    amp); t.ar[i * 2] = v; t.ar[i * 2 + 1] = v;
-                let v = fill(index_b, amp); t.bl[i * 2] = v; t.bl[i * 2 + 1] = v;
-                let v = fill(ib_r,    amp); t.br[i * 2] = v; t.br[i * 2 + 1] = v;
-                let v = fill(index_c, amp); t.cl[i * 2] = v; t.cl[i * 2 + 1] = v;
-                let v = fill(ic_r,    amp); t.cr[i * 2] = v; t.cr[i * 2 + 1] = v;
+                let v = fill(index_a, amp);
+                t.al[i * 2] = v;
+                t.al[i * 2 + 1] = v;
+                let v = fill(ia_r, amp);
+                t.ar[i * 2] = v;
+                t.ar[i * 2 + 1] = v;
+                let v = fill(index_b, amp);
+                t.bl[i * 2] = v;
+                t.bl[i * 2 + 1] = v;
+                let v = fill(ib_r, amp);
+                t.br[i * 2] = v;
+                t.br[i * 2 + 1] = v;
+                let v = fill(index_c, amp);
+                t.cl[i * 2] = v;
+                t.cl[i * 2 + 1] = v;
+                let v = fill(ic_r, amp);
+                t.cr[i * 2] = v;
+                t.cr[i * 2 + 1] = v;
             }
         }
         ChipType::YM => {
             for i in 0..32usize {
                 let amp = AMPLITUDES_YM[i] as f64;
                 t.al[i] = fill(index_a, amp);
-                t.ar[i] = fill(ia_r,    amp);
+                t.ar[i] = fill(ia_r, amp);
                 t.bl[i] = fill(index_b, amp);
-                t.br[i] = fill(ib_r,    amp);
+                t.br[i] = fill(ib_r, amp);
                 t.cl[i] = fill(index_c, amp);
-                t.cr[i] = fill(ic_r,    amp);
+                t.cr[i] = fill(ic_r, amp);
             }
         }
         ChipType::None => {}
@@ -168,17 +186,17 @@ pub struct Synthesizer {
     // FIR filter state (quality mode)
     filt_x_l: Vec<i32>,
     filt_x_r: Vec<i32>,
-    filt_k:   Vec<i32>,
-    filt_i:   usize,
+    filt_k: Vec<i32>,
+    filt_i: usize,
 
     // Bresenham upsampler state for quality mode (persists across frames)
     // Matches Pascal's Tick_Counter.Re / Tik.Re fields in TBufferMaker.
     filt_tick_counter: i32, // AY ticks accumulated × 65536 (reset to 0 after each output batch)
-    filt_tik:          i32, // next output trigger point (starts at delay_in_tiks, +delay each sample)
-    filt_last_l:       i32, // current FIR-filtered left value (updated each AY tick)
-    filt_last_r:       i32, // current FIR-filtered right value
-    filt_prev_l:       i32, // previous FIR-filtered left value (one AY tick earlier)
-    filt_prev_r:       i32, // previous FIR-filtered right value (one AY tick earlier)
+    filt_tik: i32, // next output trigger point (starts at delay_in_tiks, +delay each sample)
+    filt_last_l: i32, // current FIR-filtered left value (updated each AY tick)
+    filt_last_r: i32, // current FIR-filtered right value
+    filt_prev_l: i32, // previous FIR-filtered left value (one AY tick earlier)
+    filt_prev_r: i32, // previous FIR-filtered right value (one AY tick earlier)
 }
 
 impl Synthesizer {
@@ -259,10 +277,8 @@ impl Synthesizer {
 
             for c in 0..self.num_chips {
                 self.chips[c].synthesizer_logic_q();
-                self.chips[c].synthesizer_mixer_q(
-                    &al, &ar, &bl, &br, &cl, &cr,
-                    &mut lev_l, &mut lev_r,
-                );
+                self.chips[c]
+                    .synthesizer_mixer_q(&al, &ar, &bl, &br, &cl, &cr, &mut lev_l, &mut lev_r);
             }
 
             // FIR low-pass filter (quality mode)
@@ -272,7 +288,7 @@ impl Synthesizer {
             }
 
             self.output_buf.push(StereoSample {
-                left:  lev_l.clamp(-32768, 32767) as i16,
+                left: lev_l.clamp(-32768, 32767) as i16,
                 right: lev_r.clamp(-32768, 32767) as i16,
             });
         }
@@ -334,15 +350,17 @@ impl Synthesizer {
                     let right;
                     if self.cfg.is_filt {
                         let i = self.filt_tik - self.filt_tick_counter + 65536;
-                        left  = interpolate16(self.filt_last_l, self.filt_prev_l, i);
+                        left = interpolate16(self.filt_last_l, self.filt_prev_l, i);
                         right = interpolate16(self.filt_last_r, self.filt_prev_r, i);
                     } else {
-                        left  = self.filt_last_l.clamp(-32768, 32767) as i16;
+                        left = self.filt_last_l.clamp(-32768, 32767) as i16;
                         right = self.filt_last_r.clamp(-32768, 32767) as i16;
                     }
                     self.output_buf.push(StereoSample { left, right });
                     self.filt_tik += delay;
-                    if self.filt_tick_counter < self.filt_tik { break; }
+                    if self.filt_tick_counter < self.filt_tik {
+                        break;
+                    }
                 }
                 // Pascal: Dec(Tik.Re, Tick_Counter.Re); Tick_Counter.Re := 0;
                 self.filt_tik -= self.filt_tick_counter;
@@ -354,10 +372,8 @@ impl Synthesizer {
             let mut lev_r = 0i32;
             for c in 0..self.num_chips {
                 self.chips[c].synthesizer_logic_q();
-                self.chips[c].synthesizer_mixer_q(
-                    &al, &ar, &bl, &br, &cl, &cr,
-                    &mut lev_l, &mut lev_r,
-                );
+                self.chips[c]
+                    .synthesizer_mixer_q(&al, &ar, &bl, &br, &cl, &cr, &mut lev_l, &mut lev_r);
             }
 
             // ── FIR anti-aliasing filter (runs at AY clock rate) ─────────────
@@ -378,7 +394,6 @@ impl Synthesizer {
         }
     }
 
-
     /// Compute windowed-sinc FIR coefficients (Hanning window, cutoff ~0.45 Nyquist).
     fn calc_fir_coefficients(&mut self) {
         let m = self.cfg.filt_m;
@@ -386,7 +401,11 @@ impl Synthesizer {
         let fc = 0.45_f64;
         for i in 0..=m {
             let x = std::f64::consts::PI * (i as f64 - m as f64 / 2.0);
-            let sinc = if x == 0.0 { 1.0 } else { (2.0 * fc * x).sin() / x };
+            let sinc = if x == 0.0 {
+                1.0
+            } else {
+                (2.0 * fc * x).sin() / x
+            };
             let window = 0.5 * (1.0 - (2.0 * std::f64::consts::PI * i as f64 / m as f64).cos());
             self.filt_k[i] = (sinc * window * (1 << 24) as f64).round() as i32;
         }
@@ -395,14 +414,22 @@ impl Synthesizer {
     /// Apply the FIR filter to one sample value.
     fn apply_filter(&mut self, lev: i32, is_left: bool) -> i32 {
         let m = self.cfg.filt_m;
-        let x_buf = if is_left { &mut self.filt_x_l } else { &mut self.filt_x_r };
+        let x_buf = if is_left {
+            &mut self.filt_x_l
+        } else {
+            &mut self.filt_x_r
+        };
         x_buf[self.filt_i] = lev;
 
         let mut acc = 0i64;
         let mut ki = self.filt_i;
         for j in 0..=m {
             acc += self.filt_k[j] as i64 * x_buf[ki] as i64;
-            if ki == 0 { ki = m } else { ki -= 1; }
+            if ki == 0 {
+                ki = m
+            } else {
+                ki -= 1;
+            }
         }
         if is_left {
             self.filt_i = if self.filt_i == m { 0 } else { self.filt_i + 1 };

@@ -147,7 +147,10 @@ fn parse_sample(data: &[u8]) -> Result<Sample> {
     let mut sam = Sample::default();
     sam.loop_pos = data[0];
     sam.length = data[1];
-    ensure!((sam.length as usize) <= MAX_SAM_LEN, "PT3: sample length overflow");
+    ensure!(
+        (sam.length as usize) <= MAX_SAM_LEN,
+        "PT3: sample length overflow"
+    );
 
     for j in 0..(sam.length as usize) {
         let base = 2 + j * 4;
@@ -301,7 +304,10 @@ fn pattern_interpreter(
     let mut quit = false;
 
     while !quit {
-        ensure!(*ptr < data.len(), "PT3: channel data truncated (inner loop)");
+        ensure!(
+            *ptr < data.len(),
+            "PT3: channel data truncated (inner loop)"
+        );
         let b = data[*ptr];
         *ptr += 1;
 
@@ -345,7 +351,10 @@ fn pattern_interpreter(
             0xB2..=0xBF => {
                 cl.envelope = b - 0xB1; // 1..14
                 cl.ornament = *prev_orn;
-                ensure!(*ptr + 1 < data.len(), "PT3: B2-BF envelope period truncated");
+                ensure!(
+                    *ptr + 1 < data.len(),
+                    "PT3: B2-BF envelope period truncated"
+                );
                 // Period stored big-endian: high byte then low byte
                 row.envelope = ((data[*ptr] as u16) << 8) | (data[*ptr + 1] as u16);
                 *ptr += 2;
@@ -397,7 +406,10 @@ fn pattern_interpreter(
                     cl.envelope = 15;
                 } else {
                     cl.envelope = b - 0x10; // 1..14
-                    ensure!(*ptr + 1 < data.len(), "PT3: 10-1F envelope period truncated");
+                    ensure!(
+                        *ptr + 1 < data.len(),
+                        "PT3: 10-1F envelope period truncated"
+                    );
                     row.envelope = ((data[*ptr] as u16) << 8) | (data[*ptr + 1] as u16);
                     *ptr += 2;
                 }
@@ -472,8 +484,7 @@ fn pattern_interpreter(
         5 => {
             cl.additional_command.number = 6;
             ensure!(*ptr + 1 < data.len(), "PT3: cmd5 params truncated");
-            cl.additional_command.parameter =
-                (data[*ptr] << 4) | (data[*ptr + 1] & 0x0F);
+            cl.additional_command.parameter = (data[*ptr] << 4) | (data[*ptr + 1] & 0x0F);
             *ptr += 2;
         }
 
@@ -654,13 +665,10 @@ pub fn write(module: &Module) -> Result<Vec<u8>> {
 
                 // Orn: emit if envelope or ornament changed (or re-trigger on note)
                 let orn_needed = (env_val != 0 || orn_val != 0)
-                    && (orn_val != ornament_prev
-                        || (ornament_prev != 0 && note_val == NOTE_NONE));
+                    && (orn_val != ornament_prev || (ornament_prev != 0 && note_val == NOTE_NONE));
                 // (which ornaments are used is tracked implicitly via the patterns)
 
-                let sam_needed = note_val != NOTE_NONE
-                    && sam_val != 0
-                    && sam_val != sample_prev;
+                let sam_needed = note_val != NOTE_NONE && sam_val != 0 && sam_val != sample_prev;
                 if sam_needed {
                     sample_prev = sam_val;
                 }
@@ -743,7 +751,9 @@ pub fn write(module: &Module) -> Result<Vec<u8>> {
                     1 | 2 => {
                         ch_str.push(0x01);
                         tn_dl[k] = cl.additional_command.delay as i32;
-                        if cmd == 1 { tn_dl[k] = -tn_dl[k]; } // sign for direction
+                        if cmd == 1 {
+                            tn_dl[k] = -tn_dl[k];
+                        } // sign for direction
                         tn_cur_dl[k] = tn_dl[k].abs();
                         tn_stp[k] = if cmd == 1 {
                             cl.additional_command.parameter as i32
@@ -786,9 +796,7 @@ pub fn write(module: &Module) -> Result<Vec<u8>> {
                 }
 
                 // ── Reset tone-slide state on plain note or sound-off ─────────
-                if note_val == NOTE_SOUND_OFF
-                    || (note_val >= 0 && !(cmd >= 1 && cmd <= 3))
-                {
+                if note_val == NOTE_SOUND_OFF || (note_val >= 0 && !(cmd >= 1 && cmd <= 3)) {
                     dl = 0;
                     tn_dl[k] = 0;
                     delt_t[k] = 0;
@@ -832,8 +840,7 @@ pub fn write(module: &Module) -> Result<Vec<u8>> {
                         || ncl.volume != 0
                         || (ncl.envelope >= 1 && ncl.envelope <= 14)
                         || (ncl.envelope == 15
-                            && (envelope_prev != 0
-                                || (ncl.ornament == 0 && ornament_prev != 0)))
+                            && (envelope_prev != 0 || (ncl.ornament == 0 && ornament_prev != 0)))
                         || ncl.ornament != 0
                         || (k == 1 && pat.items[d].noise != nitem.noise)
                     {
@@ -889,9 +896,7 @@ pub fn write(module: &Module) -> Result<Vec<u8>> {
                                 ch_str.push(cl.additional_command.delay);
                                 ch_str.push((ndl & 0xFF) as u8);
                                 ch_str.push(((ndl >> 8) & 0xFF) as u8);
-                                ch_str.push(
-                                    cl.additional_command.parameter.wrapping_neg(),
-                                );
+                                ch_str.push(cl.additional_command.parameter.wrapping_neg());
                                 ch_str.push(0xFF);
                             }
                         }
@@ -1041,7 +1046,11 @@ pub fn write(module: &Module) -> Result<Vec<u8>> {
         let reuse = (1..i).find(|&j| sample_bytes[j].as_deref() == Some(content.as_slice()));
         if let Some(j) = reuse {
             // Point this sample at the same offset as the earlier identical one.
-            write_word(&mut out, OFF_SAM_PTRS + i * 2, sample_written_at[j].unwrap());
+            write_word(
+                &mut out,
+                OFF_SAM_PTRS + i * 2,
+                sample_written_at[j].unwrap(),
+            );
         } else {
             if write_pos > 65533 {
                 bail!("PT3: output too large (samples)");

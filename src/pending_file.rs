@@ -66,8 +66,12 @@ mod tests {
     // Helpers that clear state left over from a previous test.  The
     // thread-locals are shared across all tests that run on the same OS thread,
     // so each test must drain the slot before writing to guarantee independence.
-    fn drain_open()   { let _ = take_pending_open(); }
-    fn drain_save()   { let _ = take_pending_save_status(); }
+    fn drain_open() {
+        let _ = take_pending_open();
+    }
+    fn drain_save() {
+        let _ = take_pending_save_status();
+    }
 
     // ── take_pending_open ────────────────────────────────────────────────────
 
@@ -81,7 +85,7 @@ mod tests {
     fn take_pending_open_returns_value_after_put() {
         drain_open();
         put_pending_open(PendingFile {
-            name:  "test.pt3".to_string(),
+            name: "test.pt3".to_string(),
             bytes: vec![0xDE, 0xAD],
         });
         let pf = take_pending_open().expect("should have a value");
@@ -93,18 +97,27 @@ mod tests {
     fn take_pending_open_clears_slot() {
         drain_open();
         put_pending_open(PendingFile {
-            name:  "song.vtm".to_string(),
+            name: "song.vtm".to_string(),
             bytes: vec![1, 2, 3],
         });
         let _ = take_pending_open(); // first drain
-        assert!(take_pending_open().is_none(), "slot should be empty after drain");
+        assert!(
+            take_pending_open().is_none(),
+            "slot should be empty after drain"
+        );
     }
 
     #[test]
     fn put_pending_open_overwrites_previous_value() {
         drain_open();
-        put_pending_open(PendingFile { name: "a.pt3".to_string(), bytes: vec![1] });
-        put_pending_open(PendingFile { name: "b.pt3".to_string(), bytes: vec![2] });
+        put_pending_open(PendingFile {
+            name: "a.pt3".to_string(),
+            bytes: vec![1],
+        });
+        put_pending_open(PendingFile {
+            name: "b.pt3".to_string(),
+            bytes: vec![2],
+        });
         let pf = take_pending_open().expect("should have a value");
         assert_eq!(pf.name, "b.pt3", "second put should overwrite the first");
         assert!(take_pending_open().is_none());
@@ -139,7 +152,10 @@ mod tests {
         drain_save();
         put_pending_save_status(Ok("Saved: x.vtm".to_string()));
         let _ = take_pending_save_status();
-        assert!(take_pending_save_status().is_none(), "slot should be empty after drain");
+        assert!(
+            take_pending_save_status().is_none(),
+            "slot should be empty after drain"
+        );
     }
 
     // ── Integration: open-result through formats::load ───────────────────────
@@ -163,13 +179,16 @@ mod tests {
                    [End]\n";
 
         put_pending_open(PendingFile {
-            name:  "test.vtm".to_string(),
+            name: "test.vtm".to_string(),
             bytes: vtm.as_bytes().to_vec(),
         });
 
         let pf = take_pending_open().expect("should have result");
         let result = vti_core::formats::load(&pf.bytes, &pf.name);
-        assert!(result.is_ok(), "valid VTM bytes should parse without error: {result:?}");
+        assert!(
+            result.is_ok(),
+            "valid VTM bytes should parse without error: {result:?}"
+        );
         let module = result.unwrap();
         assert_eq!(module.title, "Test");
     }
@@ -179,7 +198,7 @@ mod tests {
         drain_open();
 
         put_pending_open(PendingFile {
-            name:  "junk.vtm".to_string(),
+            name: "junk.vtm".to_string(),
             bytes: b"this is not a valid module".to_vec(),
         });
 

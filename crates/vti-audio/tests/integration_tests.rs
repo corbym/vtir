@@ -33,7 +33,10 @@ fn stereo_sample_default_is_silent() {
 
 #[test]
 fn stereo_sample_copy() {
-    let s = StereoSample { left: 100, right: -200 };
+    let s = StereoSample {
+        left: 100,
+        right: -200,
+    };
     let s2 = s;
     assert_eq!(s2.left, 100);
     assert_eq!(s2.right, -200);
@@ -46,8 +49,7 @@ fn stereo_sample_copy() {
 #[test]
 #[ignore]
 fn audio_player_starts_and_accepts_samples() {
-    let player = vti_audio::AudioPlayer::start(44100)
-        .expect("failed to open audio device");
+    let player = vti_audio::AudioPlayer::start(44100).expect("failed to open audio device");
 
     let samples: Vec<StereoSample> = (0..1024)
         .map(|i| StereoSample {
@@ -67,10 +69,15 @@ fn audio_player_starts_and_accepts_samples() {
 #[test]
 #[ignore]
 fn audio_player_fill_level_decreases_over_time() {
-    let player = vti_audio::AudioPlayer::start(44100)
-        .expect("failed to open audio device");
+    let player = vti_audio::AudioPlayer::start(44100).expect("failed to open audio device");
 
-    let samples: Vec<StereoSample> = vec![StereoSample { left: 1000, right: 1000 }; 44100];
+    let samples: Vec<StereoSample> = vec![
+        StereoSample {
+            left: 1000,
+            right: 1000
+        };
+        44100
+    ];
     player.push_samples(&samples);
 
     let fill_before = player.fill_level();
@@ -86,18 +93,31 @@ fn audio_player_fill_level_decreases_over_time() {
 #[test]
 #[ignore]
 fn audio_player_diagnostics_show_callback_activity() {
-    let player = vti_audio::AudioPlayer::start(44100)
-        .expect("failed to open audio device");
+    let player = vti_audio::AudioPlayer::start(44100).expect("failed to open audio device");
 
     let before = player.diagnostics_snapshot();
-    let samples: Vec<StereoSample> = vec![StereoSample { left: 1200, right: -1200 }; 22050];
+    let samples: Vec<StereoSample> = vec![
+        StereoSample {
+            left: 1200,
+            right: -1200
+        };
+        22050
+    ];
     player.push_samples(&samples);
 
     std::thread::sleep(std::time::Duration::from_millis(300));
 
     let after = player.diagnostics_snapshot();
-    assert!(after.callback_count > before.callback_count, "audio callback should run after start");
-    assert!(after.pushed_samples >= before.pushed_samples + samples.len() as u64, "push counter should advance");
-    assert!(after.popped_samples > before.popped_samples, "callback should consume at least some samples");
+    assert!(
+        after.callback_count > before.callback_count,
+        "audio callback should run after start"
+    );
+    assert!(
+        after.pushed_samples >= before.pushed_samples + samples.len() as u64,
+        "push counter should advance"
+    );
+    assert!(
+        after.popped_samples > before.popped_samples,
+        "callback should consume at least some samples"
+    );
 }
-

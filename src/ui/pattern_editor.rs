@@ -59,8 +59,8 @@
 
 use eframe::egui;
 use vti_core::editor::{compute_note, hex_digit_entry, piano_key_to_semitone_offset};
-use vti_core::{ChannelLine, Module, NOTE_NONE, NOTE_SOUND_OFF};
 use vti_core::util::note_to_str;
+use vti_core::{ChannelLine, Module, NOTE_NONE, NOTE_SOUND_OFF};
 
 /// Number of channels per pattern row.
 const NUM_CH: usize = 3;
@@ -86,12 +86,12 @@ impl Field {
 
     fn index(self) -> usize {
         match self {
-            Field::Note     => 0,
-            Field::Sample   => 1,
+            Field::Note => 0,
+            Field::Sample => 1,
             Field::Ornament => 2,
-            Field::Volume   => 3,
+            Field::Volume => 3,
             Field::Envelope => 4,
-            Field::Effect   => 5,
+            Field::Effect => 5,
         }
     }
 
@@ -138,6 +138,13 @@ pub struct PatternEditor {
     /// The content is cleared each frame; we never read it directly.
     #[cfg(target_arch = "wasm32")]
     keyboard_anchor: String,
+    /// Whether the hidden mobile keyboard-anchor should currently hold focus.
+    ///
+    /// This is enabled only after taps on editable pattern cells and disabled
+    /// on other pointer presses so dismissing the OS keyboard and tapping
+    /// elsewhere does not immediately reopen it.
+    #[cfg(target_arch = "wasm32")]
+    keyboard_anchor_active: bool,
 }
 
 impl Default for PatternEditor {
@@ -150,6 +157,8 @@ impl Default for PatternEditor {
             scroll_to_cursor: false,
             #[cfg(target_arch = "wasm32")]
             keyboard_anchor: String::new(),
+            #[cfg(target_arch = "wasm32")]
+            keyboard_anchor_active: false,
         }
     }
 }
@@ -181,7 +190,7 @@ impl PatternEditor {
         use wasm_bindgen::JsCast as _;
         let _ = (|| -> Option<()> {
             let doc = web_sys::window()?.document()?;
-            let el  = doc.query_selector("input[type=text]").ok()??;
+            let el = doc.query_selector("input[type=text]").ok()??;
             el.unchecked_ref::<web_sys::HtmlElement>().focus().ok()
         })();
     }
@@ -196,7 +205,9 @@ enum Action {
     MoveField(i32),
     MoveChannel(i32),
     /// `octave_boost` is 1 when Shift was held (raises entry note one octave).
-    Entry { octave_boost: u8 },
+    Entry {
+        octave_boost: u8,
+    },
     /// Shift all rows from the cursor downward by 1; clear the cursor row.
     /// Mirrors Pascal `DoInsertLine` / `SCA_PatternInsertLine`.
     InsertRow,
@@ -275,11 +286,9 @@ impl PatternEditor {
         // TextEdit (pat_kbd_anchor) to keep focus is intentional: that widget
         // exists solely to keep the browser <input> active on WASM so the
         // virtual keyboard stays visible.
-        let skip_keys = ui.ctx().memory(|m| {
-            match m.focused() {
-                None     => false,
-                Some(id) => id != Self::kbd_anchor_id(),
-            }
+        let skip_keys = ui.ctx().memory(|m| match m.focused() {
+            None => false,
+            Some(id) => id != Self::kbd_anchor_id(),
         });
         if !skip_keys {
             self.process_keys(ui, module, pat_len);
@@ -290,13 +299,21 @@ impl PatternEditor {
         let available_height = ui.available_height();
 
         let playing_line: Option<usize> = play_pos.and_then(|(pat, line)| {
-            if pat == self.current_pattern { Some(line) } else { None }
+            if pat == self.current_pattern {
+                Some(line)
+            } else {
+                None
+            }
         });
 
         let mut scroll_area = egui::ScrollArea::vertical().auto_shrink([false, false]);
         // Follow playhead when playing; follow cursor after key entry.
         let scroll_target = playing_line.or_else(|| {
-            if self.scroll_to_cursor { Some(self.cursor.row) } else { None }
+            if self.scroll_to_cursor {
+                Some(self.cursor.row)
+            } else {
+                None
+            }
         });
         if let Some(target) = scroll_target {
             let centred = (target as f32 * row_height) - (available_height / 2.0);
@@ -306,172 +323,205 @@ impl PatternEditor {
 
         // ── Grid ──────────────────────────────────────────────────────────
         let cursor_snap = self.cursor; // immutable snapshot for the closure
-        scroll_area
-            .show_rows(ui, row_height, pat_len, |ui, row_range| {
-                egui::Grid::new("pattern_grid")
-                    .num_columns(1 + Field::COUNT * NUM_CH)
-                    .min_col_width(4.0)
-                    .striped(true)
-                    .show(ui, |ui| {
-                        // Header
-                        ui.label("Row");
-                        for ch_label in ["Ch.A", "Ch.B", "Ch.C"] {
-                            ui.label(ch_label);
-                            for _ in 1..Field::COUNT { ui.label(""); }
+        scroll_area.show_rows(ui, row_height, pat_len, |ui, row_range| {
+            egui::Grid::new("pattern_grid")
+                .num_columns(1 + Field::COUNT * NUM_CH)
+                .min_col_width(4.0)
+                .striped(true)
+                .show(ui, |ui| {
+                    // Header
+                    ui.label("Row");
+                    for ch_label in ["Ch.A", "Ch.B", "Ch.C"] {
+                        ui.label(ch_label);
+                        for _ in 1..Field::COUNT {
+                            ui.label("");
+                        }
+                    }
+                    ui.end_row();
+
+                    for row in row_range {
+                        let is_cursor_row = row == cursor_snap.row;
+                        let is_playing = playing_line == Some(row);
+                        let row_data = &module.patterns[pat_idx].as_ref().unwrap().items[row];
+
+                        // Background strip for the playing row.
+                        if is_playing {
+                            let row_rect = ui.cursor().expand(2.0);
+                            ui.painter().rect_filled(
+                                egui::Rect::from_min_size(
+                                    row_rect.min,
+                                    egui::vec2(ui.available_width(), row_height),
+                                ),
+                                2.0,
+                                egui::Color32::from_rgba_premultiplied(0, 80, 60, 120),
+                            );
+                        }
+
+                        // Row number
+                        let row_num_color = if is_playing {
+                            egui::Color32::from_rgb(0, 255, 180)
+                        } else if is_cursor_row {
+                            egui::Color32::YELLOW
+                        } else {
+                            egui::Color32::GRAY
+                        };
+                        ui.label(
+                            egui::RichText::new(format!("{:03X}", row))
+                                .color(row_num_color)
+                                .monospace(),
+                        );
+
+                        for ch in 0..NUM_CH {
+                            let cell = &row_data.channel[ch];
+                            let cursor_ch = cursor_snap.channel == ch && is_cursor_row;
+
+                            macro_rules! cell_label {
+                                ($text:expr, $base_color:expr, $field:expr) => {{
+                                    let color = Self::field_color(
+                                        $base_color,
+                                        cursor_ch && cursor_snap.field == $field,
+                                    );
+                                    ui.add(
+                                        egui::Label::new(
+                                            egui::RichText::new($text).monospace().color(color),
+                                        )
+                                        .sense(egui::Sense::click()),
+                                    )
+                                }};
+                            }
+
+                            // Note
+                            let note_str = note_to_str(cell.note);
+                            let note_base = if is_playing {
+                                match cell.note {
+                                    n if n == NOTE_SOUND_OFF => {
+                                        egui::Color32::from_rgb(255, 100, 100)
+                                    }
+                                    n if n == NOTE_NONE => egui::Color32::from_gray(120),
+                                    _ => egui::Color32::WHITE,
+                                }
+                            } else {
+                                match cell.note {
+                                    n if n == NOTE_SOUND_OFF => egui::Color32::RED,
+                                    n if n == NOTE_NONE => egui::Color32::DARK_GRAY,
+                                    _ => egui::Color32::WHITE,
+                                }
+                            };
+                            if cell_label!(note_str, note_base, Field::Note).clicked() {
+                                self.cursor.row = row;
+                                self.cursor.channel = ch;
+                                self.cursor.field = Field::Note;
+                                #[cfg(target_arch = "wasm32")]
+                                {
+                                    self.keyboard_anchor_active = true;
+                                    ui.ctx()
+                                        .memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                    Self::focus_text_agent_dom();
+                                }
+                            }
+
+                            // Sample
+                            let sam = if cell.sample == 0 {
+                                "--".to_string()
+                            } else {
+                                format!("{:02X}", cell.sample)
+                            };
+                            if cell_label!(sam, egui::Color32::LIGHT_GREEN, Field::Sample).clicked()
+                            {
+                                self.cursor.row = row;
+                                self.cursor.channel = ch;
+                                self.cursor.field = Field::Sample;
+                                #[cfg(target_arch = "wasm32")]
+                                {
+                                    self.keyboard_anchor_active = true;
+                                    ui.ctx()
+                                        .memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                    Self::focus_text_agent_dom();
+                                }
+                            }
+
+                            // Ornament
+                            let orn = format!("{:X}", cell.ornament);
+                            if cell_label!(orn, egui::Color32::LIGHT_BLUE, Field::Ornament)
+                                .clicked()
+                            {
+                                self.cursor.row = row;
+                                self.cursor.channel = ch;
+                                self.cursor.field = Field::Ornament;
+                                #[cfg(target_arch = "wasm32")]
+                                {
+                                    self.keyboard_anchor_active = true;
+                                    ui.ctx()
+                                        .memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                    Self::focus_text_agent_dom();
+                                }
+                            }
+
+                            // Volume
+                            let vol = if cell.volume == 0 {
+                                ".".to_string()
+                            } else {
+                                format!("{:X}", cell.volume)
+                            };
+                            if cell_label!(vol, egui::Color32::YELLOW, Field::Volume).clicked() {
+                                self.cursor.row = row;
+                                self.cursor.channel = ch;
+                                self.cursor.field = Field::Volume;
+                                #[cfg(target_arch = "wasm32")]
+                                {
+                                    self.keyboard_anchor_active = true;
+                                    ui.ctx()
+                                        .memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                    Self::focus_text_agent_dom();
+                                }
+                            }
+
+                            // Envelope
+                            let env = if cell.envelope == 0 {
+                                ".".to_string()
+                            } else {
+                                format!("{:X}", cell.envelope)
+                            };
+                            if cell_label!(env, egui::Color32::LIGHT_RED, Field::Envelope).clicked()
+                            {
+                                self.cursor.row = row;
+                                self.cursor.channel = ch;
+                                self.cursor.field = Field::Envelope;
+                                #[cfg(target_arch = "wasm32")]
+                                {
+                                    self.keyboard_anchor_active = true;
+                                    ui.ctx()
+                                        .memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                    Self::focus_text_agent_dom();
+                                }
+                            }
+
+                            // Effect
+                            let cmd = &cell.additional_command;
+                            let fx = if cmd.number == 0 {
+                                "......".to_string()
+                            } else {
+                                format!("{:X}{:02X}{:02X}", cmd.number, cmd.delay, cmd.parameter)
+                            };
+                            if cell_label!(fx, egui::Color32::from_gray(160), Field::Effect)
+                                .clicked()
+                            {
+                                self.cursor.row = row;
+                                self.cursor.channel = ch;
+                                self.cursor.field = Field::Effect;
+                                #[cfg(target_arch = "wasm32")]
+                                {
+                                    self.keyboard_anchor_active = true;
+                                    ui.ctx()
+                                        .memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                    Self::focus_text_agent_dom();
+                                }
+                            }
                         }
                         ui.end_row();
-
-                        for row in row_range {
-                            let is_cursor_row = row == cursor_snap.row;
-                            let is_playing    = playing_line == Some(row);
-                            let row_data = &module.patterns[pat_idx].as_ref().unwrap().items[row];
-
-                            // Background strip for the playing row.
-                            if is_playing {
-                                let row_rect = ui.cursor().expand(2.0);
-                                ui.painter().rect_filled(
-                                    egui::Rect::from_min_size(
-                                        row_rect.min,
-                                        egui::vec2(ui.available_width(), row_height),
-                                    ),
-                                    2.0,
-                                    egui::Color32::from_rgba_premultiplied(0, 80, 60, 120),
-                                );
-                            }
-
-                            // Row number
-                            let row_num_color = if is_playing {
-                                egui::Color32::from_rgb(0, 255, 180)
-                            } else if is_cursor_row {
-                                egui::Color32::YELLOW
-                            } else {
-                                egui::Color32::GRAY
-                            };
-                            ui.label(
-                                egui::RichText::new(format!("{:03X}", row))
-                                    .color(row_num_color)
-                                    .monospace(),
-                            );
-
-                            for ch in 0..NUM_CH {
-                                let cell = &row_data.channel[ch];
-                                let cursor_ch = cursor_snap.channel == ch && is_cursor_row;
-
-                                macro_rules! cell_label {
-                                    ($text:expr, $base_color:expr, $field:expr) => {{
-                                        let color = Self::field_color(
-                                            $base_color,
-                                            cursor_ch && cursor_snap.field == $field,
-                                        );
-                                        ui.add(
-                                            egui::Label::new(
-                                                egui::RichText::new($text).monospace().color(color),
-                                            )
-                                            .sense(egui::Sense::click()),
-                                        )
-                                    }};
-                                }
-
-                                // Note
-                                let note_str  = note_to_str(cell.note);
-                                let note_base = if is_playing {
-                                    match cell.note {
-                                        n if n == NOTE_SOUND_OFF => egui::Color32::from_rgb(255, 100, 100),
-                                        n if n == NOTE_NONE      => egui::Color32::from_gray(120),
-                                        _                        => egui::Color32::WHITE,
-                                    }
-                                } else {
-                                    match cell.note {
-                                        n if n == NOTE_SOUND_OFF => egui::Color32::RED,
-                                        n if n == NOTE_NONE      => egui::Color32::DARK_GRAY,
-                                        _                        => egui::Color32::WHITE,
-                                    }
-                                };
-                                if cell_label!(note_str, note_base, Field::Note).clicked() {
-                                    self.cursor.row = row;
-                                    self.cursor.channel = ch;
-                                    self.cursor.field = Field::Note;
-                                    #[cfg(target_arch = "wasm32")]
-                                    {
-                                        ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
-                                        Self::focus_text_agent_dom();
-                                    }
-                                }
-
-                                // Sample
-                                let sam = if cell.sample == 0 { "--".to_string() } else { format!("{:02X}", cell.sample) };
-                                if cell_label!(sam, egui::Color32::LIGHT_GREEN, Field::Sample).clicked() {
-                                    self.cursor.row = row;
-                                    self.cursor.channel = ch;
-                                    self.cursor.field = Field::Sample;
-                                    #[cfg(target_arch = "wasm32")]
-                                    {
-                                        ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
-                                        Self::focus_text_agent_dom();
-                                    }
-                                }
-
-                                // Ornament
-                                let orn = format!("{:X}", cell.ornament);
-                                if cell_label!(orn, egui::Color32::LIGHT_BLUE, Field::Ornament).clicked() {
-                                    self.cursor.row = row;
-                                    self.cursor.channel = ch;
-                                    self.cursor.field = Field::Ornament;
-                                    #[cfg(target_arch = "wasm32")]
-                                    {
-                                        ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
-                                        Self::focus_text_agent_dom();
-                                    }
-                                }
-
-                                // Volume
-                                let vol = if cell.volume == 0 { ".".to_string() } else { format!("{:X}", cell.volume) };
-                                if cell_label!(vol, egui::Color32::YELLOW, Field::Volume).clicked() {
-                                    self.cursor.row = row;
-                                    self.cursor.channel = ch;
-                                    self.cursor.field = Field::Volume;
-                                    #[cfg(target_arch = "wasm32")]
-                                    {
-                                        ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
-                                        Self::focus_text_agent_dom();
-                                    }
-                                }
-
-                                // Envelope
-                                let env = if cell.envelope == 0 { ".".to_string() } else { format!("{:X}", cell.envelope) };
-                                if cell_label!(env, egui::Color32::LIGHT_RED, Field::Envelope).clicked() {
-                                    self.cursor.row = row;
-                                    self.cursor.channel = ch;
-                                    self.cursor.field = Field::Envelope;
-                                    #[cfg(target_arch = "wasm32")]
-                                    {
-                                        ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
-                                        Self::focus_text_agent_dom();
-                                    }
-                                }
-
-                                // Effect
-                                let cmd = &cell.additional_command;
-                                let fx = if cmd.number == 0 {
-                                    "......".to_string()
-                                } else {
-                                    format!("{:X}{:02X}{:02X}", cmd.number, cmd.delay, cmd.parameter)
-                                };
-                                if cell_label!(fx, egui::Color32::from_gray(160), Field::Effect).clicked() {
-                                    self.cursor.row = row;
-                                    self.cursor.channel = ch;
-                                    self.cursor.field = Field::Effect;
-                                    #[cfg(target_arch = "wasm32")]
-                                    {
-                                        ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
-                                        Self::focus_text_agent_dom();
-                                    }
-                                }
-                            }
-                            ui.end_row();
-                        }
-                    });
-            });
+                    }
+                });
+        });
 
         // WASM: keep the keyboard anchor focused so egui's PlatformOutput always
         // has ime=Some(...), which causes eframe to call text_agent.focus() every
@@ -481,7 +531,17 @@ impl PatternEditor {
         #[cfg(target_arch = "wasm32")]
         {
             let kbd_id = Self::kbd_anchor_id();
-            if ui.ctx().memory(|m| m.focused().map_or(true, |id| id == kbd_id)) {
+            let pointer_pressed = ui.ctx().input(|i| i.pointer.any_pressed());
+            let focused_is_anchor = ui.ctx().memory(|m| m.focused() == Some(kbd_id));
+            if pointer_pressed && !focused_is_anchor {
+                self.keyboard_anchor_active = false;
+                ui.ctx().memory_mut(|m| m.surrender_focus(kbd_id));
+            }
+            if self.keyboard_anchor_active
+                && ui
+                    .ctx()
+                    .memory(|m| m.focused().map_or(true, |id| id == kbd_id))
+            {
                 ui.ctx().memory_mut(|m| m.request_focus(kbd_id));
             }
             // Drain any characters the TextEdit accumulated from Text events
@@ -516,7 +576,10 @@ impl PatternEditor {
                 ui.horizontal(|ui| {
                     ui.label("Pattern:");
                     let mut p = self.current_pattern;
-                    if ui.add(egui::DragValue::new(&mut p).range(0..=vti_core::MAX_PAT_NUM as i32)).changed() {
+                    if ui
+                        .add(egui::DragValue::new(&mut p).range(0..=vti_core::MAX_PAT_NUM as i32))
+                        .changed()
+                    {
                         self.current_pattern = p;
                         self.cursor.row = 0;
                     }
@@ -554,12 +617,17 @@ impl PatternEditor {
                     // of blur(), sustaining the virtual keyboard.
                     // It is intentionally invisible: no frame, no width.
                     #[cfg(target_arch = "wasm32")]
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.keyboard_anchor)
-                            .id(Self::kbd_anchor_id())
-                            .desired_width(0.0)
-                            .frame(false),
-                    );
+                    ui.scope(|ui| {
+                        let mut style = (*ui.style()).clone();
+                        style.visuals.text_cursor.stroke.color = egui::Color32::TRANSPARENT;
+                        ui.set_style(style);
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.keyboard_anchor)
+                                .id(Self::kbd_anchor_id())
+                                .desired_width(0.0)
+                                .frame(false),
+                        );
+                    });
                 });
             });
     }
@@ -570,29 +638,43 @@ impl PatternEditor {
         use egui::Key;
 
         let action = ui.input(|i| {
-            let alt   = i.modifiers.alt && !i.modifiers.ctrl && !i.modifiers.shift;
+            let alt = i.modifiers.alt && !i.modifiers.ctrl && !i.modifiers.shift;
             let shift = i.modifiers.shift && !i.modifiers.alt && !i.modifiers.ctrl;
-            let ctrl  = i.modifiers.ctrl && !i.modifiers.alt && !i.modifiers.shift;
-            let none  = !i.modifiers.any();
+            let ctrl = i.modifiers.ctrl && !i.modifiers.alt && !i.modifiers.shift;
+            let none = !i.modifiers.any();
 
             // ── Ctrl shortcuts ───────────────────────────────────────────
             if ctrl {
                 // Ctrl+I → insert row (SCA_PatternInsertLine)
-                if i.key_pressed(Key::I) { return Action::InsertRow; }
+                if i.key_pressed(Key::I) {
+                    return Action::InsertRow;
+                }
                 // Ctrl+Backspace → delete row (SCA_PatternDeleteLine)
-                if i.key_pressed(Key::Backspace) { return Action::DeleteRow; }
+                if i.key_pressed(Key::Backspace) {
+                    return Action::DeleteRow;
+                }
                 // Ctrl+Y → delete row (SCA_PatternDeleteLine2)
-                if i.key_pressed(Key::Y) { return Action::DeleteRow; }
+                if i.key_pressed(Key::Y) {
+                    return Action::DeleteRow;
+                }
                 // Ctrl+Delete → clear row (SCA_PatternClearLine)
-                if i.key_pressed(Key::Delete) { return Action::ClearRow; }
+                if i.key_pressed(Key::Delete) {
+                    return Action::ClearRow;
+                }
                 return Action::None; // leave other Ctrl combos for global shortcuts
             }
 
             // Alt+1..8 → set octave (mirrors Pascal OctaveActionExecute)
             if alt {
                 const OCT: [Key; 8] = [
-                    Key::Num1, Key::Num2, Key::Num3, Key::Num4,
-                    Key::Num5, Key::Num6, Key::Num7, Key::Num8,
+                    Key::Num1,
+                    Key::Num2,
+                    Key::Num3,
+                    Key::Num4,
+                    Key::Num5,
+                    Key::Num6,
+                    Key::Num7,
+                    Key::Num8,
                 ];
                 for (idx, &key) in OCT.iter().enumerate() {
                     if i.key_pressed(key) {
@@ -604,13 +686,25 @@ impl PatternEditor {
 
             // Cursor movement (no modifier)
             if none {
-                if i.key_pressed(Key::ArrowDown)  { return Action::MoveRow(1);     }
-                if i.key_pressed(Key::ArrowUp)    { return Action::MoveRow(-1);    }
-                if i.key_pressed(Key::ArrowRight) { return Action::MoveField(1);   }
-                if i.key_pressed(Key::ArrowLeft)  { return Action::MoveField(-1);  }
-                if i.key_pressed(Key::Tab)        { return Action::MoveChannel(1); }
+                if i.key_pressed(Key::ArrowDown) {
+                    return Action::MoveRow(1);
+                }
+                if i.key_pressed(Key::ArrowUp) {
+                    return Action::MoveRow(-1);
+                }
+                if i.key_pressed(Key::ArrowRight) {
+                    return Action::MoveField(1);
+                }
+                if i.key_pressed(Key::ArrowLeft) {
+                    return Action::MoveField(-1);
+                }
+                if i.key_pressed(Key::Tab) {
+                    return Action::MoveChannel(1);
+                }
                 // Insert key (no modifier) → insert row (SCA_PatternTrackInsertLine)
-                if i.key_pressed(Key::Insert)     { return Action::InsertRow; }
+                if i.key_pressed(Key::Insert) {
+                    return Action::InsertRow;
+                }
             }
             if shift && i.key_pressed(Key::Tab) {
                 return Action::MoveChannel(-1);
@@ -618,7 +712,9 @@ impl PatternEditor {
 
             // Entry (plain or shift — shift raises the note one octave)
             if none || shift {
-                return Action::Entry { octave_boost: if shift { 1 } else { 0 } };
+                return Action::Entry {
+                    octave_boost: if shift { 1 } else { 0 },
+                };
             }
 
             Action::None
@@ -635,8 +731,12 @@ impl PatternEditor {
                     self.cursor.row = r as usize;
                 }
             }
-            Action::MoveField(d) => { self.move_field(d); }
-            Action::MoveChannel(d) => { self.move_channel(d); }
+            Action::MoveField(d) => {
+                self.move_field(d);
+            }
+            Action::MoveChannel(d) => {
+                self.move_channel(d);
+            }
             Action::Entry { octave_boost } => {
                 self.handle_entry(ui, module, pat_len, octave_boost);
             }
@@ -662,19 +762,29 @@ impl PatternEditor {
     ) {
         use egui::Key;
 
-        let field  = self.cursor.field;
+        let field = self.cursor.field;
         let octave = (self.octave + octave_boost).min(8);
 
         let entry = ui.input(|i| -> EntryAction {
             match field {
                 Field::Note => {
                     // Note-off: `1` key or `A` key (NK_RELEASE)
-                    if i.key_pressed(Key::Num1) { return EntryAction::NoteOff; }
-                    if i.key_pressed(Key::A)    { return EntryAction::NoteOff; }
+                    if i.key_pressed(Key::Num1) {
+                        return EntryAction::NoteOff;
+                    }
+                    if i.key_pressed(Key::A) {
+                        return EntryAction::NoteOff;
+                    }
                     // Clear cell: K key (NK_EMPTY), Backspace, Delete
-                    if i.key_pressed(Key::K)         { return EntryAction::ClearCell; }
-                    if i.key_pressed(Key::Backspace)  { return EntryAction::ClearCell; }
-                    if i.key_pressed(Key::Delete)     { return EntryAction::ClearCell; }
+                    if i.key_pressed(Key::K) {
+                        return EntryAction::ClearCell;
+                    }
+                    if i.key_pressed(Key::Backspace) {
+                        return EntryAction::ClearCell;
+                    }
+                    if i.key_pressed(Key::Delete) {
+                        return EntryAction::ClearCell;
+                    }
                     // Piano note keys (physical + Event::Text fallback for mobile)
                     if let Some(offset) = Self::check_note_key(i) {
                         if let Some(note) = compute_note(offset, octave) {
@@ -693,8 +803,12 @@ impl PatternEditor {
                         if let egui::Event::Text(s) = ev {
                             if let Some(ch) = s.chars().next() {
                                 let ch_l = ch.to_lowercase().next().unwrap_or(ch);
-                                if ch_l == '1' || ch_l == 'a' { return EntryAction::NoteOff; }
-                                if ch_l == 'k' { return EntryAction::ClearCell; }
+                                if ch_l == '1' || ch_l == 'a' {
+                                    return EntryAction::NoteOff;
+                                }
+                                if ch_l == 'k' {
+                                    return EntryAction::ClearCell;
+                                }
                             }
                         }
                     }
@@ -702,8 +816,12 @@ impl PatternEditor {
                 }
                 _ => {
                     // Clear field
-                    if i.key_pressed(Key::Backspace) { return EntryAction::ClearField; }
-                    if i.key_pressed(Key::Delete)    { return EntryAction::ClearField; }
+                    if i.key_pressed(Key::Backspace) {
+                        return EntryAction::ClearField;
+                    }
+                    if i.key_pressed(Key::Delete) {
+                        return EntryAction::ClearField;
+                    }
                     // Hex digit (physical + Event::Text fallback for mobile)
                     if let Some(d) = Self::check_hex_key(i) {
                         return EntryAction::WriteHex(d);
@@ -753,44 +871,83 @@ impl PatternEditor {
     fn check_note_key(i: &egui::InputState) -> Option<i8> {
         use egui::Key::*;
         // Physical key → character mapping (hardware keyboard / desktop).
-        let ch_from_key = if      i.key_pressed(Z)           { Some('z') }
-            else if i.key_pressed(S)                { Some('s') }
-            else if i.key_pressed(X)                { Some('x') }
-            else if i.key_pressed(D)                { Some('d') }
-            else if i.key_pressed(C)                { Some('c') }
-            else if i.key_pressed(V)                { Some('v') }
-            else if i.key_pressed(G)                { Some('g') }
-            else if i.key_pressed(B)                { Some('b') }
-            else if i.key_pressed(H)                { Some('h') }
-            else if i.key_pressed(N)                { Some('n') }
-            else if i.key_pressed(J)                { Some('j') }
-            else if i.key_pressed(M)                { Some('m') }
-            else if i.key_pressed(Comma)            { Some(',') }
-            else if i.key_pressed(L)                { Some('l') }
-            else if i.key_pressed(Period)           { Some('.') }
-            else if i.key_pressed(Semicolon)        { Some(';') }
-            else if i.key_pressed(Slash)            { Some('/') }
-            else if i.key_pressed(Q)                { Some('q') }
-            else if i.key_pressed(Num2)             { Some('2') }
-            else if i.key_pressed(W)                { Some('w') }
-            else if i.key_pressed(Num3)             { Some('3') }
-            else if i.key_pressed(E)                { Some('e') }
-            else if i.key_pressed(R)                { Some('r') }
-            else if i.key_pressed(Num5)             { Some('5') }
-            else if i.key_pressed(T)                { Some('t') }
-            else if i.key_pressed(Num6)             { Some('6') }
-            else if i.key_pressed(Y)                { Some('y') }
-            else if i.key_pressed(Num7)             { Some('7') }
-            else if i.key_pressed(U)                { Some('u') }
-            else if i.key_pressed(I)                { Some('i') }
-            else if i.key_pressed(Num9)             { Some('9') }
-            else if i.key_pressed(O)                { Some('o') }
-            else if i.key_pressed(Num0)             { Some('0') }
-            else if i.key_pressed(P)                { Some('p') }
-            else if i.key_pressed(OpenBracket)      { Some('[') }
-            else if i.key_pressed(Equals)           { Some('=') }
-            else if i.key_pressed(CloseBracket)     { Some(']') }
-            else                                    { None      };
+        let ch_from_key = if i.key_pressed(Z) {
+            Some('z')
+        } else if i.key_pressed(S) {
+            Some('s')
+        } else if i.key_pressed(X) {
+            Some('x')
+        } else if i.key_pressed(D) {
+            Some('d')
+        } else if i.key_pressed(C) {
+            Some('c')
+        } else if i.key_pressed(V) {
+            Some('v')
+        } else if i.key_pressed(G) {
+            Some('g')
+        } else if i.key_pressed(B) {
+            Some('b')
+        } else if i.key_pressed(H) {
+            Some('h')
+        } else if i.key_pressed(N) {
+            Some('n')
+        } else if i.key_pressed(J) {
+            Some('j')
+        } else if i.key_pressed(M) {
+            Some('m')
+        } else if i.key_pressed(Comma) {
+            Some(',')
+        } else if i.key_pressed(L) {
+            Some('l')
+        } else if i.key_pressed(Period) {
+            Some('.')
+        } else if i.key_pressed(Semicolon) {
+            Some(';')
+        } else if i.key_pressed(Slash) {
+            Some('/')
+        } else if i.key_pressed(Q) {
+            Some('q')
+        } else if i.key_pressed(Num2) {
+            Some('2')
+        } else if i.key_pressed(W) {
+            Some('w')
+        } else if i.key_pressed(Num3) {
+            Some('3')
+        } else if i.key_pressed(E) {
+            Some('e')
+        } else if i.key_pressed(R) {
+            Some('r')
+        } else if i.key_pressed(Num5) {
+            Some('5')
+        } else if i.key_pressed(T) {
+            Some('t')
+        } else if i.key_pressed(Num6) {
+            Some('6')
+        } else if i.key_pressed(Y) {
+            Some('y')
+        } else if i.key_pressed(Num7) {
+            Some('7')
+        } else if i.key_pressed(U) {
+            Some('u')
+        } else if i.key_pressed(I) {
+            Some('i')
+        } else if i.key_pressed(Num9) {
+            Some('9')
+        } else if i.key_pressed(O) {
+            Some('o')
+        } else if i.key_pressed(Num0) {
+            Some('0')
+        } else if i.key_pressed(P) {
+            Some('p')
+        } else if i.key_pressed(OpenBracket) {
+            Some('[')
+        } else if i.key_pressed(Equals) {
+            Some('=')
+        } else if i.key_pressed(CloseBracket) {
+            Some(']')
+        } else {
+            None
+        };
 
         if let Some(ch) = ch_from_key {
             return piano_key_to_semitone_offset(ch);
@@ -821,24 +978,41 @@ impl PatternEditor {
     fn check_hex_key(i: &egui::InputState) -> Option<u8> {
         use egui::Key::*;
         // Physical key path.
-        let from_key =
-            if      i.key_pressed(Num0) { Some(0)  }
-            else if i.key_pressed(Num1) { Some(1)  }
-            else if i.key_pressed(Num2) { Some(2)  }
-            else if i.key_pressed(Num3) { Some(3)  }
-            else if i.key_pressed(Num4) { Some(4)  }
-            else if i.key_pressed(Num5) { Some(5)  }
-            else if i.key_pressed(Num6) { Some(6)  }
-            else if i.key_pressed(Num7) { Some(7)  }
-            else if i.key_pressed(Num8) { Some(8)  }
-            else if i.key_pressed(Num9) { Some(9)  }
-            else if i.key_pressed(A)    { Some(10) }
-            else if i.key_pressed(B)    { Some(11) }
-            else if i.key_pressed(C)    { Some(12) }
-            else if i.key_pressed(D)    { Some(13) }
-            else if i.key_pressed(E)    { Some(14) }
-            else if i.key_pressed(F)    { Some(15) }
-            else                        { None     };
+        let from_key = if i.key_pressed(Num0) {
+            Some(0)
+        } else if i.key_pressed(Num1) {
+            Some(1)
+        } else if i.key_pressed(Num2) {
+            Some(2)
+        } else if i.key_pressed(Num3) {
+            Some(3)
+        } else if i.key_pressed(Num4) {
+            Some(4)
+        } else if i.key_pressed(Num5) {
+            Some(5)
+        } else if i.key_pressed(Num6) {
+            Some(6)
+        } else if i.key_pressed(Num7) {
+            Some(7)
+        } else if i.key_pressed(Num8) {
+            Some(8)
+        } else if i.key_pressed(Num9) {
+            Some(9)
+        } else if i.key_pressed(A) {
+            Some(10)
+        } else if i.key_pressed(B) {
+            Some(11)
+        } else if i.key_pressed(C) {
+            Some(12)
+        } else if i.key_pressed(D) {
+            Some(13)
+        } else if i.key_pressed(E) {
+            Some(14)
+        } else if i.key_pressed(F) {
+            Some(15)
+        } else {
+            None
+        };
 
         if from_key.is_some() {
             return from_key;
@@ -853,7 +1027,7 @@ impl PatternEditor {
                     let d: Option<u8> = match ch_l {
                         '0'..='9' => Some(ch_l as u8 - b'0'),
                         'a'..='f' => Some(ch_l as u8 - b'a' + 10),
-                        _         => None,
+                        _ => None,
                     };
                     if let Some(digit) = d {
                         return Some(digit);
@@ -871,47 +1045,53 @@ impl PatternEditor {
     /// Full order:  Ch0.Note → Ch0.Sample → … → Ch0.Effect →
     ///              Ch1.Note → … → Ch2.Effect → (wrap to Ch0.Note)
     fn move_field(&mut self, delta: i32) {
-        let total   = (NUM_CH * Field::COUNT) as i32;
+        let total = (NUM_CH * Field::COUNT) as i32;
         let current = (self.cursor.channel * Field::COUNT + self.cursor.field.index()) as i32;
-        let next    = ((current + delta).rem_euclid(total)) as usize;
+        let next = ((current + delta).rem_euclid(total)) as usize;
         self.cursor.channel = next / Field::COUNT;
-        self.cursor.field   = Field::from_index(next % Field::COUNT);
+        self.cursor.field = Field::from_index(next % Field::COUNT);
     }
 
     /// Jump to the next / previous channel's Note column (Tab / Shift+Tab).
     fn move_channel(&mut self, delta: i32) {
         let next = ((self.cursor.channel as i32 + delta).rem_euclid(NUM_CH as i32)) as usize;
         self.cursor.channel = next;
-        self.cursor.field   = Field::Note;
+        self.cursor.field = Field::Note;
     }
 
     // ─── Data mutation helpers ────────────────────────────────────────────
 
     fn cell_mut<'m>(&self, module: &'m mut Module) -> Option<&'m mut ChannelLine> {
         let pat = module.patterns[Module::pat_idx(self.current_pattern)].as_mut()?;
-        if self.cursor.row >= pat.length { return None; }
+        if self.cursor.row >= pat.length {
+            return None;
+        }
         Some(&mut pat.items[self.cursor.row].channel[self.cursor.channel])
     }
 
     fn write_note(&mut self, module: &mut Module, note: i8) {
-        if let Some(c) = self.cell_mut(module) { c.note = note; }
+        if let Some(c) = self.cell_mut(module) {
+            c.note = note;
+        }
     }
 
     fn clear_cell(&mut self, module: &mut Module) {
-        if let Some(c) = self.cell_mut(module) { *c = ChannelLine::default(); }
+        if let Some(c) = self.cell_mut(module) {
+            *c = ChannelLine::default();
+        }
     }
 
     fn clear_field(&mut self, module: &mut Module) {
         if let Some(c) = self.cell_mut(module) {
             match self.cursor.field {
-                Field::Note     => c.note = NOTE_NONE,
-                Field::Sample   => c.sample = 0,
+                Field::Note => c.note = NOTE_NONE,
+                Field::Sample => c.sample = 0,
                 Field::Ornament => c.ornament = 0,
-                Field::Volume   => c.volume = 0,
+                Field::Volume => c.volume = 0,
                 Field::Envelope => c.envelope = 0,
-                Field::Effect   => {
-                    c.additional_command.number    = 0;
-                    c.additional_command.delay     = 0;
+                Field::Effect => {
+                    c.additional_command.number = 0;
+                    c.additional_command.delay = 0;
                     c.additional_command.parameter = 0;
                 }
             }
@@ -921,12 +1101,12 @@ impl PatternEditor {
     fn write_hex(&mut self, module: &mut Module, digit: u8) {
         if let Some(c) = self.cell_mut(module) {
             match self.cursor.field {
-                Field::Note     => {} // dispatched separately
-                Field::Sample   => c.sample    = hex_digit_entry(c.sample,   digit, MAX_SAMPLE),
-                Field::Ornament => c.ornament  = hex_digit_entry(c.ornament, digit, MAX_NIBBLE),
-                Field::Volume   => c.volume    = hex_digit_entry(c.volume,   digit, MAX_NIBBLE),
-                Field::Envelope => c.envelope  = hex_digit_entry(c.envelope, digit, MAX_NIBBLE),
-                Field::Effect   => {
+                Field::Note => {} // dispatched separately
+                Field::Sample => c.sample = hex_digit_entry(c.sample, digit, MAX_SAMPLE),
+                Field::Ornament => c.ornament = hex_digit_entry(c.ornament, digit, MAX_NIBBLE),
+                Field::Volume => c.volume = hex_digit_entry(c.volume, digit, MAX_NIBBLE),
+                Field::Envelope => c.envelope = hex_digit_entry(c.envelope, digit, MAX_NIBBLE),
+                Field::Effect => {
                     c.additional_command.number =
                         hex_digit_entry(c.additional_command.number, digit, MAX_NIBBLE);
                 }
@@ -936,7 +1116,9 @@ impl PatternEditor {
 
     /// Advance the cursor row by `step_size`, clamped to the pattern length.
     fn advance(&mut self, pat_len: usize) {
-        if self.step_size == 0 || pat_len == 0 { return; }
+        if self.step_size == 0 || pat_len == 0 {
+            return;
+        }
         let r = (self.cursor.row as i32 + self.step_size).clamp(0, pat_len as i32 - 1);
         self.cursor.row = r as usize;
         self.scroll_to_cursor = true;
@@ -954,10 +1136,12 @@ impl PatternEditor {
     fn insert_row(&mut self, module: &mut Module) {
         let pat = match module.patterns[Module::pat_idx(self.current_pattern)].as_mut() {
             Some(p) => p,
-            None    => return,
+            None => return,
         };
         let row = self.cursor.row;
-        if row >= pat.length { return; }
+        if row >= pat.length {
+            return;
+        }
 
         // Shift rows [row..MAX_PAT_LEN-1] downward — last row is overwritten.
         for j in (row + 1..vti_core::MAX_PAT_LEN).rev() {
@@ -974,10 +1158,12 @@ impl PatternEditor {
     fn delete_row(&mut self, module: &mut Module) {
         let pat = match module.patterns[Module::pat_idx(self.current_pattern)].as_mut() {
             Some(p) => p,
-            None    => return,
+            None => return,
         };
         let row = self.cursor.row;
-        if row >= pat.length { return; }
+        if row >= pat.length {
+            return;
+        }
 
         // Shift rows [row+1..MAX_PAT_LEN-1] upward.
         for j in row..vti_core::MAX_PAT_LEN - 1 {
@@ -998,15 +1184,17 @@ impl PatternEditor {
     fn clear_row(&mut self, module: &mut Module) {
         let pat = match module.patterns[Module::pat_idx(self.current_pattern)].as_mut() {
             Some(p) => p,
-            None    => return,
+            None => return,
         };
         let row = self.cursor.row;
-        if row >= pat.length { return; }
+        if row >= pat.length {
+            return;
+        }
         let item = &mut pat.items[row];
         for ch in 0..NUM_CH {
             item.channel[ch] = ChannelLine::default();
         }
-        item.noise    = 0;
+        item.noise = 0;
         item.envelope = 0;
     }
 }
