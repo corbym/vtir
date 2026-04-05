@@ -23,11 +23,7 @@ impl Toolbar {
                         *playback_state = PlaybackState::Paused;
                         *status = "Paused".to_string();
                     }
-                    PlaybackState::Paused => {
-                        *playback_state = PlaybackState::Playing;
-                        *status = "Playing".to_string();
-                    }
-                    PlaybackState::Stopped => {
+                    PlaybackState::Paused | PlaybackState::Stopped => {
                         *playback_state = PlaybackState::Playing;
                         *status = "Playing".to_string();
                     }
