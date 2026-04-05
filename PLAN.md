@@ -282,9 +282,9 @@
 - [x] `AudioPlayer::start()` — open cpal stereo-i16 output stream
 - [x] `AudioPlayer::push_samples()` — feed rendered samples into ring
 - [x] `AudioPlayer::fill_level()` — approximate fill ratio
-- [ ] Render thread — background thread calling `Synthesizer::render_frame` each interrupt period and pushing into the ring buffer
-- [ ] `PlayerCommand` channel integration — Play/Pause/Stop from UI thread
-- [ ] `IsPlaying` / `Real_End` signalling back to UI
+- [x] Render loop — 50 Hz tick timer in `eframe::App::update` calls `tick_audio()`, which runs `render_frame_quality()` and pushes samples via `AudioPlayer::push_samples()`; `AudioPlayer` opened lazily on first Play press (satisfies browser autoplay policy on WASM)
+- [x] Play/Pause/Stop from UI thread — driven by `PlaybackState` enum transitions in `app.rs`; Stop resets position, Pause silences the AY chip, resume restores tick timer without a catch-up burst
+- [x] `IsPlaying` / `Real_End` signalling back to UI — `PlaybackState::Playing` drives repaint and status-bar position/time display; `PlayResult::ModuleLoop` handled in `tick_audio()`
 - [ ] Export to WAV file (replacing the existing export path)
 
 ### 4.2 Tests (`tests/integration_tests.rs`)
@@ -308,7 +308,7 @@
 - [x] `File → Save as VTM…` — rfd save dialog (native) / File System Access API (WASM) → VTM text output
 - [x] `File → Save as PT3…` — rfd save dialog (native) / File System Access API (WASM) → PT3 binary output
 - [ ] `File → Open` / `File → Save` — show load/save errors and parse failures in an egui modal error dialog (currently only reported in the status bar)
-- [ ] `File → Export ZX` — PT3 to .tap/.tzx (ported from `ExportZX.pas`)
+- [x] `File → Export ZX` — PT3 to .tap / .ay / .scl / Hobeta (`zx_export.rs`, ported from `ExportZX.pas`); all five output formats; ZX player binaries embedded from assets
 - [ ] Turbo Sound second-chip slot management
 - [ ] Module properties dialog (title, author, delay, tone table)
 - [ ] About dialog (credits to S.V.Bulba)
@@ -627,8 +627,8 @@ should be treated as regressions and investigated before merging.
 | Remaining format parsers (8×) | 0% | ASC, SQT, GTR, FTC, FLS, PSC, PSM, FXM (~2500 lines of Pascal to port) |
 | `vti-ay` chip emulator | ~85% | performance-mode synthesizer paths, channel panning presets |
 | `vti-ay` synthesizer | ~75% | channel allocation presets, Turbo Sound |
-| `vti-audio` player | ~60% | render thread, command channel, WAV export |
-| `vti-app` GUI skeleton | ~35% | all editing interaction, dialogs |
+| `vti-audio` player | ~90% | WAV export |
+| `vti-app` GUI skeleton | ~40% | all editing interaction, dialogs |
 | Build pipeline | ~50% | GitHub Actions release workflow |
 | README | ✅ complete | — |
 | **Integration tests** | ✅ 181 passing | effect-command edge cases (see §2.6) |
