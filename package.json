@@ -1,0 +1,33 @@
+{
+  "name": "vtir",
+  "version": "1.0.0",
+  "description": "> **A music editor and player for the AY-3-8910 / YM2149F sound chips,**   > originally used in the ZX Spectrum home computer.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "jest"
+  },
+  "jest": {
+    "testEnvironment": "jest-environment-jsdom",
+    "testMatch": ["**/src/**/*.test.js"]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/corbym/vtir.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/corbym/vtir/issues"
+  },
+  "homepage": "https://github.com/corbym/vtir#readme",
+  "devDependencies": {
+    "jest": "^30.3.0",
+    "jest-environment-jsdom": "^30.3.0"
+  }
+}
