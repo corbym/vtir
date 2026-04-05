@@ -25,14 +25,78 @@
             height: 100dvh;
         }
     </style>
-<link rel="modulepreload" href="/vtir/pr-previews/45/vortex-tracker-18f224fd5ff69043.js" crossorigin="anonymous" integrity="sha384-PyR/pOM7hcP4UXGuQE0Y0Ya7gA1lQOE/555asQR/3MT4yPlrmIdAp/laj0sUsKBx"><link rel="preload" href="/vtir/pr-previews/45/vortex-tracker-18f224fd5ff69043_bg.wasm" crossorigin="anonymous" integrity="sha384-G3EJJqZkHi9u8G50+l5KoymWY0yvwhllGRmo/k8CJzixai2pE6yylmOHWKD+ia/b" as="fetch" type="application/wasm"></head>
+<link rel="modulepreload" href="/vtir/pr-previews/45/vortex-tracker-4db9977349e53fa3.js" crossorigin="anonymous" integrity="sha384-PjuXpQwQQyQqs4FgCIOwwagfBLF/CEY9VQDNBnkg3QEbk4YF0rR956Vcz1DUJ3/l"><link rel="preload" href="/vtir/pr-previews/45/vortex-tracker-4db9977349e53fa3_bg.wasm" crossorigin="anonymous" integrity="sha384-kOwrP7n554BhfdTtecDG1JX9lrpNcnVpyGDf1TEE5VBtgIG+ZaCb3D7ZOBm5aFin" as="fetch" type="application/wasm"></head>
 <body>
+    <script>
+    /* Mobile virtual-keyboard fix
+     * ─────────────────────────────────────────────────────────────────────────
+     * eframe proxies all keyboard input through a single hidden
+     * <input type="text"> called the "text agent".  It focuses this element
+     * from requestAnimationFrame, which iOS Safari does NOT treat as a
+     * user-gesture context, so the virtual keyboard never appears.
+     *
+     * Fix:
+     *   1. Wait for eframe to append the text agent to <body> (it does so
+     *      after WASM initialisation), then attach two event listeners:
+     *      a. canvas touchend  → immediately focus the input (synchronous
+     *         user-gesture context; iOS Safari allows keyboard popup here).
+     *      b. input blur       → if a touch occurred recently, re-focus the
+     *         input right away to cancel the blur before iOS can dismiss the
+     *         keyboard.  This covers the window between the touchend and the
+     *         frame where eframe's own ime-based management takes over.
+     *   2. A MutationObserver on <body> detects the input insertion so the
+     *      listeners are attached even if WASM loads faster than expected.
+     */
+    (function () {
+        'use strict';
+        function attach(input) {
+            /* 'the_canvas_id' must match the <canvas id="the_canvas_id"> below. */
+            var canvas = document.getElementById('the_canvas_id');
+            if (!canvas) { return; }
+            var keep = false;
+            var timer = null;
+            canvas.addEventListener('touchend', function () {
+                keep = true;
+                clearTimeout(timer);
+                input.focus();
+                /* Give eframe ~500 ms to process the tap and set ime.
+                   After that, eframe's own text_agent.focus() calls take over
+                   (driven by the keyboard-anchor TextEdit in the pattern editor). */
+                timer = setTimeout(function () { keep = false; }, 500);
+            }, { passive: true });
+            /* If eframe calls blur() before ime is established, immediately
+               re-focus so the keyboard is not dismissed prematurely. */
+            input.addEventListener('blur', function () {
+                if (keep) { input.focus(); }
+            });
+        }
+        /* Check if the text agent already exists (unlikely at script parse
+           time, but safe to handle). */
+        var existing = document.querySelector('input[type=text]');
+        if (existing) { attach(existing); return; }
+        /* Watch for eframe to append the text agent to <body>. */
+        var mo = new MutationObserver(function (list) {
+            for (var i = 0; i < list.length; i++) {
+                var nodes = list[i].addedNodes;
+                for (var j = 0; j < nodes.length; j++) {
+                    var n = nodes[j];
+                    if (n.nodeName === 'INPUT' && n.type === 'text') {
+                        mo.disconnect();
+                        attach(n);
+                        return;
+                    }
+                }
+            }
+        });
+        mo.observe(document.body, { childList: true });
+    }());
+    </script>
     <!-- trunk injects the WASM loader script here -->
     <canvas id="the_canvas_id"></canvas>
 
 <script type="module">
-import init, * as bindings from '/vtir/pr-previews/45/vortex-tracker-18f224fd5ff69043.js';
-const wasm = await init({ module_or_path: '/vtir/pr-previews/45/vortex-tracker-18f224fd5ff69043_bg.wasm' });
+import init, * as bindings from '/vtir/pr-previews/45/vortex-tracker-4db9977349e53fa3.js';
+const wasm = await init({ module_or_path: '/vtir/pr-previews/45/vortex-tracker-4db9977349e53fa3_bg.wasm' });
 
 
 window.wasmBindings = bindings;
