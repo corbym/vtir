@@ -109,7 +109,7 @@ source. See [`PLAN.md`](PLAN.md) for a detailed, checked-off task list.
 - ✅ egui-based GUI skeleton (pattern view, sample view, ornament view, toolbar) with status bar showing current position + elapsed / total time
 - ✅ Terminal CLI tracker diagnostics tool (`vti-cli`) — keyboard navigation + headless tick harness; header shows elapsed / total time
 - ✅ Playback cursor follow — pattern editor highlights and scrolls to the playing row in real time
-- ✅ File open (import): PT3, PT2, PT1, STC, STP, VTM text, AY (ZXAY ST11 + EMUL embedded-module extraction)
+- ✅ File open (import): PT3, PT2, PT1, STC, STP, VTM text, AY (ZXAY ST11; EMUL best-effort — only works when the EMUL payload contains an embedded PT3/STP module; EMUL files that require Z80 player emulation will fail to load)
 - ✅ File save (export): PT3 binary, VTM text — these are the only writable formats
 - ✅ PT3 round-trip writer (parse → write → parse verified)
 - ✅ ZX Spectrum export (`.tap`, `.scl`, `.ay`, Hobeta `.$ ` header)
