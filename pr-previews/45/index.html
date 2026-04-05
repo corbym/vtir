@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Vortex Tracker II</title>
+    <style>
+        html, body {
+            margin: 0;
+            overflow: hidden;
+            background: #1c1c1c;
+            /* On mobile, fill-available prevents the body from extending behind
+               the browser's address/navigation bar. */
+            height: 100vh;
+            height: -webkit-fill-available;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            /* 100dvh (dynamic viewport height) tracks the real visible area on
+               mobile as the browser toolbar shows/hides, so the bottom status
+               bar and timers are never clipped.  100vh is the fallback for
+               browsers that do not yet support dvh units. */
+            height: 100vh;
+            height: 100dvh;
+        }
+    </style>
+<link rel="modulepreload" href="/vtir/pr-previews/45/vortex-tracker-18f224fd5ff69043.js" crossorigin="anonymous" integrity="sha384-PyR/pOM7hcP4UXGuQE0Y0Ya7gA1lQOE/555asQR/3MT4yPlrmIdAp/laj0sUsKBx"><link rel="preload" href="/vtir/pr-previews/45/vortex-tracker-18f224fd5ff69043_bg.wasm" crossorigin="anonymous" integrity="sha384-G3EJJqZkHi9u8G50+l5KoymWY0yvwhllGRmo/k8CJzixai2pE6yylmOHWKD+ia/b" as="fetch" type="application/wasm"></head>
+<body>
+    <!-- trunk injects the WASM loader script here -->
+    <canvas id="the_canvas_id"></canvas>
+
+<script type="module">
+import init, * as bindings from '/vtir/pr-previews/45/vortex-tracker-18f224fd5ff69043.js';
+const wasm = await init({ module_or_path: '/vtir/pr-previews/45/vortex-tracker-18f224fd5ff69043_bg.wasm' });
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script></body>
+</html>
