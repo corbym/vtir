@@ -339,8 +339,8 @@
 - [x] Insert row — `Ctrl+I` or `Insert`: shifts rows down from cursor, clears cursor row (mirrors Pascal `DoInsertLine` / `SCA_PatternInsertLine`)
 - [x] Delete row — `Ctrl+Backspace` or `Ctrl+Y`: shifts rows up from cursor, clears last row (mirrors Pascal `DoRemoveLine` / `SCA_PatternDeleteLine`)
 - [x] Clear row — `Ctrl+Delete`: resets every channel cell on the cursor row (mirrors Pascal `SCA_PatternClearLine`)
-- [ ] Copy / paste row or block
-- [ ] Transpose selection (semitone / octave)
+- [ ] **TODO (next priority)** Copy / paste row or block
+- [ ] **TODO (next priority)** Transpose selection (semitone / octave)
 - [ ] Loop-back indicator on position-list loop row
 
 ### 5.4 Sample Editor (`ui/sample_editor.rs`)
