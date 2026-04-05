@@ -43,21 +43,21 @@ playable on real ZX Spectrum hardware and by many emulators.
 
 ## Supported Import Formats
 
-| # | Format | Extension |
-|---|--------|-----------|
-| 1 | Pro Tracker 3.xx | `.pt3` |
-| 2 | Pro Tracker 2.xx | `.pt2` |
-| 3 | Pro Tracker 1.xx | `.pt1` |
-| 4 | Flash Tracker | `.fls` |
-| 5 | Fast Tracker | `.ftc` |
-| 6 | Global Tracker 1.x | `.gtr` |
-| 7 | Pro Sound Creator 1.xx | `.psc` |
-| 8 | Pro Sound Maker (compiled) | `.psm` |
-| 9 | ASC Sound Master (compiled) | `.asc` |
-| 10 | Sound Tracker / Super Sonic (compiled) | `.stc` |
-| 11 | Sound Tracker Pro (compiled) | `.stp` |
-| 12 | SQ-Tracker (compiled) | `.sqt` |
-| 13 | Amadeus / Fuxoft AY Language | `.fxm`, `.ay` |
+| # | Format | Extension | Status |
+|---|--------|-----------|--------|
+| 1 | Pro Tracker 3.xx | `.pt3` | ✅ |
+| 2 | Pro Tracker 2.xx | `.pt2` | ✅ |
+| 3 | Pro Tracker 1.xx | `.pt1` | ✅ |
+| 4 | Flash Tracker | `.fls` | ✅ |
+| 5 | Fast Tracker | `.ftc` | ❌ not yet implemented |
+| 6 | Global Tracker 1.x | `.gtr` | ✅ |
+| 7 | Pro Sound Creator 1.xx | `.psc` | ❌ not yet implemented |
+| 8 | Pro Sound Maker (compiled) | `.psm` | ❌ not yet implemented |
+| 9 | ASC Sound Master (compiled) | `.asc`, `.as0` | ✅ |
+| 10 | Sound Tracker / Super Sonic (compiled) | `.stc` | ✅ |
+| 11 | Sound Tracker Pro (compiled) | `.stp` | ✅ |
+| 12 | SQ-Tracker (compiled) | `.sqt` | ✅ |
+| 13 | Amadeus / Fuxoft AY Language | `.fxm`, `.ay` | ✅ `.ay` / ❌ `.fxm` not yet implemented |
 
 ---
 
