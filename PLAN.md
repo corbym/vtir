@@ -335,10 +335,12 @@
 - [x] Cursor cell highlighted — bright cyan on the active (row, channel, field)
 - [x] Configurable auto-advance step size — DragValue `Step:` (−64..+64, default 1, 0=disabled) mirrors Pascal `UDAutoStep`; cursor scrolls to follow after each entry
 - [x] Pure editor logic in `crates/vti-core/src/editor.rs` — `piano_key_to_semitone_offset`, `compute_note`, `note_key_result`, `hex_digit_entry`; 21 unit tests + CLI smoke tests
-- [ ] Insert / delete row
+- [x] Pattern length editor — DragValue `Len:` (1–256) in header row mirrors Pascal `EdPatLen` / `UDPatLen`
+- [x] Insert row — `Ctrl+I` or `Insert`: shifts rows down from cursor, clears cursor row (mirrors Pascal `DoInsertLine` / `SCA_PatternInsertLine`)
+- [x] Delete row — `Ctrl+Backspace` or `Ctrl+Y`: shifts rows up from cursor, clears last row (mirrors Pascal `DoRemoveLine` / `SCA_PatternDeleteLine`)
+- [x] Clear row — `Ctrl+Delete`: resets every channel cell on the cursor row (mirrors Pascal `SCA_PatternClearLine`)
 - [ ] Copy / paste row or block
 - [ ] Transpose selection (semitone / octave)
-- [ ] Pattern length editor
 - [ ] Loop-back indicator on position-list loop row
 
 ### 5.4 Sample Editor (`ui/sample_editor.rs`)

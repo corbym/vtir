@@ -14,6 +14,15 @@
 //! - **Field navigation** — ←/→ cycle through fields and channels; Tab /
 //!   Shift+Tab jump to the next/previous channel's Note column.
 //! - **Shift+note key** — plays the note one octave higher (Pascal convention).
+//! - **Pattern length editor** — `Len:` DragValue (1–256) in the header row.
+//! - **Insert row** — `Ctrl+I` or `Insert`: shifts rows below the cursor down
+//!   by one (last row is discarded), clears the cursor row.  Mirrors Pascal
+//!   `SCA_PatternInsertLine` / `DoInsertLine`.
+//! - **Delete row** — `Ctrl+Backspace` or `Ctrl+Y`: shifts rows above the end
+//!   up by one (last row is cleared), removing the cursor row.  Mirrors Pascal
+//!   `SCA_PatternDeleteLine` / `DoRemoveLine`.
+//! - **Clear row** — `Ctrl+Delete`: resets every channel cell on the cursor
+//!   row to its default state.  Mirrors Pascal `SCA_PatternClearLine`.
 //!
 //! ## WASM / mobile keyboard note
 //!
@@ -116,6 +125,15 @@ enum Action {
     MoveChannel(i32),
     /// `octave_boost` is 1 when Shift was held (raises entry note one octave).
     Entry { octave_boost: u8 },
+    /// Shift all rows from the cursor downward by 1; clear the cursor row.
+    /// Mirrors Pascal `DoInsertLine` / `SCA_PatternInsertLine`.
+    InsertRow,
+    /// Shift all rows above the pattern end upward by 1; clear the last row.
+    /// Mirrors Pascal `DoRemoveLine` / `SCA_PatternDeleteLine`.
+    DeleteRow,
+    /// Zero every channel cell on the cursor row.
+    /// Mirrors Pascal `SCA_PatternClearLine`.
+    ClearRow,
 }
 
 enum EntryAction {
@@ -184,6 +202,26 @@ impl PatternEditor {
                 module.patterns[pat_idx] = Some(Box::new(vti_core::Pattern::default()));
             }
             return;
+        }
+
+        // Pattern length editor — mirrors Pascal `EdPatLen` / `UDPatLen`.
+        {
+            let pat = module.patterns[pat_idx].as_mut().unwrap();
+            let mut len = pat.length;
+            ui.horizontal(|ui| {
+                ui.label("Len:");
+                if ui
+                    .add(
+                        egui::DragValue::new(&mut len)
+                            .range(1..=vti_core::MAX_PAT_LEN)
+                            .speed(1),
+                    )
+                    .on_hover_text("Pattern length (rows). Range 1–256.")
+                    .changed()
+                {
+                    pat.length = len;
+                }
+            });
         }
 
         let pat_len = module.patterns[pat_idx].as_ref().unwrap().length;
@@ -377,13 +415,23 @@ impl PatternEditor {
         use egui::Key;
 
         let action = ui.input(|i| {
-            if i.modifiers.ctrl {
-                return Action::None; // leave for global shortcuts
-            }
-
             let alt   = i.modifiers.alt && !i.modifiers.ctrl && !i.modifiers.shift;
             let shift = i.modifiers.shift && !i.modifiers.alt && !i.modifiers.ctrl;
+            let ctrl  = i.modifiers.ctrl && !i.modifiers.alt && !i.modifiers.shift;
             let none  = !i.modifiers.any();
+
+            // ── Ctrl shortcuts ───────────────────────────────────────────
+            if ctrl {
+                // Ctrl+I → insert row (SCA_PatternInsertLine)
+                if i.key_pressed(Key::I) { return Action::InsertRow; }
+                // Ctrl+Backspace → delete row (SCA_PatternDeleteLine)
+                if i.key_pressed(Key::Backspace) { return Action::DeleteRow; }
+                // Ctrl+Y → delete row (SCA_PatternDeleteLine2)
+                if i.key_pressed(Key::Y) { return Action::DeleteRow; }
+                // Ctrl+Delete → clear row (SCA_PatternClearLine)
+                if i.key_pressed(Key::Delete) { return Action::ClearRow; }
+                return Action::None; // leave other Ctrl combos for global shortcuts
+            }
 
             // Alt+1..8 → set octave (mirrors Pascal OctaveActionExecute)
             if alt {
@@ -406,6 +454,8 @@ impl PatternEditor {
                 if i.key_pressed(Key::ArrowRight) { return Action::MoveField(1);   }
                 if i.key_pressed(Key::ArrowLeft)  { return Action::MoveField(-1);  }
                 if i.key_pressed(Key::Tab)        { return Action::MoveChannel(1); }
+                // Insert key (no modifier) → insert row (SCA_PatternTrackInsertLine)
+                if i.key_pressed(Key::Insert)     { return Action::InsertRow; }
             }
             if shift && i.key_pressed(Key::Tab) {
                 return Action::MoveChannel(-1);
@@ -434,6 +484,15 @@ impl PatternEditor {
             Action::MoveChannel(d) => { self.move_channel(d); }
             Action::Entry { octave_boost } => {
                 self.handle_entry(ui, module, pat_len, octave_boost);
+            }
+            Action::InsertRow => {
+                self.insert_row(module);
+            }
+            Action::DeleteRow => {
+                self.delete_row(module);
+            }
+            Action::ClearRow => {
+                self.clear_row(module);
             }
         }
     }
@@ -653,5 +712,73 @@ impl PatternEditor {
         let r = (self.cursor.row as i32 + self.step_size).clamp(0, pat_len as i32 - 1);
         self.cursor.row = r as usize;
         self.scroll_to_cursor = true;
+    }
+
+    // ─── Row insert / delete / clear ─────────────────────────────────────
+
+    /// Shift all rows from `cursor.row` downward by one (discarding the last
+    /// row in the backing array), then clear the cursor row.
+    ///
+    /// Mirrors Pascal `DoInsertLine` in `childwin.pas`.  Operates over the
+    /// full `MAX_PAT_LEN` backing array so no row data is ever lost at the
+    /// displayed length boundary — the last item in the 256-entry array is
+    /// overwritten (the same behaviour as the Pascal source).
+    fn insert_row(&mut self, module: &mut Module) {
+        let pat = match module.patterns[Module::pat_idx(self.current_pattern)].as_mut() {
+            Some(p) => p,
+            None    => return,
+        };
+        let row = self.cursor.row;
+        if row >= pat.length { return; }
+
+        // Shift rows [row..MAX_PAT_LEN-1] downward — last row is overwritten.
+        for j in (row + 1..vti_core::MAX_PAT_LEN).rev() {
+            pat.items[j] = pat.items[j - 1];
+        }
+        // Clear the vacated row.
+        pat.items[row] = vti_core::PatternRow::default();
+    }
+
+    /// Shift all rows from `cursor.row + 1` upward by one (clearing the last
+    /// row in the backing array), removing the cursor row.
+    ///
+    /// Mirrors Pascal `DoRemoveLine` in `childwin.pas`.
+    fn delete_row(&mut self, module: &mut Module) {
+        let pat = match module.patterns[Module::pat_idx(self.current_pattern)].as_mut() {
+            Some(p) => p,
+            None    => return,
+        };
+        let row = self.cursor.row;
+        if row >= pat.length { return; }
+
+        // Shift rows [row+1..MAX_PAT_LEN-1] upward.
+        for j in row..vti_core::MAX_PAT_LEN - 1 {
+            pat.items[j] = pat.items[j + 1];
+        }
+        // Clear the now-duplicate last slot.
+        pat.items[vti_core::MAX_PAT_LEN - 1] = vti_core::PatternRow::default();
+
+        // Keep the cursor inside the pattern.
+        if self.cursor.row >= pat.length && pat.length > 0 {
+            self.cursor.row = pat.length - 1;
+        }
+    }
+
+    /// Reset every channel cell on the cursor row to its default state.
+    ///
+    /// Mirrors Pascal `SCA_PatternClearLine`.
+    fn clear_row(&mut self, module: &mut Module) {
+        let pat = match module.patterns[Module::pat_idx(self.current_pattern)].as_mut() {
+            Some(p) => p,
+            None    => return,
+        };
+        let row = self.cursor.row;
+        if row >= pat.length { return; }
+        let item = &mut pat.items[row];
+        for ch in 0..vti_core::NUM_CHANNELS {
+            item.channel[ch] = vti_core::ChannelLine::default();
+        }
+        item.noise    = 0;
+        item.envelope = 0;
     }
 }
