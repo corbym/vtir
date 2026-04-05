@@ -38,7 +38,7 @@ function fireTouchEnd(el) {
  */
 function makeDOM() {
     document.body.innerHTML =
-        '<canvas id="the_canvas_id"></canvas>' +
+        '<canvas id="the_canvas_id" tabindex="0"></canvas>' +
         '<input type="text" />';
     const canvas = document.getElementById('the_canvas_id');
     const input  = document.querySelector('input[type=text]');
@@ -152,34 +152,32 @@ describe('regression — keyboard appears then immediately disappears', () => {
 // ── init() — deferred canvas lookup (the real browser load order) ─────────────
 
 describe('init() — canvas lookup is deferred until text-agent is inserted', () => {
-    test('works when init() is called before the canvas exists in the DOM', (done) => {
+    test('works when init() is called before the canvas exists in the DOM', async () => {
         // Simulate the real HTML load order:
-        //   <script src="keyboard_fix.js">  ← runs first, canvas not yet parsed
+        //   <script src="keyboard_fix.js">  ← runs here, canvas not yet parsed
         //   <canvas id="the_canvas_id">     ← parsed after script
         //   WASM loads → appends <input type="text"> to <body>
         document.body.innerHTML = '';   // empty DOM — no canvas yet
 
-        // Call init() before the canvas is present (as the script tag does).
+        // Call init() before the canvas is present (matches the script tag).
         init(document.body, 'the_canvas_id', { keepMs: 100 });
 
-        // Now add the canvas (simulates the browser parsing the rest of <body>).
+        // Now add the canvas (browser parses the rest of <body>).
         const canvas = document.createElement('canvas');
         canvas.id = 'the_canvas_id';
+        canvas.tabIndex = 0;
         document.body.appendChild(canvas);
 
-        // Now WASM initialises and appends the text-agent <input>.
+        // WASM initialises and appends the text-agent <input>.
         const input = document.createElement('input');
         input.type = 'text';
         document.body.appendChild(input);
 
-        // MutationObserver callbacks fire asynchronously; yield to the
-        // microtask/macrotask queue before asserting.
-        setTimeout(function () {
-            // After the text-agent is inserted, touchend should focus input.
-            fireTouchEnd(canvas);
-            expect(document.activeElement).toBe(input);
-            done();
-        }, 0);
+        // MutationObserver callbacks run as microtasks; yield before asserting.
+        await Promise.resolve();
+
+        fireTouchEnd(canvas);
+        expect(document.activeElement).toBe(input);
     });
 
     test('works when the text-agent already exists at init() call time', () => {

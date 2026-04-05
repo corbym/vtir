@@ -67,3 +67,24 @@ jobs:
 
       - name: cargo check (wasm32-unknown-unknown)
         run: cargo check --target wasm32-unknown-unknown
+
+  # ── JavaScript tests ────────────────────────────────────────────────────────
+  # Tests for WASM-layer JS (keyboard fix, DOM interactions).
+  # Runs on every push and PR alongside the Rust test job.
+  test-js:
+    name: JavaScript tests (Jest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Jest tests
+        run: npm test
