@@ -508,8 +508,10 @@ impl PatternEditor {
     fn show_header(&mut self, ui: &mut egui::Ui) {
         // Wrap in a horizontal scroll area so all controls are reachable on
         // narrow screens by swiping left/right.  The row never wraps.
+        // The scrollbar is hidden so it does not obscure the controls.
         egui::ScrollArea::horizontal()
             .id_source("pat_header_scroll")
+            .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Pattern:");
@@ -546,17 +548,18 @@ impl PatternEditor {
                     );
 
                     // ── Mobile keyboard anchor (WASM only) ──────────────
-                    // See the module-level doc for the two-layer keyboard fix.
+                    // A zero-size, frameless TextEdit that exists solely to
+                    // keep egui's PlatformOutput::ime = Some(…) every frame.
+                    // That causes eframe to call text_agent.focus() instead
+                    // of blur(), sustaining the virtual keyboard.
+                    // It is intentionally invisible: no frame, no width.
                     #[cfg(target_arch = "wasm32")]
-                    {
-                        ui.separator();
-                        ui.add(
-                            egui::TextEdit::singleline(&mut self.keyboard_anchor)
-                                .id(Self::kbd_anchor_id())
-                                .desired_width(48.0)
-                                .hint_text("⌨"),
-                        );
-                    }
+                    ui.add(
+                        egui::TextEdit::singleline(&mut self.keyboard_anchor)
+                            .id(Self::kbd_anchor_id())
+                            .desired_width(0.0)
+                            .frame(false),
+                    );
                 });
             });
     }

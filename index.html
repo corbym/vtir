@@ -27,84 +27,9 @@
     </style>
 </head>
 <body>
-    <script>
-    /* Mobile virtual-keyboard fix
-     * ─────────────────────────────────────────────────────────────────────────
-     * eframe proxies all keyboard input through a single hidden
-     * <input type="text"> called the "text agent".  It focuses this element
-     * from requestAnimationFrame, which iOS Safari does NOT treat as a
-     * user-gesture context, so the virtual keyboard never appears.
-     *
-     * Root cause of "keyboard appears then immediately disappears":
-     *   When input.focus() is called, the browser fires canvas.blur()
-     *   synchronously before input.focus() fires — at that exact moment
-     *   neither element has browser focus.  eframe's canvas-blur handler
-     *   queues WindowFocused(false).  The Rust raw_input_hook collapses
-     *   that false/true pair so egui never clears its focused widget.
-     *   But as belt-and-suspenders, we also prevent canvas.focus() from
-     *   running during the critical keep window, so even if ime=None
-     *   momentarily, the canvas cannot steal focus back from the text-agent.
-     *
-     * Fix:
-     *   1. Wait for eframe to append the text agent to <body> (it does so
-     *      after WASM initialisation), then:
-     *      a. canvas touchend → focus the input synchronously (user-gesture
-     *         context; iOS Safari allows keyboard popup here).
-     *      b. Patch canvas.focus() to a no-op for ~500 ms after each touch so
-     *         eframe's handle_platform_output cannot steal focus back.
-     *   2. A MutationObserver on <body> detects the input insertion so the
-     *      listeners are attached even if WASM loads faster than expected.
-     */
-    (function () {
-        'use strict';
-        function attach(input) {
-            /* 'the_canvas_id' must match the <canvas id="the_canvas_id"> below. */
-            var canvas = document.getElementById('the_canvas_id');
-            if (!canvas) { return; }
-            var keep = false;
-            var timer = null;
-
-            /* Patch canvas.focus() to be a no-op while keep=true.
-             * eframe calls canvas.focus() from handle_platform_output when
-             * ime=None.  Blocking that call prevents the canvas from stealing
-             * browser focus from the text-agent and dismissing the keyboard. */
-            var _origFocus = canvas.focus.bind(canvas);
-            canvas.focus = function () {
-                if (!keep) { _origFocus(); }
-            };
-
-            canvas.addEventListener('touchend', function () {
-                keep = true;
-                clearTimeout(timer);
-                input.focus();
-                /* After ~500 ms the Rust keyboard-anchor unconditionally
-                   request_focus keeps ime=Some(...) every frame, so eframe
-                   calls text_agent.focus() (not blur) on its own.
-                   Restore canvas.focus() behaviour at that point. */
-                timer = setTimeout(function () { keep = false; }, 500);
-            }, { passive: true });
-        }
-        /* Check if the text agent already exists (unlikely at script parse
-           time, but safe to handle). */
-        var existing = document.querySelector('input[type=text]');
-        if (existing) { attach(existing); return; }
-        /* Watch for eframe to append the text agent to <body>. */
-        var mo = new MutationObserver(function (list) {
-            for (var i = 0; i < list.length; i++) {
-                var nodes = list[i].addedNodes;
-                for (var j = 0; j < nodes.length; j++) {
-                    var n = nodes[j];
-                    if (n.nodeName === 'INPUT' && n.type === 'text') {
-                        mo.disconnect();
-                        attach(n);
-                        return;
-                    }
-                }
-            }
-        });
-        mo.observe(document.body, { childList: true });
-    }());
-    </script>
+    <!-- Mobile virtual-keyboard fix.
+         See src/keyboard_fix.js for the full explanation and test suite. -->
+    <script src="keyboard_fix.js"></script>
     <!-- trunk injects the WASM loader script here -->
     <canvas id="the_canvas_id"></canvas>
 </body>
