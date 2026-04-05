@@ -109,7 +109,7 @@ source. See [`PLAN.md`](PLAN.md) for a detailed, checked-off task list.
 - ✅ egui-based GUI skeleton (pattern view, sample view, ornament view, toolbar) with status bar showing current position + elapsed / total time
 - ✅ Terminal CLI tracker diagnostics tool (`vti-cli`) — keyboard navigation + headless tick harness; header shows elapsed / total time
 - ✅ Playback cursor follow — pattern editor highlights and scrolls to the playing row in real time
-- ✅ File open (import): PT3, PT2, PT1, STC, STP, VTM text, AY (ZXAY ST11 + EMUL embedded-module extraction)
+- ✅ File open (import): PT3, PT2, PT1, STC, STP, VTM text, AY (ZXAY ST11; EMUL partial — the original Pascal application had full EMUL playback via a built-in Z80 emulator; this Rust port has no Z80 emulator yet, so only EMUL files whose payload contains an embedded PT3/STP module with a recognisable header can be loaded — all other EMUL files will fail to import)
 - ✅ File save (export): PT3 binary, VTM text — these are the only writable formats
 - ✅ PT3 round-trip writer (parse → write → parse verified)
 - ✅ ZX Spectrum export (`.tap`, `.scl`, `.ay`, Hobeta `.$ ` header)
