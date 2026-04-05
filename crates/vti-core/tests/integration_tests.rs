@@ -2582,3 +2582,224 @@ fn disabled_channel_does_not_corrupt_mixer_register() {
         ay_regs.mixer
     );
 }
+
+// ─── TAP file emulator integration test ──────────────────────────────────────
+
+/// Flat 64 KB address space for the rustzx-z80 emulator.
+struct FlatBus {
+    mem: Box<[u8; 65536]>,
+    halted: bool,
+    ay_port_writes: Vec<(u16, u8)>,
+}
+
+impl FlatBus {
+    fn new() -> Self {
+        FlatBus {
+            mem: Box::new([0u8; 65536]),
+            halted: false,
+            ay_port_writes: Vec::new(),
+        }
+    }
+}
+
+impl rustzx_z80::Z80Bus for FlatBus {
+    fn read_internal(&mut self, addr: u16) -> u8 {
+        self.mem[addr as usize]
+    }
+    fn write_internal(&mut self, addr: u16, data: u8) {
+        self.mem[addr as usize] = data;
+    }
+    fn wait_mreq(&mut self, _addr: u16, _clk: usize) {}
+    fn wait_no_mreq(&mut self, _addr: u16, _clk: usize) {}
+    fn wait_internal(&mut self, _clk: usize) {}
+    fn read_io(&mut self, _port: u16) -> u8 {
+        0xFF
+    }
+    fn write_io(&mut self, port: u16, data: u8) {
+        self.ay_port_writes.push((port, data));
+    }
+    fn read_interrupt(&mut self) -> u8 {
+        0xFF
+    }
+    fn reti(&mut self) {}
+    fn halt(&mut self, halted: bool) {
+        self.halted = halted;
+    }
+    fn int_active(&self) -> bool {
+        false
+    }
+    fn nmi_active(&self) -> bool {
+        false
+    }
+    fn pc_callback(&mut self, _addr: u16) {}
+}
+
+/// Parse a TAP byte stream into raw blocks.  Each returned tuple is
+/// `(flag, payload, stored_checksum)`.
+fn parse_tap_blocks(tap: &[u8]) -> Vec<(u8, Vec<u8>, u8)> {
+    let mut blocks = Vec::new();
+    let mut pos = 0;
+    while pos + 2 <= tap.len() {
+        let block_len = u16::from_le_bytes([tap[pos], tap[pos + 1]]) as usize;
+        assert!(
+            pos + 2 + block_len <= tap.len(),
+            "TAP block {} overflows file (pos={}, block_len={}, file_len={})",
+            blocks.len(),
+            pos,
+            block_len,
+            tap.len()
+        );
+        assert!(block_len >= 2, "TAP block {} too short ({} bytes)", blocks.len(), block_len);
+        let flag = tap[pos + 2];
+        let payload = tap[pos + 3..pos + 2 + block_len - 1].to_vec();
+        let stored_cs = tap[pos + 2 + block_len - 1];
+        blocks.push((flag, payload, stored_cs));
+        pos += 2 + block_len;
+    }
+    blocks
+}
+
+/// Prove that the TAP file exported by `export_zx` loads without error in a
+/// rustzx-z80 Z80 emulator.
+///
+/// The test:
+/// 1. Exports a module as a `.tap` file.
+/// 2. Parses the four TAP blocks (player header, player data, PT3 header,
+///    PT3 data) and verifies every block checksum.
+/// 3. Checks that the header length and start-address fields are internally
+///    consistent with the accompanying data blocks.
+/// 4. Loads the player binary and PT3 data into a flat 64 KB `FlatBus`.
+/// 5. Sets the Z80 PC to the player init entry (`load_addr`) and runs for up
+///    to 10 000 instruction steps.
+/// 6. Asserts the CPU halts at the sentinel address — proving the init routine
+///    returned cleanly via RET.
+#[test]
+fn tap_file_loads_and_runs_in_z80_emulator() {
+    use vti_core::formats::zx_export::{export_zx, ZxExportOptions, ZxFormat};
+
+    // ── 1. Generate TAP ───────────────────────────────────────────────────────
+    let m = make_simple_module();
+    let load_addr: u16 = 0xC000;
+    let opts = ZxExportOptions {
+        format: ZxFormat::Tap,
+        load_addr,
+        looping: true,
+        name: "test".to_string(),
+        title: m.title.clone(),
+        author: m.author.clone(),
+    };
+    let tap = export_zx(&m, &opts).expect("TAP export must succeed");
+
+    // ── 2. Parse and checksum-verify all four blocks ──────────────────────────
+    let blocks = parse_tap_blocks(&tap);
+    assert_eq!(blocks.len(), 4, "expected exactly 4 TAP blocks, got {}", blocks.len());
+
+    for (i, (flag, payload, stored_cs)) in blocks.iter().enumerate() {
+        let mut computed = *flag;
+        for &b in payload {
+            computed ^= b;
+        }
+        assert_eq!(
+            computed, *stored_cs,
+            "block {} checksum mismatch: computed 0x{:02X}, stored 0x{:02X}",
+            i, computed, stored_cs
+        );
+    }
+
+    // ── 3. Validate header fields ─────────────────────────────────────────────
+
+    // Block 0: player header (flag=0x00, 17 bytes payload)
+    let (flag0, ref hdr0, _) = blocks[0];
+    assert_eq!(flag0, 0x00, "block 0 must be a header (flag=0x00)");
+    assert_eq!(hdr0.len(), 17, "block 0 payload must be 17 bytes");
+    assert_eq!(hdr0[0], 3, "block 0 type must be CODE (3)");
+    let pl_len = u16::from_le_bytes([hdr0[11], hdr0[12]]) as usize;
+    let pl_start = u16::from_le_bytes([hdr0[13], hdr0[14]]);
+    let (_, ref pl_data, _) = blocks[1];
+    assert_eq!(
+        pl_len,
+        pl_data.len(),
+        "player header length ({}) must match block 1 data size ({})",
+        pl_len,
+        pl_data.len()
+    );
+    assert_eq!(
+        pl_start, load_addr,
+        "player start address must equal load_addr (0x{:04X}), got 0x{:04X}",
+        load_addr, pl_start
+    );
+
+    // Block 2: PT3 data header (flag=0x00, 17 bytes payload)
+    let (flag2, ref hdr2, _) = blocks[2];
+    assert_eq!(flag2, 0x00, "block 2 must be a header (flag=0x00)");
+    assert_eq!(hdr2.len(), 17, "block 2 payload must be 17 bytes");
+    assert_eq!(hdr2[0], 3, "block 2 type must be CODE (3)");
+    let pt3_len = u16::from_le_bytes([hdr2[11], hdr2[12]]) as usize;
+    let pt3_start = u16::from_le_bytes([hdr2[13], hdr2[14]]);
+    let (_, ref pt3_data, _) = blocks[3];
+    assert_eq!(
+        pt3_len,
+        pt3_data.len(),
+        "PT3 header length ({}) must match block 3 data size ({})",
+        pt3_len,
+        pt3_data.len()
+    );
+    assert!(
+        pt3_start > load_addr,
+        "PT3 start (0x{:04X}) must be above load_addr (0x{:04X})",
+        pt3_start,
+        load_addr
+    );
+
+    // ── 4. Load into Z80 memory ───────────────────────────────────────────────
+    let mut bus = FlatBus::new();
+
+    // Player code at load_addr
+    bus.mem[pl_start as usize..pl_start as usize + pl_data.len()]
+        .copy_from_slice(pl_data);
+
+    // PT3 data at pt3_start
+    bus.mem[pt3_start as usize..pt3_start as usize + pt3_data.len()]
+        .copy_from_slice(pt3_data);
+
+    // ── 5. Execute init entry ─────────────────────────────────────────────────
+    // Place a HALT sentinel at a free address below the player.  We write this
+    // address at SP so that when the init routine executes its final RET it
+    // pops the sentinel, jumps there, hits HALT, and the emulator stops.
+    const SENTINEL: u16 = 0x5800;
+    bus.mem[SENTINEL as usize] = 0x76; // HALT opcode
+
+    // Z80 RET pops a 16-bit LE word from SP (lo=mem[SP], hi=mem[SP+1]), then
+    // SP += 2.  We write the sentinel address at SP so the first RET goes
+    // there.
+    const STACK_PTR: u16 = 0xBFFE;
+    bus.mem[STACK_PTR as usize]     = (SENTINEL & 0xFF) as u8;
+    bus.mem[STACK_PTR as usize + 1] = (SENTINEL >> 8) as u8;
+
+    use rustzx_z80::Z80;
+    let mut cpu = Z80::default();
+    cpu.regs.set_pc(pl_start);
+    cpu.regs.set_sp(STACK_PTR);
+
+    // Run up to 10 000 instruction steps.  The init routine is short and will
+    // RET well within this budget.  The loop stops as soon as the CPU halts.
+    const MAX_STEPS: usize = 10_000;
+    for _ in 0..MAX_STEPS {
+        if bus.halted {
+            break;
+        }
+        cpu.emulate(&mut bus);
+    }
+
+    // ── 6. Assert init completed cleanly ─────────────────────────────────────
+    // The init must have executed RET and landed on the sentinel HALT.
+    // If it looped forever the CPU would not have halted within MAX_STEPS.
+    assert!(
+        bus.halted,
+        "player init should have returned (RET) and halted at sentinel 0x{:04X}; \
+         CPU was at PC=0x{:04X} after {} steps — init may loop or crash",
+        SENTINEL,
+        cpu.regs.get_pc(),
+        MAX_STEPS
+    );
+}

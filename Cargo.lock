@@ -3359,6 +3359,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
 
 [[package]]
+name = "rustzx-z80"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c75eeaab634ecd84e07fdb7c385efded6e86aed83c3935bb12a971e2139e7e2"
+
+[[package]]
 name = "same-file"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4026,6 +4032,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "log",
+ "rustzx-z80",
  "serde",
  "serde-big-array",
  "serde_json",

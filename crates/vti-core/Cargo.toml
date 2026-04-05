@@ -15,3 +15,4 @@ serde_big_array = { package = "serde-big-array", version = "0.5" }
 serde_json.workspace = true
 tempfile = "3.27.0"
 vti-ay.workspace = true
+rustzx-z80 = "0.16.0"
