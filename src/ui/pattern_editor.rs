@@ -29,6 +29,10 @@ use vti_core::util::note_to_str;
 
 /// Number of channels per pattern row.
 const NUM_CH: usize = 3;
+/// Maximum index for the Sample field (0x1F = 31 samples numbered 1..=31).
+const MAX_SAMPLE: u8 = 31;
+/// Maximum value for single-nibble fields (Ornament, Volume, Envelope, Effect number).
+const MAX_NIBBLE: u8 = 15;
 
 /// Columns within a single channel cell, left to right.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -110,7 +114,8 @@ enum Action {
     MoveRow(i32),
     MoveField(i32),
     MoveChannel(i32),
-    Entry { shift: bool, octave_boost: u8 },
+    /// `octave_boost` is 1 when Shift was held (raises entry note one octave).
+    Entry { octave_boost: u8 },
 }
 
 enum EntryAction {
@@ -408,7 +413,7 @@ impl PatternEditor {
 
             // Entry (plain or shift — shift raises the note one octave)
             if none || shift {
-                return Action::Entry { shift, octave_boost: if shift { 1 } else { 0 } };
+                return Action::Entry { octave_boost: if shift { 1 } else { 0 } };
             }
 
             Action::None
@@ -427,8 +432,8 @@ impl PatternEditor {
             }
             Action::MoveField(d) => { self.move_field(d); }
             Action::MoveChannel(d) => { self.move_channel(d); }
-            Action::Entry { shift, octave_boost } => {
-                self.handle_entry(ui, module, pat_len, shift, octave_boost);
+            Action::Entry { octave_boost } => {
+                self.handle_entry(ui, module, pat_len, octave_boost);
             }
         }
     }
@@ -439,7 +444,6 @@ impl PatternEditor {
         ui: &mut egui::Ui,
         module: &mut Module,
         pat_len: usize,
-        _shift: bool,
         octave_boost: u8,
     ) {
         use egui::Key;
@@ -631,13 +635,13 @@ impl PatternEditor {
         if let Some(c) = self.cell_mut(module) {
             match self.cursor.field {
                 Field::Note     => {} // dispatched separately
-                Field::Sample   => c.sample    = hex_digit_entry(c.sample,   digit, 31),
-                Field::Ornament => c.ornament  = hex_digit_entry(c.ornament, digit, 15),
-                Field::Volume   => c.volume    = hex_digit_entry(c.volume,   digit, 15),
-                Field::Envelope => c.envelope  = hex_digit_entry(c.envelope, digit, 15),
+                Field::Sample   => c.sample    = hex_digit_entry(c.sample,   digit, MAX_SAMPLE),
+                Field::Ornament => c.ornament  = hex_digit_entry(c.ornament, digit, MAX_NIBBLE),
+                Field::Volume   => c.volume    = hex_digit_entry(c.volume,   digit, MAX_NIBBLE),
+                Field::Envelope => c.envelope  = hex_digit_entry(c.envelope, digit, MAX_NIBBLE),
                 Field::Effect   => {
                     c.additional_command.number =
-                        hex_digit_entry(c.additional_command.number, digit, 15);
+                        hex_digit_entry(c.additional_command.number, digit, MAX_NIBBLE);
                 }
             }
         }
