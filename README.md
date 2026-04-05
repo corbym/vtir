@@ -68,6 +68,7 @@ playable on real ZX Spectrum hardware and by many emulators.
 | [AY State Machine](docs/ay-state-machine.md) | How the AY-3-8910 / YM2149F chip emulator works — registers, tone generators, noise LFSR, envelope shapes, synthesizer, audio pipeline |
 | [File Formats](docs/file-formats.md) | Binary layout and parsing notes for every supported tracker format |
 | [Tracker Songs & Fixtures](docs/tracker-songs.md) | Catalogue of real-world tunes and test fixtures included in the repo |
+| [Using the TAP export](docs/using-tap-export.md) | Step-by-step guide: how to load and play an exported `.tap` file in an emulator or on real ZX Spectrum hardware |
 
 ---
 
