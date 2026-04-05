@@ -473,16 +473,17 @@ impl PatternEditor {
                     });
             });
 
-        // WASM: unconditionally re-request focus for the keyboard anchor after
-        // every frame.  This keeps egui's PlatformOutput::ime = Some(…) so
-        // eframe always calls text_agent.focus() rather than blur(), ensuring
-        // the mobile virtual keyboard can stay visible once it has been opened
-        // by the touchend handler in index.html.
-        // The anchor is the only TextEdit in the app, so this does not
-        // conflict with any other text-entry widget.
+        // WASM: keep the keyboard anchor focused so egui's PlatformOutput always
+        // has ime=Some(...), which causes eframe to call text_agent.focus() every
+        // frame instead of text_agent.blur(), sustaining the virtual keyboard.
+        // Skip if another text widget (e.g. a DragValue in keyboard-entry mode)
+        // already holds focus — we must not steal it and prematurely end editing.
         #[cfg(target_arch = "wasm32")]
         {
-            ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+            let kbd_id = Self::kbd_anchor_id();
+            if ui.ctx().memory(|m| m.focused().map_or(true, |id| id == kbd_id)) {
+                ui.ctx().memory_mut(|m| m.request_focus(kbd_id));
+            }
             // Drain any characters the TextEdit accumulated from Text events
             // this frame so the anchor always looks empty (hint: "⌨").
             self.keyboard_anchor.clear();

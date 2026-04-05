@@ -891,4 +891,40 @@ impl eframe::App for VortexTrackerApp {
             self.pattern_editor.show(ui, module, play_pos);
         });
     }
+
+    /// Remove transient focus-transfer events before egui processes them.
+    ///
+    /// On WASM, calling `element.focus()` on the text-agent (eframe's hidden
+    /// `<input type="text">`) causes the canvas to fire a synchronous `blur`
+    /// event at the exact moment when *neither* element has browser focus (the
+    /// browser fires `blur` on the old element before `focus` on the new one).
+    /// eframe's canvas-blur handler queues `WindowFocused(false)` into the raw
+    /// input.  The very next `update_focus()` call — at the start of the same
+    /// `requestAnimationFrame` — then queues `WindowFocused(true)`.
+    ///
+    /// When egui sees `WindowFocused(false)` it clears `Memory::focused_id`,
+    /// which means any focused `TextEdit` loses egui focus → `ime = None` →
+    /// eframe calls `text_agent.blur()` + `canvas.focus()` → the virtual
+    /// keyboard is dismissed before the user has typed anything.
+    ///
+    /// An immediately adjacent `false/true` pair represents a *transient*
+    /// focus transfer (canvas → text-agent), not a genuine app-focus loss.
+    /// Collapsing the pair prevents the spurious focus clear.
+    #[cfg(target_arch = "wasm32")]
+    fn raw_input_hook(&mut self, _ctx: &egui::Context, raw_input: &mut egui::RawInput) {
+        let events = &mut raw_input.events;
+        let mut i = 0;
+        while i + 1 < events.len() {
+            let is_pair = matches!(
+                (&events[i], &events[i + 1]),
+                (egui::Event::WindowFocused(false), egui::Event::WindowFocused(true))
+            );
+            if is_pair {
+                events.remove(i + 1);
+                events.remove(i);
+            } else {
+                i += 1;
+            }
+        }
+    }
 }
