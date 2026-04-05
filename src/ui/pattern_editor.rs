@@ -194,6 +194,14 @@ impl PatternEditor {
             el.unchecked_ref::<web_sys::HtmlElement>().focus().ok()
         })();
     }
+
+    #[cfg(target_arch = "wasm32")]
+    fn activate_keyboard_anchor(&mut self, ui: &egui::Ui) {
+        self.keyboard_anchor_active = true;
+        ui.ctx()
+            .memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+        Self::focus_text_agent_dom();
+    }
 }
 
 // ─── Private action types ─────────────────────────────────────────────────────
@@ -321,6 +329,9 @@ impl PatternEditor {
         }
         self.scroll_to_cursor = false;
 
+        #[cfg(target_arch = "wasm32")]
+        let mut activated_anchor_this_frame = false;
+
         // ── Grid ──────────────────────────────────────────────────────────
         let cursor_snap = self.cursor; // immutable snapshot for the closure
         scroll_area.show_rows(ui, row_height, pat_len, |ui, row_range| {
@@ -413,10 +424,8 @@ impl PatternEditor {
                                 self.cursor.field = Field::Note;
                                 #[cfg(target_arch = "wasm32")]
                                 {
-                                    self.keyboard_anchor_active = true;
-                                    ui.ctx()
-                                        .memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
-                                    Self::focus_text_agent_dom();
+                                    activated_anchor_this_frame = true;
+                                    self.activate_keyboard_anchor(ui);
                                 }
                             }
 
@@ -433,10 +442,8 @@ impl PatternEditor {
                                 self.cursor.field = Field::Sample;
                                 #[cfg(target_arch = "wasm32")]
                                 {
-                                    self.keyboard_anchor_active = true;
-                                    ui.ctx()
-                                        .memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
-                                    Self::focus_text_agent_dom();
+                                    activated_anchor_this_frame = true;
+                                    self.activate_keyboard_anchor(ui);
                                 }
                             }
 
@@ -450,10 +457,8 @@ impl PatternEditor {
                                 self.cursor.field = Field::Ornament;
                                 #[cfg(target_arch = "wasm32")]
                                 {
-                                    self.keyboard_anchor_active = true;
-                                    ui.ctx()
-                                        .memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
-                                    Self::focus_text_agent_dom();
+                                    activated_anchor_this_frame = true;
+                                    self.activate_keyboard_anchor(ui);
                                 }
                             }
 
@@ -469,10 +474,8 @@ impl PatternEditor {
                                 self.cursor.field = Field::Volume;
                                 #[cfg(target_arch = "wasm32")]
                                 {
-                                    self.keyboard_anchor_active = true;
-                                    ui.ctx()
-                                        .memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
-                                    Self::focus_text_agent_dom();
+                                    activated_anchor_this_frame = true;
+                                    self.activate_keyboard_anchor(ui);
                                 }
                             }
 
@@ -489,10 +492,8 @@ impl PatternEditor {
                                 self.cursor.field = Field::Envelope;
                                 #[cfg(target_arch = "wasm32")]
                                 {
-                                    self.keyboard_anchor_active = true;
-                                    ui.ctx()
-                                        .memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
-                                    Self::focus_text_agent_dom();
+                                    activated_anchor_this_frame = true;
+                                    self.activate_keyboard_anchor(ui);
                                 }
                             }
 
@@ -511,10 +512,8 @@ impl PatternEditor {
                                 self.cursor.field = Field::Effect;
                                 #[cfg(target_arch = "wasm32")]
                                 {
-                                    self.keyboard_anchor_active = true;
-                                    ui.ctx()
-                                        .memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
-                                    Self::focus_text_agent_dom();
+                                    activated_anchor_this_frame = true;
+                                    self.activate_keyboard_anchor(ui);
                                 }
                             }
                         }
@@ -533,7 +532,7 @@ impl PatternEditor {
             let kbd_id = Self::kbd_anchor_id();
             let pointer_pressed = ui.ctx().input(|i| i.pointer.any_pressed());
             let focused_is_anchor = ui.ctx().memory(|m| m.focused() == Some(kbd_id));
-            if pointer_pressed && !focused_is_anchor {
+            if pointer_pressed && !focused_is_anchor && !activated_anchor_this_frame {
                 self.keyboard_anchor_active = false;
                 ui.ctx().memory_mut(|m| m.surrender_focus(kbd_id));
             }
