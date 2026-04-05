@@ -559,6 +559,7 @@ impl VortexTrackerApp {
     fn reset_playback(&mut self) {
         init_tracker_parameters(&mut self.modules[self.active_module], &mut self.play_vars, true);
         self.play_vars.delay = self.modules[self.active_module].initial_delay as i8;
+        self.play_vars.current_position = 0;
         self.play_vars.current_pattern =
             if self.modules[self.active_module].positions.length > 0 {
                 self.modules[self.active_module].positions.value[0] as i32
