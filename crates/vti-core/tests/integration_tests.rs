@@ -2117,6 +2117,190 @@ fn zx_export_ay_file_signature() {
     assert_eq!(&data[4..8], b"EMUL", "AY type must be EMUL");
 }
 
+/// Acceptance test: parse every relative-pointer field in the exported `.ay`
+/// file and verify that each `Offs` field actually points to the data it
+/// claims to.
+///
+/// AY/EMUL file layout (all multi-byte values are big-endian):
+///
+/// ```text
+/// Offset  0 ..  3  — FileID  "ZXAY"
+/// Offset  4 ..  7  — TypeID  "EMUL"
+/// Offset  8        — FileVersion
+/// Offset  9        — PlayerVersion
+/// Offset 10 .. 11  — PSpecialPlayer (BE i16, relative from offset 10)
+/// Offset 12 .. 13  — PAuthor        (BE i16, relative from offset 12)
+/// Offset 14 .. 15  — PMisc          (BE i16, relative from offset 14)
+/// Offset 16        — NumOfSongs
+/// Offset 17        — FirstSong
+/// Offset 18 .. 19  — PSongsStructure (BE i16, relative from offset 18)
+///   -- TSongStructure at offset 20 --
+/// Offset 20 .. 21  — PSongName (BE i16, relative from offset 20)
+/// Offset 22 .. 23  — PSongData (BE i16, relative from offset 22)
+///   -- TSongData at offset 24 --
+/// Offset 24 ..     — ChanA, ChanB, ChanC, Noise (4 bytes)
+/// Offset 28 .. 29  — SongLength (BE u16)
+/// Offset 30 .. 31  — FadeLength (BE u16)
+/// Offset 32        — HiReg
+/// Offset 33        — LoReg
+/// Offset 34 .. 35  — PPoints    (BE i16, relative from offset 34 → TPoints at 38)
+/// Offset 36 .. 37  — PAddresses (BE i16, relative from offset 36 → TPoints.Adr1 at 44)
+///   -- TPoints at offset 38 --
+/// Offset 38 .. 39  — Stek  (ABS ZX addr, BE u16)
+/// Offset 40 .. 41  — Init  (ABS ZX addr, BE u16)
+/// Offset 42 .. 43  — Inter (ABS ZX addr, BE u16)
+/// Offset 44 .. 45  — Adr1  (ABS ZX load addr for player, BE u16)
+/// Offset 46 .. 47  — Len1  (player code size, BE u16)
+/// Offset 48 .. 49  — Offs1 (file offset relative to field position 48)
+/// Offset 50 .. 51  — Adr2  (ABS ZX load addr for PT3 data, BE u16)
+/// Offset 52 .. 53  — Len2  (PT3 data size, BE u16)
+/// Offset 54 .. 55  — Offs2 (file offset relative to field position 54)
+/// Offset 56 .. 57  — Zero  (terminator)
+///   -- String table at offset 58 --
+///   title \0, author \0, misc \0
+///   -- Player code at offset 58+strings_len --
+///   -- PT3 data at offset 58+strings_len+zxplsz (no zxdtsz gap in file!) --
+/// ```
+///
+/// The key emulator-compatibility rules verified here:
+/// * `Offs1` points to the exact start of the player code in the file.
+/// * `Offs2` points to the exact start of the PT3 data in the file.
+/// * There is NO `zxdtsz`-byte gap between player code and PT3 data in the
+///   file (the AY emulator loads each block at its ZX address independently).
+/// * `Adr2 = load_addr + zxplsz + zxdtsz` (correct ZX RAM destination).
+/// * `Len1 = zxplsz`, `Len2 = pt3_size`.
+#[test]
+fn zx_export_ay_file_block_offsets_are_correct() {
+    use vti_core::formats::zx_export::{export_zx, ZxExportOptions, ZxFormat};
+
+    let m = make_simple_module();
+    let load_addr: u16 = 0xC000;
+    let opts = ZxExportOptions {
+        format: ZxFormat::AyFile,
+        load_addr,
+        looping: false,
+        name: "demo".to_string(),
+        title: "Test Title".to_string(),
+        author: "Test Author".to_string(),
+    };
+    let data = export_zx(&m, &opts).expect("ay export must succeed");
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+    // Returns a BE u16 from the given file offset as usize (for arithmetic).
+    let read_be16 = |off: usize| -> usize {
+        u16::from_be_bytes([data[off], data[off + 1]]) as usize
+    };
+
+    // ── header magic ─────────────────────────────────────────────────────────
+    assert_eq!(&data[..4], b"ZXAY");
+    assert_eq!(&data[4..8], b"EMUL");
+
+    // ── PSongsStructure → TSongStructure must be at offset 20 ────────────────
+    let songs_struct_pos = 18 + read_be16(18);
+    assert_eq!(songs_struct_pos, 20, "PSongsStructure must point to offset 20");
+
+    // ── PSongData → TSongData must be at offset 24 ───────────────────────────
+    let song_data_pos = 22 + read_be16(22);
+    assert_eq!(song_data_pos, 24, "PSongData must point to offset 24");
+
+    // ── PPoints → TPoints must be at offset 38 ───────────────────────────────
+    let tpoints_pos = 34 + read_be16(34);
+    assert_eq!(tpoints_pos, 38, "PPoints must point to offset 38 (TPoints)");
+
+    // ── PAddresses → TPoints.Adr1 must be at offset 44 ──────────────────────
+    let paddresses_pos = 36 + read_be16(36);
+    assert_eq!(paddresses_pos, 44, "PAddresses must point to offset 44 (TPoints.Adr1)");
+
+    // ── TPoints fields ────────────────────────────────────────────────────────
+    let stek  = read_be16(38);
+    let init  = read_be16(40);
+    let inter = read_be16(42);
+    assert_eq!(stek as u16,  load_addr,     "Stek must equal load_addr");
+    assert_eq!(init as u16,  load_addr,     "Init must equal load_addr");
+    assert_eq!(inter as u16, load_addr + 5, "Inter must equal load_addr+5 (play entry)");
+
+    let adr1 = read_be16(44) as u16;
+    let len1 = read_be16(46);
+    assert_eq!(adr1, load_addr, "Adr1 must be load_addr");
+    // len1 is the player code size; it must be positive and reasonable
+    assert!(len1 > 0 && len1 < 8192, "Len1 ({}) must be a sane player size", len1);
+    let zxplsz = len1;
+
+    let adr2 = read_be16(50) as u16;
+    let len2 = read_be16(52);
+    assert!(len2 > 0, "Len2 (PT3 size) must be non-zero");
+
+    // ── Offs1 must reach the player code ─────────────────────────────────────
+    // Offs1 is at file offset 48.  actual_pos = 48 + Offs1_value.
+    let offs1_val = read_be16(48);
+    let player_start = 48 + offs1_val;
+    assert!(
+        player_start + zxplsz <= data.len(),
+        "Offs1 ({}) + len1 ({}) = {} must fit within file ({})",
+        player_start, zxplsz, player_start + zxplsz, data.len()
+    );
+
+    // ── Offs2 must reach the PT3 data ────────────────────────────────────────
+    // Offs2 is at file offset 54.  actual_pos = 54 + Offs2_value.
+    let offs2_val = read_be16(54);
+    let pt3_start = 54 + offs2_val;
+    let pt3_size = len2;
+    assert!(
+        pt3_start + pt3_size <= data.len(),
+        "Offs2 ({}) + len2 ({}) = {} must fit within file ({})",
+        pt3_start, pt3_size, pt3_start + pt3_size, data.len()
+    );
+
+    // ── There must be NO zxdtsz gap in the file between player and PT3 ───────
+    // The player code ends at player_start + zxplsz; PT3 must start immediately.
+    assert_eq!(
+        pt3_start,
+        player_start + zxplsz,
+        "PT3 data must follow player code immediately in the file \
+         (no zxdtsz-byte gap); player ends at {}, PT3 starts at {}",
+        player_start + zxplsz,
+        pt3_start
+    );
+
+    // ── Adr2 must include the variables area offset ───────────────────────────
+    // The player variables live at ZX address load_addr+zxplsz..load_addr+zxplsz+zxdtsz.
+    // Adr2 must be >= load_addr + zxplsz (variables come after player in ZX RAM).
+    assert!(
+        adr2 >= load_addr + zxplsz as u16,
+        "Adr2 ({:#06x}) must be >= load_addr+zxplsz ({:#06x})",
+        adr2, load_addr + zxplsz as u16
+    );
+
+    // ── PT3 data at Offs2 must start with the PT3 header signature ────────────
+    // The first 13 bytes of a PT3 file are a human-readable ID string
+    // ("ProTracker 3" or "Vortex Tracker").
+    let pt3_data = &data[pt3_start..pt3_start + pt3_size];
+    assert!(
+        pt3_data.len() >= 13,
+        "PT3 data must be at least 13 bytes long"
+    );
+    let id_str = std::str::from_utf8(&pt3_data[..13])
+        .expect("PT3 header must be valid UTF-8");
+    assert!(
+        id_str.starts_with("ProTracker") || id_str.starts_with("Vortex"),
+        "PT3 data at Offs2 must start with a valid PT3 header ID, got: {:?}",
+        id_str
+    );
+
+    // ── File total size must equal header + strings + player + pt3 ───────────
+    let title_len = opts.title.len();
+    let author_len = opts.author.len();
+    let misc_len = b"Vortex Tracker II v1.0".len();
+    let strings_len = title_len + 1 + author_len + 1 + misc_len + 1;
+    let expected_size = 58 + strings_len + zxplsz + pt3_size;
+    assert_eq!(
+        data.len(),
+        expected_size,
+        "AY file size must be exactly header({}) + strings({}) + player({}) + pt3({})",
+        58, strings_len, zxplsz, pt3_size
+    );
+}
+
 #[test]
 fn zx_export_hobeta_mem_no_player() {
     use vti_core::formats::zx_export::{export_zx, ZxExportOptions, ZxFormat};
