@@ -1,0 +1,107 @@
+name: PR Preview
+
+# Builds the WASM app for the PR and deploys it to a dedicated sub-path on
+# the gh-pages branch so reviewers can try the live app before merging.
+#
+# The preview URL is posted (or updated) as a PR comment after each push.
+# The preview is removed when the PR is closed (see pr-preview-cleanup.yml).
+#
+# NOTE: Only works for PRs opened from branches within this repository.
+# Fork PRs do not have the write permissions required to push to gh-pages.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: pr-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-preview:
+    name: Deploy PR Preview
+    runs-on: ubuntu-latest
+    # Skip fork PRs — they lack write access to the repository.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable + wasm32 target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-wasm-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-wasm-cargo-
+
+      - name: Install trunk
+        uses: jetli/trunk-action@v0.5.0
+        with:
+          version: latest
+
+      - name: Build web app (PR preview)
+        run: >
+          trunk build --release
+          --public-url /vtir/pr-previews/${{ github.event.pull_request.number }}/
+
+      - name: Deploy preview to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: dist/
+          destination_dir: pr-previews/${{ github.event.pull_request.number }}
+          keep_files: true
+
+      - name: Post or update PR comment with preview URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const previewUrl =
+              `https://corbym.github.io/vtir/pr-previews/${prNumber}/`;
+            const marker = '<!-- pr-preview-comment -->';
+            const body = [
+              marker,
+              '## 🚀 WASM Preview',
+              '',
+              "A live preview of this PR's WASM build is available at:",
+              '',
+              `**[${previewUrl}](${previewUrl})**`,
+              '',
+              `_Last updated: ${new Date().toUTCString()}_`,
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+            }

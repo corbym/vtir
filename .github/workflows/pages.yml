@@ -3,23 +3,24 @@ name: Deploy to GitHub Pages
 # Runs on push to master OR can be triggered manually.
 # This workflow is intentionally separate from the binary release workflow
 # (release.yml) so the web build can be deployed independently at any time.
+#
+# NOTE: GitHub Pages must be configured to serve from the gh-pages branch
+# (Settings → Pages → Source → "Deploy from a branch" → gh-pages / root).
 on:
   push:
     branches: [master]
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build WASM
+  build-and-deploy:
+    name: Build and Deploy WASM
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,19 +53,19 @@ jobs:
       - name: Build web app
         run: trunk build --release --public-url /vtir/
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist/
+      # Preserve any PR preview directories that live on the gh-pages branch
+      # so that a main-site redeploy does not wipe them.
+      - name: Restore PR previews from gh-pages branch
+        run: |
+          if git ls-remote --exit-code origin gh-pages; then
+            git fetch origin gh-pages:refs/remotes/origin/gh-pages
+            git checkout origin/gh-pages -- pr-previews 2>/dev/null || true
+            [ -d pr-previews ] && mv pr-previews dist/ || true
+          fi
+        continue-on-error: true
 
-  deploy:
-    name: Deploy to GitHub Pages
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deploy
-        uses: actions/deploy-pages@v4
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: dist/
