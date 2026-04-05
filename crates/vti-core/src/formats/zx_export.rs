@@ -352,7 +352,9 @@ fn build_ay_file(
     // All AY relative pointers use: actual_pos = field_pos + field_BE_value.
     //
     // File layout after the TPoints block (file offset 38+20=58):
-    //   title  (len+1), author (len+1), misc (len+1), player code, zxdtsz zeros, pt3 data.
+    //   title  (len+1), author (len+1), misc (len+1), player code, pt3 data.
+    // The zxdtsz variables area is NOT in the file; the emulator maps each
+    // block to its ZX address independently (see TPoints Adr1/Adr2).
     let strings_len = title.len() + 1 + author.len() + 1 + misc.len() + 1;
 
     // ── TAYFileHeader (20 bytes at offset 0) ─────────────────────────────────
@@ -430,9 +432,12 @@ fn build_ay_file(
     let adr2 = opts.load_addr as usize + zxplsz + zxdtsz;
     out.extend_from_slice(&be16(adr2 as u16));            // Adr2
     out.extend_from_slice(&be16(pt3.len() as u16));       // Len2
-    // Offs2 (at file offset 52): relative to 52 → pt3 file position
-    let pt3_file_pos = player_file_pos + zxplsz + zxdtsz;
-    let offs2 = (pt3_file_pos - 52) as u16;
+    // Offs2 (at file offset 54): relative to 54 → pt3 file position.
+    // In the AY file the variables area (zxdtsz bytes) is NOT written to the
+    // file — the AY emulator loads each TPoints block at its stated ZX address,
+    // so the gap between Adr1+Len1 and Adr2 is already zeroed ZX RAM.
+    let pt3_file_pos = player_file_pos + zxplsz;
+    let offs2 = (pt3_file_pos - 54) as u16;
     out.extend_from_slice(&be16(offs2));                  // Offs2
     out.extend_from_slice(&be16(0));                      // Zero (terminator)
     // total TPoints: 20 bytes ✓
@@ -447,7 +452,10 @@ fn build_ay_file(
 
     // ── Player code ──────────────────────────────────────────────────────────
     out.extend_from_slice(player);
-    out.resize(out.len() + zxdtsz, 0); // zero-fill variables area
+    // NOTE: no zxdtsz zero-fill here — the AY emulator loads each TPoints
+    // block at its stated ZX RAM address (Adr1/Adr2).  The gap between
+    // Adr1+Len1 and Adr2 (the player variables area) is already zero'd ZX RAM;
+    // it must NOT be stored in the file.
 
     // ── PT3 data ─────────────────────────────────────────────────────────────
     out.extend_from_slice(pt3);
