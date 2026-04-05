@@ -775,8 +775,8 @@ impl PatternEditor {
         let row = self.cursor.row;
         if row >= pat.length { return; }
         let item = &mut pat.items[row];
-        for ch in 0..vti_core::NUM_CHANNELS {
-            item.channel[ch] = vti_core::ChannelLine::default();
+        for ch in 0..NUM_CH {
+            item.channel[ch] = ChannelLine::default();
         }
         item.noise    = 0;
         item.envelope = 0;

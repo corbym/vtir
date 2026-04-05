@@ -115,7 +115,7 @@ pub fn note_key_result(ch: char, octave: u8) -> Option<NoteKeyResult> {
 ///
 /// `digit` must be in the range `0..=15`.
 pub fn hex_digit_entry(old: u8, digit: u8, max: u8) -> u8 {
-    debug_assert!(digit <= 0x0F, "digit must be in 0..=15");
+    debug_assert!(digit <= 0x0F, "digit must be in 0..=15; got {digit}");
     if max <= 0x0F {
         digit.min(max)
     } else {
