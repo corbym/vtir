@@ -13,7 +13,7 @@
 
 > *Author: Sergey Bulba*  
 > *E-mail: svbulba@gmail.com *  
-> *Support page: http://bulba.untergrund.net/*
+> *Support page: https://ay.strangled.net/main_e.htm*
 
 This Rust port exists only because of his extraordinary work. Sergey built
 an entire chip emulator, 13 file-format parsers, a complete tracker editor
