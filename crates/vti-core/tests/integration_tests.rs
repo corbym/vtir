@@ -2186,7 +2186,8 @@ fn zx_export_ay_file_block_offsets_are_correct() {
     let data = export_zx(&m, &opts).expect("ay export must succeed");
 
     // ── helpers ──────────────────────────────────────────────────────────────
-    let be_u16 = |off: usize| -> usize {
+    // Returns a BE u16 from the given file offset as usize (for arithmetic).
+    let read_be16 = |off: usize| -> usize {
         u16::from_be_bytes([data[off], data[off + 1]]) as usize
     };
 
@@ -2195,43 +2196,43 @@ fn zx_export_ay_file_block_offsets_are_correct() {
     assert_eq!(&data[4..8], b"EMUL");
 
     // ── PSongsStructure → TSongStructure must be at offset 20 ────────────────
-    let songs_struct_pos = 18 + be_u16(18);
+    let songs_struct_pos = 18 + read_be16(18);
     assert_eq!(songs_struct_pos, 20, "PSongsStructure must point to offset 20");
 
     // ── PSongData → TSongData must be at offset 24 ───────────────────────────
-    let song_data_pos = 22 + be_u16(22);
+    let song_data_pos = 22 + read_be16(22);
     assert_eq!(song_data_pos, 24, "PSongData must point to offset 24");
 
     // ── PPoints → TPoints must be at offset 38 ───────────────────────────────
-    let tpoints_pos = 34 + be_u16(34);
+    let tpoints_pos = 34 + read_be16(34);
     assert_eq!(tpoints_pos, 38, "PPoints must point to offset 38 (TPoints)");
 
     // ── PAddresses → TPoints.Adr1 must be at offset 44 ──────────────────────
-    let paddresses_pos = 36 + be_u16(36);
+    let paddresses_pos = 36 + read_be16(36);
     assert_eq!(paddresses_pos, 44, "PAddresses must point to offset 44 (TPoints.Adr1)");
 
     // ── TPoints fields ────────────────────────────────────────────────────────
-    let stek  = be_u16(38);
-    let init  = be_u16(40);
-    let inter = be_u16(42);
+    let stek  = read_be16(38);
+    let init  = read_be16(40);
+    let inter = read_be16(42);
     assert_eq!(stek as u16,  load_addr,     "Stek must equal load_addr");
     assert_eq!(init as u16,  load_addr,     "Init must equal load_addr");
     assert_eq!(inter as u16, load_addr + 5, "Inter must equal load_addr+5 (play entry)");
 
-    let adr1 = be_u16(44) as u16;
-    let len1 = be_u16(46);
+    let adr1 = read_be16(44) as u16;
+    let len1 = read_be16(46);
     assert_eq!(adr1, load_addr, "Adr1 must be load_addr");
     // len1 is the player code size; it must be positive and reasonable
     assert!(len1 > 0 && len1 < 8192, "Len1 ({}) must be a sane player size", len1);
     let zxplsz = len1;
 
-    let adr2 = be_u16(50) as u16;
-    let len2 = be_u16(52);
+    let adr2 = read_be16(50) as u16;
+    let len2 = read_be16(52);
     assert!(len2 > 0, "Len2 (PT3 size) must be non-zero");
 
     // ── Offs1 must reach the player code ─────────────────────────────────────
     // Offs1 is at file offset 48.  actual_pos = 48 + Offs1_value.
-    let offs1_val = be_u16(48);
+    let offs1_val = read_be16(48);
     let player_start = 48 + offs1_val;
     assert!(
         player_start + zxplsz <= data.len(),
@@ -2241,7 +2242,7 @@ fn zx_export_ay_file_block_offsets_are_correct() {
 
     // ── Offs2 must reach the PT3 data ────────────────────────────────────────
     // Offs2 is at file offset 54.  actual_pos = 54 + Offs2_value.
-    let offs2_val = be_u16(54);
+    let offs2_val = read_be16(54);
     let pt3_start = 54 + offs2_val;
     let pt3_size = len2;
     assert!(
@@ -2278,7 +2279,8 @@ fn zx_export_ay_file_block_offsets_are_correct() {
         pt3_data.len() >= 13,
         "PT3 data must be at least 13 bytes long"
     );
-    let id_str = std::str::from_utf8(&pt3_data[..13]).unwrap_or("");
+    let id_str = std::str::from_utf8(&pt3_data[..13])
+        .expect("PT3 header must be valid UTF-8");
     assert!(
         id_str.starts_with("ProTracker") || id_str.starts_with("Vortex"),
         "PT3 data at Offs2 must start with a valid PT3 header ID, got: {:?}",
