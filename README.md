@@ -43,21 +43,42 @@ playable on real ZX Spectrum hardware and by many emulators.
 
 ## Supported Import Formats
 
-| # | Format | Extension | Status |
-|---|--------|-----------|--------|
-| 1 | Pro Tracker 3.xx | `.pt3` | ✅ |
-| 2 | Pro Tracker 2.xx | `.pt2` | ✅ |
-| 3 | Pro Tracker 1.xx | `.pt1` | ✅ |
-| 4 | Flash Tracker | `.fls` | ✅ |
-| 5 | Fast Tracker | `.ftc` | ❌ not yet implemented |
-| 6 | Global Tracker 1.x | `.gtr` | ✅ |
-| 7 | Pro Sound Creator 1.xx | `.psc` | ❌ not yet implemented |
-| 8 | Pro Sound Maker (compiled) | `.psm` | ❌ not yet implemented |
-| 9 | ASC Sound Master (compiled) | `.asc`, `.as0` | ✅ |
-| 10 | Sound Tracker / Super Sonic (compiled) | `.stc` | ✅ |
-| 11 | Sound Tracker Pro (compiled) | `.stp` | ✅ |
-| 12 | SQ-Tracker (compiled) | `.sqt` | ✅ |
-| 13 | Amadeus / Fuxoft AY Language | `.fxm`, `.ay` | ✅ `.ay` / ❌ `.fxm` not yet implemented |
+These formats can be **opened and loaded** into the editor. They are all
+one-way imports — the file is converted into the internal VTM representation
+on load, but the original format cannot be written back out.
+
+| # | Format | Extension | Implemented |
+|---|--------|-----------|:-----------:|
+| 1 | Pro Tracker 2.xx | `.pt2` | ☑ |
+| 2 | Pro Tracker 1.xx | `.pt1` | ☑ |
+| 3 | Flash Tracker | `.fls` | ☑ |
+| 4 | Fast Tracker | `.ftc` | ☐ |
+| 5 | Global Tracker 1.x | `.gtr` | ☑ |
+| 6 | Pro Sound Creator 1.xx | `.psc` | ☐ |
+| 7 | Pro Sound Maker (compiled) | `.psm` | ☐ |
+| 8 | ASC Sound Master (compiled) | `.asc`, `.as0` | ☑ |
+| 9 | Sound Tracker / Super Sonic (compiled) | `.stc` | ☑ |
+| 10 | Sound Tracker Pro (compiled) | `.stp` | ☑ |
+| 11 | SQ-Tracker (compiled) | `.sqt` | ☑ |
+| 12 | Amadeus / Fuxoft AY Language | `.fxm`, `.ay` | ☑ `.ay` / ☐ `.fxm` |
+
+## Supported Export Formats
+
+These are the only formats that can be **saved back to disk**. This matches
+the design of the original Delphi/Pascal application, which only ever wrote
+VTM and PT3 — all other formats were strictly read-only imports.
+
+| Format | Extension | Implemented | Notes |
+|--------|-----------|:-----------:|-------|
+| Pro Tracker 3.xx | `.pt3` | ☑ | ZX Spectrum binary — playable on real hardware and emulators |
+| Vortex Tracker Module (text) | `.vtm` | ☑ | Native format — full round-trip, no data loss |
+
+> **Why only PT3 and VTM?**  
+> The original Pascal source (`legacy/trfuncs.pas`) defines conversion
+> functions only in the direction `X → VTM` (`PT22VTM`, `STC2VTM`, etc.) and
+> `VTM → PT3` / `VTM → TextFile`.  There are no `VTM2PT2`, `VTM2STC`, or
+> similar writers in the original code, and adding them is out of scope for
+> this faithful port.
 
 ---
 
@@ -88,7 +109,8 @@ source. See [`PLAN.md`](PLAN.md) for a detailed, checked-off task list.
 - ✅ egui-based GUI skeleton (pattern view, sample view, ornament view, toolbar) with status bar showing current position + elapsed / total time
 - ✅ Terminal CLI tracker diagnostics tool (`vti-cli`) — keyboard navigation + headless tick harness; header shows elapsed / total time
 - ✅ Playback cursor follow — pattern editor highlights and scrolls to the playing row in real time
-- ✅ File open / save: PT3, PT2, PT1, STC, STP, VTM text, AY (ZXAY ST11 + EMUL embedded-module extraction)
+- ✅ File open (import): PT3, PT2, PT1, STC, STP, VTM text, AY (ZXAY ST11 + EMUL embedded-module extraction)
+- ✅ File save (export): PT3 binary, VTM text — these are the only writable formats
 - ✅ PT3 round-trip writer (parse → write → parse verified)
 - ✅ ZX Spectrum export (`.tap`, `.scl`, `.ay`, Hobeta `.$ ` header)
 - ✅ 181 tests across vti-core and vti-ay, 0 failing
