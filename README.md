@@ -86,16 +86,21 @@ source. See [`PLAN.md`](PLAN.md) for a detailed, checked-off task list.
 - ✅ egui-based GUI skeleton (pattern view, sample view, ornament view, toolbar)
 - ✅ Terminal CLI tracker diagnostics tool (`vti-cli`) with keyboard navigation + headless tick harness
 - ✅ Playback cursor follow — pattern editor highlights and scrolls to the playing row in real time
-- ✅ 77 integration tests, 0 failing
+- ✅ File open / save: PT3, PT2, PT1, STC, STP, VTM text, AY (ZXAY ST11 + EMUL embedded-module extraction)
+- ✅ PT3 round-trip writer (parse → write → parse verified)
+- ✅ ZX Spectrum export (`.tap`, `.scl`, `.ay`, Hobeta `.$ ` header)
+- ✅ 180 tests across vti-core and vti-ay, 0 failing
 
 ### Still in progress
-- PT3 binary channel decoder / writer
-- All other 12 format parsers
+- Remaining 8 format parsers: ASC, SQT, GTR, FTC, FLS, PSC, PSM, FXM
 - Full keyboard note-entry in the pattern editor
 - Editable sample / ornament fields
 - Position list editor
-- Options dialog
-- GitHub Actions release pipeline (Mac `.dmg`, Windows `.exe`)
+- Options dialog (sample rate, chip type, panning, buffer settings)
+- Channel panning selector (Mono / ABC / ACB / …)
+- `GetModuleTime` / `GetPositionTime` — song timing helpers (used for seek/scrub)
+- `AudioPlayer` command channel — Play/Pause/Stop wired to the render thread
+- GitHub Actions release pipeline (Mac `.dmg`, Windows `.exe`, Linux binary)
 
 ---
 

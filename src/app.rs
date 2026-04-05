@@ -702,7 +702,7 @@ impl eframe::App for VortexTrackerApp {
                 });
                 ui.menu_button("Help", |ui| {
                     if ui.button("About").clicked() {
-                        // TODO: about dialog (PLAN.md §6)
+                        // TODO: about dialog (PLAN.md §5.1)
                         self.status = "Vortex Tracker II — Rust port. Original by Sergey Bulba.".to_string();
                         ui.close_menu();
                     }

@@ -1,11 +1,12 @@
 //! Tracker playback engine.
 //!
 //! Rust port of `Pattern_PlayCurrentLine`, `Module_PlayCurrentLine`,
-//! `Pattern_PlayOnlyCurrentLine` from `trfuncs.pas`
+//! `Pattern_PlayOnlyCurrentLine` and `GetRegisters` from `trfuncs.pas`
 //! (c) 2000-2009 S.V.Bulba.
 //!
-//! # Status
-//! **TODO** — stub only. See PLAN.md for the full implementation backlog.
+//! The engine advances playback one interrupt tick at a time.  Each call to
+//! [`Engine::module_play_current_line`] corresponds to one 50 Hz interrupt
+//! period on the original ZX Spectrum hardware.
 
 use crate::note_tables::{get_note_freq, PT3_VOL};
 use crate::types::*;

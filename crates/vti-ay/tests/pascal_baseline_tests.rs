@@ -112,17 +112,17 @@ fn envelope_shapes_match_pascal_baseline() {
         let mut chip = SoundChip::default();
         chip.set_envelope_register(case.register_value);
         assert_eq!(
-            chip.ampl, case.initial_ampl,
+            chip.envelope_step, case.initial_ampl,
             "shape {}: initial ampl mismatch (got {}, want {})",
-            case.name, chip.ampl, case.initial_ampl
+            case.name, chip.envelope_step, case.initial_ampl
         );
 
         for (i, expected) in case.steps.iter().enumerate() {
             chip.step_envelope();
             assert_eq!(
-                chip.ampl, expected.ampl,
+                chip.envelope_step, expected.ampl,
                 "shape {} step {}: ampl mismatch (got {}, want {})",
-                case.name, i, chip.ampl, expected.ampl
+                case.name, i, chip.envelope_step, expected.ampl
             );
             assert_eq!(
                 chip.first_period, expected.first_period,

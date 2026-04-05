@@ -389,13 +389,9 @@
 
 ## 7. Documentation
 
-- [ ] Update `README.md`:
-  - [ ] Project description (AY/YM music tracker for ZX Spectrum)
-  - [ ] Original author attribution and thanks (S.V.Bulba)
-  - [ ] Supported file formats
-  - [ ] Build instructions (Rust, ALSA headers on Linux)
-  - [ ] Running the tests
-  - [ ] Screenshots / demo
+- [x] `README.md` — project description, author attribution, format table, build instructions, test commands, WASM deploy notes
+- [ ] Screenshots / demo GIF
+- [ ] `docs/file-formats.md` — complete binary layout documentation for all implemented parsers
 
 ---
 
@@ -616,17 +612,19 @@ should be treated as regressions and investigated before merging.
 | Project setup | ✅ complete | — |
 | `vti-core` data types | ✅ complete | — |
 | `vti-core` note tables | ✅ complete | — |
-| `vti-core` playback engine | ~80% | timing helpers, some effect edge cases |
+| `vti-core` playback engine | ~85% | timing helpers (`GetModuleTime`/`GetPositionTime`), effect edge-case tests |
 | `vti-core` util | ~70% | `get_pattern_line_string`, `get_sample_string` |
-| **PT3 format parser** | ✅ complete | full parse + write (round-trip tested) |
-| All other format parsers (12×) | 0% | ~3000 lines of Pascal to port |
-| `vti-ay` chip emulator | ~85% | perf-mode paths, channel presets |
+| **PT3 format parser + writer** | ✅ complete | full parse + write (round-trip tested) |
+| PT2, PT1, STC, STP parsers | ✅ complete | parse + round-trip tested |
+| AY (ZXAY container) parser | ✅ complete | ST11 + EMUL embedded-module extraction |
+| Remaining format parsers (8×) | 0% | ASC, SQT, GTR, FTC, FLS, PSC, PSM, FXM (~2500 lines of Pascal to port) |
+| `vti-ay` chip emulator | ~85% | performance-mode synthesizer paths, channel panning presets |
 | `vti-ay` synthesizer | ~75% | channel allocation presets, Turbo Sound |
 | `vti-audio` player | ~60% | render thread, command channel, WAV export |
-| `vti-app` GUI skeleton | ~30% | all editing interaction, dialogs |
+| `vti-app` GUI skeleton | ~35% | all editing interaction, dialogs |
 | Build pipeline | ~50% | GitHub Actions release workflow |
-| README | 0% | full write-up |
-| **Integration tests** | ✅ 52 passing | effect-command edge cases, PT3 load/save round-trip |
+| README | ✅ complete | — |
+| **Integration tests** | ✅ 180 passing | effect-command edge cases (see §2.6) |
 | **Pascal parity baselines** | ✅ all passing | — |
 | **Web target (eframe WASM)** | ✅ ~95% | file-dialog fallback done via File System Access API |
 | **Web target (KMP/Compose)** | 0% | `vti-ffi` WASM bindings, Kotlin/Wasm UI (long-term) |
