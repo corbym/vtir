@@ -620,5 +620,137 @@ mod tests {
         assert_eq!(parse_bool_flag("0").expect("0 parse"), false);
         assert!(parse_bool_flag("maybe").is_err());
     }
+
+    // ── Editor logic smoke tests ──────────────────────────────────────────
+    // These exercise the pure `vti_core::editor` functions that back keyboard
+    // note entry in the GUI pattern editor.  Running them through the CLI
+    // harness keeps the tests independent of any UI framework.
+
+    use vti_core::editor::{
+        compute_note, hex_digit_entry, note_key_result, piano_key_to_semitone_offset,
+        NoteKeyResult,
+    };
+
+    #[test]
+    fn piano_layout_z_at_octave4_is_c4() {
+        // z → C, octave 4 → note 36  (C-4 in VT2 1-based notation)
+        let offset = piano_key_to_semitone_offset('z').expect("z should be a note key");
+        let note   = compute_note(offset, 4).expect("should be in range");
+        assert_eq!(note, 36);
+    }
+
+    #[test]
+    fn piano_layout_s_at_octave4_is_csharp4() {
+        // s → C#, octave 4 → note 37
+        let offset = piano_key_to_semitone_offset('s').unwrap();
+        assert_eq!(compute_note(offset, 4), Some(37));
+    }
+
+    #[test]
+    fn piano_layout_u_at_octave3_is_b4() {
+        // u → B+1 (offset 23), octave 3 → 23 + (3-1)*12 = 23+24 = 47 = B-4
+        assert_eq!(
+            note_key_result('u', 3),
+            Some(NoteKeyResult::Note(47))
+        );
+    }
+
+    #[test]
+    fn piano_layout_a_is_sound_off() {
+        assert_eq!(note_key_result('a', 4), Some(NoteKeyResult::SoundOff));
+    }
+
+    #[test]
+    fn piano_layout_k_clears_cell() {
+        assert_eq!(note_key_result('k', 4), Some(NoteKeyResult::ClearCell));
+    }
+
+    #[test]
+    fn piano_layout_out_of_range_returns_none() {
+        // ] at octave 8 → offset 31 + 84 = 115 > 95
+        assert_eq!(note_key_result(']', 8), None);
+    }
+
+    #[test]
+    fn hex_entry_sample_shift_insert() {
+        // Sample field (max=31): type '1' then '5' gives 0x15 = 21
+        let after_1 = hex_digit_entry(0, 1, 31);
+        assert_eq!(after_1, 1);
+        let after_5 = hex_digit_entry(after_1, 5, 31);
+        assert_eq!(after_5, 0x15); // 21
+    }
+
+    #[test]
+    fn hex_entry_sample_clamps_to_max() {
+        // type '2' then '0' → (0x2 << 4 | 0) = 32 > 31 → clamped to 31
+        let after_2 = hex_digit_entry(0, 2, 31);
+        let after_0 = hex_digit_entry(after_2, 0, 31);
+        assert_eq!(after_0, 31);
+    }
+
+    #[test]
+    fn hex_entry_volume_overwrites() {
+        // Volume (max=15): each digit replaces the previous value entirely
+        let v = hex_digit_entry(12, 7, 15);
+        assert_eq!(v, 7);
+    }
+
+    #[test]
+    fn hex_entry_effect_param_shift_insert() {
+        // Effect parameter (max=255): type '3' then '7' gives 0x37 = 55
+        let after_3 = hex_digit_entry(0, 3, 255);
+        let after_7 = hex_digit_entry(after_3, 7, 255);
+        assert_eq!(after_7, 0x37);
+    }
+
+    #[test]
+    fn note_written_to_module_and_visible() {
+        // Simulate writing a note into a module pattern via the core types
+        // (i.e. what the GUI pattern editor does after resolving the key).
+        let mut m = make_test_module();
+        let note = compute_note(
+            piano_key_to_semitone_offset('z').unwrap(), // C
+            4,                                          // octave 4 → C-4 = 36
+        )
+        .unwrap();
+
+        // Write the note to row 1, channel 0.
+        m.patterns[0].as_mut().unwrap().items[1].channel[0].note = note;
+
+        assert_eq!(
+            m.patterns[0].as_ref().unwrap().items[1].channel[0].note,
+            36
+        );
+    }
+
+    #[test]
+    fn note_sound_off_written_to_module() {
+        use vti_core::NOTE_SOUND_OFF;
+        let mut m = make_test_module();
+        m.patterns[0].as_mut().unwrap().items[2].channel[1].note = NOTE_SOUND_OFF;
+        assert_eq!(
+            m.patterns[0].as_ref().unwrap().items[2].channel[1].note,
+            NOTE_SOUND_OFF
+        );
+    }
+
+    #[test]
+    fn hex_entry_round_trip_through_module_fields() {
+        let mut m = make_test_module();
+        let cell = &mut m.patterns[0].as_mut().unwrap().items[0].channel[0];
+
+        // Sample: type '1' → 1, then '5' → 0x15 = 21
+        cell.sample = hex_digit_entry(cell.sample, 1, 31);
+        cell.sample = hex_digit_entry(cell.sample, 5, 31);
+        assert_eq!(cell.sample, 21);
+
+        // Ornament: type 'A' (=10) → ornament = 10
+        cell.ornament = hex_digit_entry(cell.ornament, 10, 15);
+        assert_eq!(cell.ornament, 10);
+
+        // Volume: type 'F' (=15) → volume = 15
+        cell.volume = hex_digit_entry(cell.volume, 15, 15);
+        assert_eq!(cell.volume, 15);
+    }
 }
 

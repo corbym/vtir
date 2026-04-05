@@ -15,6 +15,8 @@ pub const MAX_NUM_OF_PATS: usize = MAX_PAT_NUM + 1;
 pub const MAX_ORN_LEN: usize = 255;
 pub const MAX_SAM_LEN: usize = 64;
 pub const MAX_NUMBER_OF_SOUND_CHIPS: usize = 2;
+/// Number of AY channels per pattern row.
+pub const NUM_CHANNELS: usize = 3;
 
 // ─── Note / note-off sentinels ────────────────────────────────────────────────
 

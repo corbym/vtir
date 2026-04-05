@@ -3,6 +3,7 @@
 //! This crate contains a faithful Rust port of the original Pascal units
 //! `trfuncs.pas` (c) 2000-2009 S.V.Bulba.
 
+pub mod editor;
 pub mod formats;
 pub mod note_tables;
 pub mod playback;
