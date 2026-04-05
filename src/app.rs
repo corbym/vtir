@@ -35,7 +35,7 @@ pub struct VortexTrackerApp {
     pub bottom_panel: BottomPanel,
 
     // Playback state
-    pub is_playing: bool,
+    pub playback_state: PlaybackState,
     pub play_mode: PlayMode,
 
     // Audio engine
@@ -68,6 +68,20 @@ pub enum PlayMode {
     Module,
     Pattern,
     Line,
+}
+
+/// Three-state transport model that mirrors the Pascal original.
+///
+/// - `Stopped` — no playback; next Play starts from position 0.
+/// - `Playing` — the engine advances and audio is pushed to the device.
+/// - `Paused`  — the engine is frozen at its current position; audio is
+///               silenced.  Next Play resumes without resetting position.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PlaybackState {
+    #[default]
+    Stopped,
+    Playing,
+    Paused,
 }
 
 // ─── Demo module ─────────────────────────────────────────────────────────────
@@ -227,7 +241,7 @@ impl VortexTrackerApp {
             sample_editor: SampleEditor::default(),
             ornament_editor: OrnamentEditor::default(),
             bottom_panel: BottomPanel::default(),
-            is_playing: false,
+            playback_state: PlaybackState::Stopped,
             play_mode: PlayMode::default(),
             audio,
             synth,
@@ -307,7 +321,7 @@ impl VortexTrackerApp {
                     .unwrap_or("file");
                 match formats::load(&bytes, filename) {
                     Ok(module) => {
-                        self.is_playing = false;
+                        self.playback_state = PlaybackState::Stopped;
                         self.modules = vec![module];
                         self.active_module = 0;
                         self.reset_playback();
@@ -563,7 +577,7 @@ impl VortexTrackerApp {
         if let Some(pf) = pending_file::take_pending_open() {
             match formats::load(&pf.bytes, &pf.name) {
                 Ok(module) => {
-                    self.is_playing = false;
+                    self.playback_state = PlaybackState::Stopped;
                     self.modules = vec![module];
                     self.active_module = 0;
                     self.reset_playback();
@@ -652,7 +666,7 @@ impl eframe::App for VortexTrackerApp {
         // ── Audio tick driver ──────────────────────────────────────────────
         // Tick the tracker engine at ~50 Hz whenever playback is active.
         const TICK_INTERVAL: f64 = 1.0 / 50.0;
-        if self.is_playing {
+        if self.playback_state == PlaybackState::Playing {
             let now = ctx.input(|i| i.time);
             if self.last_tick_time == 0.0 {
                 self.last_tick_time = now;
@@ -672,7 +686,7 @@ impl eframe::App for VortexTrackerApp {
                     if ui.button("New").clicked() {
                         self.modules = vec![Module::default()];
                         self.active_module = 0;
-                        self.is_playing = false;
+                        self.playback_state = PlaybackState::Stopped;
                         self.reset_playback();
                         self.status = "New module created".to_string();
                         ui.close_menu();
@@ -713,32 +727,53 @@ impl eframe::App for VortexTrackerApp {
 
         // ── Toolbar ────────────────────────────────────────────────────────
         egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
-            let was_playing = self.is_playing;
-            self.toolbar.show(ui, &mut self.is_playing, &mut self.play_mode, &mut self.status);
-            // When play transitions false→true, reset the playback cursor.
-            if !was_playing && self.is_playing {
-                self.reset_playback();
-                self.last_tick_time = 0.0;
-                // Open the audio device on first Play press (satisfies the browser
-                // autoplay policy on WASM; harmless no-op on subsequent presses).
-                if self.audio.is_none() {
-                    self.audio = Self::try_open_audio();
+            let prev_state = self.playback_state;
+            self.toolbar.show(ui, &mut self.playback_state, &mut self.play_mode, &mut self.status);
+
+            match (prev_state, self.playback_state) {
+                // Stopped → Playing: reset position and start audio from the beginning.
+                (PlaybackState::Stopped, PlaybackState::Playing) => {
+                    self.reset_playback();
+                    self.last_tick_time = 0.0;
+                    // Open the audio device on first Play press (satisfies the browser
+                    // autoplay policy on WASM; harmless no-op on subsequent presses).
+                    if self.audio.is_none() {
+                        self.audio = Self::try_open_audio();
+                    }
+                    let audio_status = if self.audio.is_some() { "Playing" } else { "Playing (no audio device)" };
+                    self.status = audio_status.to_string();
                 }
-                let audio_status = if self.audio.is_some() { "Playing" } else { "Playing (no audio device)" };
-                self.status = audio_status.to_string();
-            }
-            // When stopped, reset so next Play starts from the beginning.
-            if was_playing && !self.is_playing {
-                self.reset_playback();
-                self.last_tick_time = 0.0;
+                // Paused → Playing: resume from the current position (no reset).
+                (PlaybackState::Paused, PlaybackState::Playing) => {
+                    // Reset the tick timer so we don't try to catch up on the gap
+                    // that elapsed while paused, which would cause a burst of ticks.
+                    self.last_tick_time = 0.0;
+                    if self.audio.is_none() {
+                        self.audio = Self::try_open_audio();
+                    }
+                    let audio_status = if self.audio.is_some() { "Playing" } else { "Playing (no audio device)" };
+                    self.status = audio_status.to_string();
+                }
+                // Playing → Paused: freeze at current position; silence the AY chip
+                // so no stale tone leaks through the audio buffer while paused.
+                (PlaybackState::Playing, PlaybackState::Paused) => {
+                    self.synth.apply_registers(0, &vti_core::AyRegisters::default());
+                }
+                // Any → Stopped: reset position so next Play starts from the beginning.
+                (_, PlaybackState::Stopped) => {
+                    self.reset_playback();
+                    self.last_tick_time = 0.0;
+                }
+                // All other transitions are no-ops (e.g. Stopped→Stopped).
+                _ => {}
             }
         });
 
         // ── Status bar ─────────────────────────────────────────────────────
         egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                // When playing, show "pos X/N  MM:SS / MM:SS" alongside the status.
-                if self.is_playing {
+                // When playing or paused, show position and timing in the status bar.
+                if self.playback_state != PlaybackState::Stopped {
                     let module = &self.modules[self.active_module];
                     let total_ticks = get_module_time(module);
                     let pos = self.play_vars.current_position;
@@ -791,7 +826,7 @@ impl eframe::App for VortexTrackerApp {
         // ── Central area: pattern editor ──────────────────────────────────
         egui::CentralPanel::default().show(ctx, |ui| {
             let module = &mut self.modules[self.active_module];
-            let play_pos = if self.is_playing {
+            let play_pos = if self.playback_state != PlaybackState::Stopped {
                 // `current_line` is always one ahead of the row being rendered:
                 // `pattern_play_current_line` interprets a row then increments the
                 // pointer before returning (mirrors the Pascal `Pattern_PlayCurrentLine`

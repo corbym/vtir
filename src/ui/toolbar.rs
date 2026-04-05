@@ -1,7 +1,7 @@
 //! Toolbar: transport controls, play mode, channel allocation button.
 
 use eframe::egui;
-use crate::app::PlayMode;
+use crate::app::{PlayMode, PlaybackState};
 
 #[derive(Default)]
 pub struct Toolbar;
@@ -10,19 +10,27 @@ impl Toolbar {
     pub fn show(
         &mut self,
         ui: &mut egui::Ui,
-        is_playing: &mut bool,
+        playback_state: &mut PlaybackState,
         play_mode: &mut PlayMode,
         status: &mut String,
     ) {
         ui.horizontal(|ui| {
             // Transport buttons
-            let play_label = if *is_playing { "⏸ Pause" } else { "▶ Play" };
+            let play_label = if *playback_state == PlaybackState::Playing { "⏸ Pause" } else { "▶ Play" };
             if ui.button(play_label).clicked() {
-                *is_playing = !*is_playing;
-                *status = if *is_playing { "Playing".to_string() } else { "Paused".to_string() };
+                match *playback_state {
+                    PlaybackState::Playing => {
+                        *playback_state = PlaybackState::Paused;
+                        *status = "Paused".to_string();
+                    }
+                    PlaybackState::Paused | PlaybackState::Stopped => {
+                        *playback_state = PlaybackState::Playing;
+                        *status = "Playing".to_string();
+                    }
+                }
             }
             if ui.button("⏹ Stop").clicked() {
-                *is_playing = false;
+                *playback_state = PlaybackState::Stopped;
                 *status = "Stopped".to_string();
             }
 
