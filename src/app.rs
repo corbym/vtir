@@ -291,7 +291,7 @@ impl VortexTrackerApp {
     /// Open a file-picker dialog and load the chosen module.
     ///
     /// Supported extensions: `.vtm`, `.pt3`, `.pt2`, `.pt1`, `.stc`, `.stp`,
-    /// `.ay` (ZXAY container, ST11 sub-format).
+    /// `.ay` (ZXAY), `.sqt`, `.asc`, `.as0`, `.gtr`, `.fls`.
     /// On WASM this is a no-op (file access is handled separately via the
     /// browser `<input type="file">` element — see PLAN.md §8).
     #[cfg(not(target_arch = "wasm32"))]
@@ -299,7 +299,10 @@ impl VortexTrackerApp {
         let path = rfd::FileDialog::new()
             .add_filter(
                 "Tracker modules",
-                &["vtm", "pt3", "pt2", "pt1", "stc", "stp", "ay"],
+                &[
+                    "vtm", "pt3", "pt2", "pt1", "stc", "stp", "ay",
+                    "sqt", "asc", "as0", "gtr", "fls",
+                ],
             )
             .add_filter("VTM text (*.vtm)", &["vtm"])
             .add_filter("Pro Tracker 3 (*.pt3)", &["pt3"])
@@ -308,6 +311,11 @@ impl VortexTrackerApp {
             .add_filter("Sound Tracker Compiled (*.stc)", &["stc"])
             .add_filter("Sound Tracker Pro (*.stp)", &["stp"])
             .add_filter("ZXAY container (*.ay)", &["ay"])
+            .add_filter("Square Tracker (*.sqt)", &["sqt"])
+            .add_filter("ASC Sound Master v1 (*.asc)", &["asc"])
+            .add_filter("ASC Sound Master v0 (*.as0)", &["as0"])
+            .add_filter("Global Tracker (*.gtr)", &["gtr"])
+            .add_filter("Flying Ledger Sound (*.fls)", &["fls"])
             .add_filter("All files", &["*"])
             .pick_file();
 
