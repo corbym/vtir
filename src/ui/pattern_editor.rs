@@ -26,16 +26,34 @@
 //!
 //! ## WASM / mobile keyboard
 //!
-//! A hidden [`egui::TextEdit`] widget (the *keyboard anchor*, id
-//! `pat_kbd_anchor`) is rendered in the header on WASM targets.  When the
-//! user taps any pattern cell, the anchor gains focus; eframe's text-agent
-//! then focuses the underlying browser `<input>` element, which causes the
-//! mobile virtual keyboard to appear.
+//! eframe proxies all browser keyboard input through a hidden
+//! `<input type="text">` called the *text agent*.  It calls `input.focus()`
+//! on the text agent only when egui outputs a non-`None` `ime` field, which
+//! only happens when a [`egui::TextEdit`] widget has egui focus.  The
+//! `focus()` call is made from `requestAnimationFrame`, which iOS Safari does
+//! **not** treat as a user-gesture context, so the virtual keyboard would
+//! never appear.
 //!
-//! Key events are still captured via `ui.input(|i| …)` — both `Event::Key`
-//! (hardware / desktop keyboards and most mobile browsers) and `Event::Text`
-//! (fallback for mobile browsers that emit `key="Unidentified"` in keydown
-//! but still deliver the character via the `input` event).
+//! **Two-layer fix:**
+//!
+//! 1. **`index.html` JavaScript** — on every canvas `touchend` the script
+//!    synchronously calls `input.focus()` on the text agent (user-gesture
+//!    context, satisfies iOS Safari).  A `blur` listener refocuses the input
+//!    for ≈500 ms after a touch so eframe's own `ime`-based management cannot
+//!    immediately undo it.  This fix is **app-wide**: it works for every tap
+//!    on the canvas, not just pattern-cell taps.
+//!
+//! 2. **Keyboard anchor** — a small [`egui::TextEdit`] widget (id
+//!    `pat_kbd_anchor`) is rendered at the right end of the header row on
+//!    WASM targets.  At the end of every `show()` frame, `request_focus` is
+//!    called for this widget unconditionally.  This keeps `ime = Some(…)` in
+//!    egui's platform output, which causes eframe to call
+//!    `text_agent.focus()` every frame, maintaining focus after the
+//!    JavaScript's 500 ms window closes.
+//!
+//! Key events arrive via `ui.input(|i| …)` — both `Event::Key` (hardware /
+//! desktop keyboards and most mobile browsers) and `Event::Text` (fallback
+//! for browsers that fire `key = "Unidentified"` in `keydown`).
 //!
 //! An on-screen piano keyboard widget (PLAN.md §5.5) is not yet implemented.
 
@@ -111,9 +129,12 @@ pub struct PatternEditor {
     scroll_to_cursor: bool,
     /// Dummy buffer for the mobile keyboard-anchor `TextEdit`.
     ///
-    /// On WASM the anchor widget is rendered in the header and focused
-    /// whenever the user taps a pattern cell.  This causes the browser to
-    /// show the virtual keyboard so that subsequent key events reach egui.
+    /// On WASM this widget is rendered at the right end of the header scroll
+    /// row.  Focusing it causes eframe to keep the browser text-agent input
+    /// focused, which in turn keeps the mobile virtual keyboard visible.
+    /// `show()` requests focus for this widget at the end of every frame
+    /// (after all other widgets) so `PlatformOutput::ime` is always `Some`,
+    /// preventing eframe from blurring the text-agent.
     /// The content is cleared each frame; we never read it directly.
     #[cfg(target_arch = "wasm32")]
     keyboard_anchor: String,
@@ -137,6 +158,32 @@ impl PatternEditor {
     /// Stable egui ID for the keyboard-anchor `TextEdit` widget.
     fn kbd_anchor_id() -> egui::Id {
         egui::Id::new("pat_kbd_anchor")
+    }
+
+    /// Directly focus the egui text-agent `<input>` element via the DOM.
+    ///
+    /// eframe creates a single hidden `<input type="text">` (the text agent)
+    /// that acts as the IME / virtual-keyboard proxy.  Calling `focus()` on
+    /// it synchronously—or as close to synchronously as possible inside a
+    /// `requestAnimationFrame` callback—is what triggers the mobile virtual
+    /// keyboard on Chrome for Android and most other browsers.
+    ///
+    /// iOS Safari additionally requires that `focus()` is called inside a
+    /// *direct* user-gesture handler (not rAF).  That case is covered by the
+    /// JavaScript snippet in `index.html` which calls `input.focus()` on the
+    /// canvas `touchend` event.  This Rust function serves as a belt-and-
+    /// suspenders complement for browsers that are more permissive.
+    ///
+    /// The selector `"input[type=text]"` mirrors the one in `index.html`;
+    /// both must be updated if eframe changes how it creates the text agent.
+    #[cfg(target_arch = "wasm32")]
+    fn focus_text_agent_dom() {
+        use wasm_bindgen::JsCast as _;
+        let _ = (|| -> Option<()> {
+            let doc = web_sys::window()?.document()?;
+            let el  = doc.query_selector("input[type=text]").ok()??;
+            el.unchecked_ref::<web_sys::HtmlElement>().focus().ok()
+        })();
     }
 }
 
@@ -186,61 +233,7 @@ impl PatternEditor {
 
         let pat_idx = Module::pat_idx(self.current_pattern);
 
-        // ── Header row ────────────────────────────────────────────────────
-        // `horizontal_wrapped` lets the controls flow onto a second line on
-        // narrow screens (mobile) so the Step DragValue is never clipped.
-        ui.horizontal_wrapped(|ui| {
-            ui.label("Pattern:");
-            let mut p = self.current_pattern;
-            if ui.add(egui::DragValue::new(&mut p).range(0..=vti_core::MAX_PAT_NUM as i32)).changed() {
-                self.current_pattern = p;
-                self.cursor.row = 0;
-            }
-
-            ui.separator();
-
-            ui.label("Octave:");
-            for oct in 1u8..=8 {
-                let btn = egui::Button::new(oct.to_string())
-                    .selected(self.octave == oct)
-                    .small();
-                if ui.add(btn).clicked() {
-                    self.octave = oct;
-                }
-            }
-
-            ui.separator();
-
-            // Auto-advance step size — mirrors Pascal UDAutoStep.
-            ui.label("Step:");
-            ui.add(
-                egui::DragValue::new(&mut self.step_size)
-                    .range(-64..=64)
-                    .speed(1),
-            )
-            .on_hover_text(
-                "Rows to advance after each entry.\n\
-                 0 = stay; negative = move up (Pascal UDAutoStep).",
-            );
-
-            // ── Mobile keyboard anchor (WASM only) ──────────────────────
-            // A minimal TextEdit that gains focus when a pattern cell is
-            // tapped.  The browser only shows the virtual keyboard when an
-            // <input> element is focused; eframe's text-agent focuses one
-            // whenever an egui TextEdit has focus.  Content is cleared each
-            // frame — we rely on `Event::Key` / `Event::Text` in the
-            // platform input state for actual entry, not this buffer.
-            #[cfg(target_arch = "wasm32")]
-            {
-                ui.separator();
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.keyboard_anchor)
-                        .id(Self::kbd_anchor_id())
-                        .desired_width(48.0)
-                        .hint_text("⌨"),
-                );
-            }
-        });
+        self.show_header(ui);
 
         if module.patterns[pat_idx].is_none() {
             if ui.button("Create pattern").clicked() {
@@ -291,11 +284,6 @@ impl PatternEditor {
         if !skip_keys {
             self.process_keys(ui, module, pat_len);
         }
-
-        // Clear the keyboard-anchor buffer each frame so the tiny TextEdit
-        // never accumulates typed characters visually.
-        #[cfg(target_arch = "wasm32")]
-        self.keyboard_anchor.clear();
 
         // ── Scroll area ───────────────────────────────────────────────────
         let row_height = 18.0;
@@ -404,7 +392,10 @@ impl PatternEditor {
                                     self.cursor.channel = ch;
                                     self.cursor.field = Field::Note;
                                     #[cfg(target_arch = "wasm32")]
-                                    ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                    {
+                                        ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                        Self::focus_text_agent_dom();
+                                    }
                                 }
 
                                 // Sample
@@ -414,7 +405,10 @@ impl PatternEditor {
                                     self.cursor.channel = ch;
                                     self.cursor.field = Field::Sample;
                                     #[cfg(target_arch = "wasm32")]
-                                    ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                    {
+                                        ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                        Self::focus_text_agent_dom();
+                                    }
                                 }
 
                                 // Ornament
@@ -424,7 +418,10 @@ impl PatternEditor {
                                     self.cursor.channel = ch;
                                     self.cursor.field = Field::Ornament;
                                     #[cfg(target_arch = "wasm32")]
-                                    ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                    {
+                                        ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                        Self::focus_text_agent_dom();
+                                    }
                                 }
 
                                 // Volume
@@ -434,7 +431,10 @@ impl PatternEditor {
                                     self.cursor.channel = ch;
                                     self.cursor.field = Field::Volume;
                                     #[cfg(target_arch = "wasm32")]
-                                    ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                    {
+                                        ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                        Self::focus_text_agent_dom();
+                                    }
                                 }
 
                                 // Envelope
@@ -444,7 +444,10 @@ impl PatternEditor {
                                     self.cursor.channel = ch;
                                     self.cursor.field = Field::Envelope;
                                     #[cfg(target_arch = "wasm32")]
-                                    ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                    {
+                                        ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                        Self::focus_text_agent_dom();
+                                    }
                                 }
 
                                 // Effect
@@ -459,13 +462,31 @@ impl PatternEditor {
                                     self.cursor.channel = ch;
                                     self.cursor.field = Field::Effect;
                                     #[cfg(target_arch = "wasm32")]
-                                    ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                    {
+                                        ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+                                        Self::focus_text_agent_dom();
+                                    }
                                 }
                             }
                             ui.end_row();
                         }
                     });
             });
+
+        // WASM: unconditionally re-request focus for the keyboard anchor after
+        // every frame.  This keeps egui's PlatformOutput::ime = Some(…) so
+        // eframe always calls text_agent.focus() rather than blur(), ensuring
+        // the mobile virtual keyboard can stay visible once it has been opened
+        // by the touchend handler in index.html.
+        // The anchor is the only TextEdit in the app, so this does not
+        // conflict with any other text-entry widget.
+        #[cfg(target_arch = "wasm32")]
+        {
+            ui.ctx().memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
+            // Drain any characters the TextEdit accumulated from Text events
+            // this frame so the anchor always looks empty (hint: "⌨").
+            self.keyboard_anchor.clear();
+        }
     }
 
     // ─── Colour helpers ───────────────────────────────────────────────────
@@ -477,6 +498,66 @@ impl PatternEditor {
         } else {
             base
         }
+    }
+
+    // ─── Header row ───────────────────────────────────────────────────────
+
+    /// Render the horizontally-scrollable header row (Pattern, Octave, Step,
+    /// and — on WASM — the mobile keyboard anchor).
+    fn show_header(&mut self, ui: &mut egui::Ui) {
+        // Wrap in a horizontal scroll area so all controls are reachable on
+        // narrow screens by swiping left/right.  The row never wraps.
+        egui::ScrollArea::horizontal()
+            .id_source("pat_header_scroll")
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Pattern:");
+                    let mut p = self.current_pattern;
+                    if ui.add(egui::DragValue::new(&mut p).range(0..=vti_core::MAX_PAT_NUM as i32)).changed() {
+                        self.current_pattern = p;
+                        self.cursor.row = 0;
+                    }
+
+                    ui.separator();
+
+                    ui.label("Octave:");
+                    for oct in 1u8..=8 {
+                        let btn = egui::Button::new(oct.to_string())
+                            .selected(self.octave == oct)
+                            .small();
+                        if ui.add(btn).clicked() {
+                            self.octave = oct;
+                        }
+                    }
+
+                    ui.separator();
+
+                    // Auto-advance step size — mirrors Pascal UDAutoStep.
+                    ui.label("Step:");
+                    ui.add(
+                        egui::DragValue::new(&mut self.step_size)
+                            .range(-64..=64)
+                            .speed(1),
+                    )
+                    .on_hover_text(
+                        "Rows to advance after each entry.\n\
+                         0 = stay; negative = move up (Pascal UDAutoStep).",
+                    );
+
+                    // ── Mobile keyboard anchor (WASM only) ──────────────
+                    // See the module-level doc for the two-layer keyboard fix.
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        ui.separator();
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.keyboard_anchor)
+                                .id(Self::kbd_anchor_id())
+                                .desired_width(48.0)
+                                .hint_text("⌨"),
+                        );
+                    }
+                });
+            });
     }
 
     // ─── Key input processing ─────────────────────────────────────────────
