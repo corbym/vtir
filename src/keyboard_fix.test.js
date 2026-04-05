@@ -216,6 +216,10 @@ describe('attach() — default mode (no global keyboard popup)', () => {
 
         expect(input.style.outline).toBe('none');
         expect(input.style.opacity).toBe('0');
+        expect(input.style.left).toBe('-10000px');
+        expect(input.style.width).toBe('0px');
+        expect(input.style.height).toBe('0px');
+        expect(input.style.pointerEvents).toBe('none');
         expect(input.style.caretColor).toBe('transparent');
         expect(input.style.color).toBe('transparent');
         expect(input.style.getPropertyValue('-webkit-text-fill-color')).toBe('transparent');

@@ -54,15 +54,24 @@ function attach(input, canvas, options) {
     // style properties (including WebKit-specific text fill).
     input.style.position = 'fixed';
     input.style.top = '0';
-    input.style.right = '0';
-    input.style.width = '1px';
-    input.style.height = '1px';
+    input.style.left = '-10000px';
+    input.style.right = 'auto';
+    input.style.width = '0';
+    input.style.height = '0';
+    input.style.maxWidth = '0';
+    input.style.maxHeight = '0';
+    input.style.overflow = 'hidden';
+    input.style.clip = 'rect(0 0 0 0)';
+    input.style.clipPath = 'inset(50%)';
+    input.style.whiteSpace = 'nowrap';
     input.style.padding = '0';
     input.style.margin = '0';
     input.style.border = '0';
     input.style.outline = 'none';
     input.style.boxShadow = 'none';
     input.style.background = 'transparent';
+    input.style.pointerEvents = 'none';
+    input.style.zIndex = '-1';
     input.style.opacity = '0';
     input.style.caretColor = 'transparent';
     input.style.color = 'transparent';
