@@ -9,11 +9,20 @@
             margin: 0;
             overflow: hidden;
             background: #1c1c1c;
+            /* On mobile, fill-available prevents the body from extending behind
+               the browser's address/navigation bar. */
+            height: 100vh;
+            height: -webkit-fill-available;
         }
         canvas {
             display: block;
             width: 100vw;
+            /* 100dvh (dynamic viewport height) tracks the real visible area on
+               mobile as the browser toolbar shows/hides, so the bottom status
+               bar and timers are never clipped.  100vh is the fallback for
+               browsers that do not yet support dvh units. */
             height: 100vh;
+            height: 100dvh;
         }
     </style>
 </head>
