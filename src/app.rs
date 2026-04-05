@@ -894,37 +894,131 @@ impl eframe::App for VortexTrackerApp {
 
     /// Remove transient focus-transfer events before egui processes them.
     ///
-    /// On WASM, calling `element.focus()` on the text-agent (eframe's hidden
-    /// `<input type="text">`) causes the canvas to fire a synchronous `blur`
-    /// event at the exact moment when *neither* element has browser focus (the
-    /// browser fires `blur` on the old element before `focus` on the new one).
-    /// eframe's canvas-blur handler queues `WindowFocused(false)` into the raw
-    /// input.  The very next `update_focus()` call — at the start of the same
-    /// `requestAnimationFrame` — then queues `WindowFocused(true)`.
-    ///
-    /// When egui sees `WindowFocused(false)` it clears `Memory::focused_id`,
-    /// which means any focused `TextEdit` loses egui focus → `ime = None` →
-    /// eframe calls `text_agent.blur()` + `canvas.focus()` → the virtual
-    /// keyboard is dismissed before the user has typed anything.
-    ///
-    /// An immediately adjacent `false/true` pair represents a *transient*
-    /// focus transfer (canvas → text-agent), not a genuine app-focus loss.
-    /// Collapsing the pair prevents the spurious focus clear.
+    /// See [`collapse_focus_ping_pong`] for the full explanation.
     #[cfg(target_arch = "wasm32")]
     fn raw_input_hook(&mut self, _ctx: &egui::Context, raw_input: &mut egui::RawInput) {
-        let events = &mut raw_input.events;
-        let mut i = 0;
-        while i + 1 < events.len() {
-            let is_pair = matches!(
-                (&events[i], &events[i + 1]),
-                (egui::Event::WindowFocused(false), egui::Event::WindowFocused(true))
-            );
-            if is_pair {
-                events.remove(i + 1);
-                events.remove(i);
-            } else {
-                i += 1;
-            }
+        collapse_focus_ping_pong(&mut raw_input.events);
+    }
+}
+
+/// Collapse spurious adjacent `WindowFocused(false)` / `WindowFocused(true)` pairs.
+///
+/// # Why this is needed
+///
+/// On WASM, when our `touchend` handler calls `input.focus()` on eframe's
+/// hidden text-agent `<input>`, the browser fires `canvas.blur()` **synchronously**
+/// before the focus reaches the text-agent — at that exact moment neither
+/// element has browser focus.  eframe's canvas-blur handler queues
+/// `WindowFocused(false)` into the raw input.  The very next
+/// `requestAnimationFrame` call restores focus and queues `WindowFocused(true)`.
+/// Both events end up in the same egui frame.
+///
+/// When egui processes `WindowFocused(false)` it clears `Memory::focused_id`,
+/// causing any focused `TextEdit` to lose egui focus → `ime = None` → eframe
+/// calls `text_agent.blur()` + `canvas.focus()` → the mobile virtual keyboard
+/// is dismissed within one frame of appearing.
+///
+/// An immediately adjacent `false/true` pair represents a *transient* canvas →
+/// text-agent focus transfer, not a genuine app-focus loss.  Removing the pair
+/// prevents egui from clearing `focused_id` and keeps the keyboard visible.
+///
+/// This function is extracted (without `#[cfg(target_arch = "wasm32")]`) so it
+/// can be unit-tested on native targets.
+pub(crate) fn collapse_focus_ping_pong(events: &mut Vec<egui::Event>) {
+    let mut i = 0;
+    while i + 1 < events.len() {
+        let is_pair = matches!(
+            (&events[i], &events[i + 1]),
+            (egui::Event::WindowFocused(false), egui::Event::WindowFocused(true))
+        );
+        if is_pair {
+            events.remove(i + 1);
+            events.remove(i);
+        } else {
+            i += 1;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── collapse_focus_ping_pong unit tests ──────────────────────────────────
+    // These tests exercise the Rust logic that prevents the mobile virtual
+    // keyboard from immediately disappearing after a tap.  The matching
+    // browser-side behaviour (canvas.focus() no-op, touchend handler) is in
+    // index.html and cannot be unit-tested in Rust; its correctness must be
+    // verified manually on a real device / browser DevTools emulation.
+
+    fn focused(v: bool) -> egui::Event {
+        egui::Event::WindowFocused(v)
+    }
+
+    #[test]
+    fn collapse_removes_single_false_true_pair() {
+        let mut events = vec![focused(false), focused(true)];
+        collapse_focus_ping_pong(&mut events);
+        assert!(events.is_empty(), "pair should be removed");
+    }
+
+    #[test]
+    fn collapse_removes_multiple_adjacent_pairs() {
+        let mut events = vec![
+            focused(false), focused(true),
+            focused(false), focused(true),
+        ];
+        collapse_focus_ping_pong(&mut events);
+        assert!(events.is_empty(), "both pairs should be removed");
+    }
+
+    #[test]
+    fn collapse_does_not_remove_standalone_false() {
+        let mut events = vec![focused(false)];
+        collapse_focus_ping_pong(&mut events);
+        assert_eq!(events.len(), 1, "single false should be kept");
+        assert!(matches!(events[0], egui::Event::WindowFocused(false)));
+    }
+
+    #[test]
+    fn collapse_does_not_remove_standalone_true() {
+        let mut events = vec![focused(true)];
+        collapse_focus_ping_pong(&mut events);
+        assert_eq!(events.len(), 1);
+    }
+
+    #[test]
+    fn collapse_does_not_remove_true_false_pair() {
+        // true/false = normal focus-out sequence; must NOT be collapsed
+        let mut events = vec![focused(true), focused(false)];
+        collapse_focus_ping_pong(&mut events);
+        assert_eq!(events.len(), 2, "true/false pair must be preserved");
+    }
+
+    #[test]
+    fn collapse_preserves_surrounding_events() {
+        let mut events = vec![
+            egui::Event::PointerGone,
+            focused(false),
+            focused(true),
+            egui::Event::PointerGone,
+        ];
+        collapse_focus_ping_pong(&mut events);
+        assert_eq!(events.len(), 2, "only the false/true pair should be removed");
+        assert!(matches!(events[0], egui::Event::PointerGone));
+        assert!(matches!(events[1], egui::Event::PointerGone));
+    }
+
+    #[test]
+    fn collapse_mixed_genuine_loss_and_ping_pong() {
+        // A genuine WindowFocused(false) at the end (no matching true) must survive.
+        let mut events = vec![
+            focused(false), // ping-pong start
+            focused(true),  // ping-pong end  → pair removed
+            focused(false), // genuine app blur → kept
+        ];
+        collapse_focus_ping_pong(&mut events);
+        assert_eq!(events.len(), 1, "only the genuine false should remain");
+        assert!(matches!(events[0], egui::Event::WindowFocused(false)));
     }
 }
