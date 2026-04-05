@@ -1,11 +1,11 @@
 //! Integration tests for vti-ay: chip emulator, envelope shapes, synthesizer.
 
-use vti_ay::chip::{noise_generator, ChipType, EnvShape, SoundChip, AMPLITUDES_AY, AMPLITUDES_YM};
+use vti_ay::chip::{ChipType, EnvShape, SoundChip, noise_generator, AMPLITUDES_AY, AMPLITUDES_YM};
 use vti_ay::config::{
-    AyConfig, AY_FREQ_DEF, INTERRUPT_FREQ_DEF, NUMBER_OF_CHANNELS_DEF, SAMPLE_BIT_DEF,
-    SAMPLE_RATE_DEF,
+    AyConfig, AY_FREQ_DEF, INTERRUPT_FREQ_DEF, SAMPLE_RATE_DEF, SAMPLE_BIT_DEF,
+    NUMBER_OF_CHANNELS_DEF,
 };
-use vti_ay::synth::{calculate_level_tables, Synthesizer};
+use vti_ay::synth::{Synthesizer, calculate_level_tables};
 use vti_core::AyRegisters;
 
 // ─── legacy-v1.0 parity enforcement ─────────────────────────────────────────
@@ -13,21 +13,16 @@ use vti_core::AyRegisters;
 #[test]
 fn amplitudes_tables_match_legacy_hacker_kay() {
     // Keep the active AY/YM tables bit-identical to legacy/AY.pas (Hacker KAY).
-    assert_eq!(
-        AMPLITUDES_AY,
-        [
-            0, 836, 1212, 1773, 2619, 3875, 5397, 8823, 10392, 16706, 23339, 29292, 36969, 46421,
-            55195, 65535,
-        ]
-    );
-    assert_eq!(
-        AMPLITUDES_YM,
-        [
-            0, 0, 0xF8, 0x1C2, 0x29E, 0x33A, 0x3F2, 0x4D7, 0x610, 0x77F, 0x90A, 0xA42, 0xC3B,
-            0xEC2, 0x1137, 0x13A7, 0x1750, 0x1BF9, 0x20DF, 0x2596, 0x2C9D, 0x3579, 0x3E55, 0x4768,
-            0x54FF, 0x6624, 0x773B, 0x883F, 0xA1DA, 0xC0FC, 0xE094, 0xFFFF,
-        ]
-    );
+    assert_eq!(AMPLITUDES_AY, [
+        0, 836, 1212, 1773, 2619, 3875, 5397, 8823,
+        10392, 16706, 23339, 29292, 36969, 46421, 55195, 65535,
+    ]);
+    assert_eq!(AMPLITUDES_YM, [
+        0, 0, 0xF8, 0x1C2, 0x29E, 0x33A, 0x3F2, 0x4D7,
+        0x610, 0x77F, 0x90A, 0xA42, 0xC3B, 0xEC2, 0x1137, 0x13A7,
+        0x1750, 0x1BF9, 0x20DF, 0x2596, 0x2C9D, 0x3579, 0x3E55, 0x4768,
+        0x54FF, 0x6624, 0x773B, 0x883F, 0xA1DA, 0xC0FC, 0xE094, 0xFFFF,
+    ]);
 }
 
 #[test]
@@ -74,17 +69,10 @@ fn noise_generator_produces_diverse_output() {
     let mut seen_one = false;
     for _ in 0..1000 {
         seed = noise_generator(seed);
-        if seed & 1 == 0 {
-            seen_zero = true;
-        }
-        if seed & 1 == 1 {
-            seen_one = true;
-        }
+        if seed & 1 == 0 { seen_zero = true; }
+        if seed & 1 == 1 { seen_one  = true; }
     }
-    assert!(
-        seen_zero && seen_one,
-        "LFSR output low bit should toggle over 1000 steps"
-    );
+    assert!(seen_zero && seen_one, "LFSR output low bit should toggle over 1000 steps");
 }
 
 // ─── EnvShape ─────────────────────────────────────────────────────────────────
@@ -108,9 +96,9 @@ fn env_shape_from_register_12_is_saw12() {
 fn env_shape_saw8_decrements_mod32() {
     let mut chip = SoundChip::default();
     chip.set_envelope_register(8); // Saw8, starts high
-                                   // After set_envelope_register with type 8, ampl = 32 (bit 2 of 8 is set → -1 start, then mod 32)
-                                   // Actually: (8 & 4) != 0 → ampl = -1; but Saw8 does (ampl-1)&31
-                                   // Let's verify it counts down cyclically
+    // After set_envelope_register with type 8, ampl = 32 (bit 2 of 8 is set → -1 start, then mod 32)
+    // Actually: (8 & 4) != 0 → ampl = -1; but Saw8 does (ampl-1)&31
+    // Let's verify it counts down cyclically
     let initial = chip.envelope_step;
     chip.step_envelope();
     assert_eq!(chip.envelope_step, (initial - 1) & 31);
@@ -133,9 +121,7 @@ fn env_shape_hold0_decays_to_silence() {
     // Step until first_period becomes false
     for _ in 0..64 {
         chip.step_envelope();
-        if !chip.first_period {
-            break;
-        }
+        if !chip.first_period { break; }
     }
     assert!(!chip.first_period);
     // Further steps should not change ampl
@@ -240,11 +226,7 @@ fn level_tables_monotonically_non_decreasing_for_ay() {
     // Even-indexed entries (amplitude indices for AY) should be non-decreasing
     let evens: Vec<i32> = (0..16).map(|i| t.al[i * 2]).collect();
     for w in evens.windows(2) {
-        assert!(
-            w[1] >= w[0],
-            "AY level table should be non-decreasing: {:?}",
-            evens
-        );
+        assert!(w[1] >= w[0], "AY level table should be non-decreasing: {:?}", evens);
     }
 }
 
@@ -252,10 +234,7 @@ fn level_tables_monotonically_non_decreasing_for_ay() {
 
 #[test]
 fn synthesizer_render_produces_samples() {
-    let cfg = AyConfig {
-        is_filt: false,
-        ..AyConfig::default()
-    };
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
     let mut synth = Synthesizer::new(cfg, 1, ChipType::YM);
     synth.render_frame(16);
     assert_eq!(synth.output_buf.len(), 16);
@@ -263,10 +242,7 @@ fn synthesizer_render_produces_samples() {
 
 #[test]
 fn synthesizer_drain_empties_buffer() {
-    let cfg = AyConfig {
-        is_filt: false,
-        ..AyConfig::default()
-    };
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
     let mut synth = Synthesizer::new(cfg, 1, ChipType::YM);
     synth.render_frame(32);
     let drained = synth.drain(32);
@@ -276,10 +252,7 @@ fn synthesizer_drain_empties_buffer() {
 
 #[test]
 fn synthesizer_drain_respects_max() {
-    let cfg = AyConfig {
-        is_filt: false,
-        ..AyConfig::default()
-    };
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
     let mut synth = Synthesizer::new(cfg, 1, ChipType::YM);
     synth.render_frame(100);
     let drained = synth.drain(10);
@@ -290,10 +263,7 @@ fn synthesizer_drain_respects_max() {
 #[test]
 fn synthesizer_silent_when_no_registers_written() {
     // With default registers (all amplitudes zero), output should be silent
-    let cfg = AyConfig {
-        is_filt: false,
-        ..AyConfig::default()
-    };
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
     let mut synth = Synthesizer::new(cfg, 1, ChipType::YM);
     synth.render_frame(64);
     let all_silent = synth.output_buf.iter().all(|s| s.left == 0 && s.right == 0);
@@ -302,10 +272,7 @@ fn synthesizer_silent_when_no_registers_written() {
 
 #[test]
 fn synthesizer_produces_nonzero_with_active_registers() {
-    let cfg = AyConfig {
-        is_filt: false,
-        ..AyConfig::default()
-    };
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
     let mut synth = Synthesizer::new(cfg, 1, ChipType::YM);
 
     // Set up a tone: mixer = 0 (all enabled), amplitude A = 15 (max, no env)
@@ -324,10 +291,7 @@ fn synthesizer_produces_nonzero_with_active_registers() {
 
 #[test]
 fn synthesizer_two_chips_produce_more_signal() {
-    let cfg = AyConfig {
-        is_filt: false,
-        ..AyConfig::default()
-    };
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
     let mut s1 = Synthesizer::new(cfg.clone(), 1, ChipType::YM);
     let mut s2 = Synthesizer::new(cfg, 2, ChipType::YM);
 
@@ -355,21 +319,15 @@ fn synthesizer_two_chips_produce_more_signal() {
 fn env_shape_from_register_all_16_values() {
     // Hold0: 0,1,2,3,9
     for v in [0u8, 1, 2, 3, 9] {
-        assert_eq!(
-            EnvShape::from_register(v),
-            EnvShape::Hold0,
-            "register {v} should be Hold0"
-        );
+        assert_eq!(EnvShape::from_register(v), EnvShape::Hold0,
+            "register {v} should be Hold0");
     }
     // Hold31: 4,5,6,7,15
     for v in [4u8, 5, 6, 7, 15] {
-        assert_eq!(
-            EnvShape::from_register(v),
-            EnvShape::Hold31,
-            "register {v} should be Hold31"
-        );
+        assert_eq!(EnvShape::from_register(v), EnvShape::Hold31,
+            "register {v} should be Hold31");
     }
-    assert_eq!(EnvShape::from_register(8), EnvShape::Saw8);
+    assert_eq!(EnvShape::from_register(8),  EnvShape::Saw8);
     assert_eq!(EnvShape::from_register(10), EnvShape::Triangle10);
     assert_eq!(EnvShape::from_register(11), EnvShape::DecayHold);
     assert_eq!(EnvShape::from_register(12), EnvShape::Saw12);
@@ -418,16 +376,10 @@ fn envelope_saw8_cycles_through_all_32_values() {
         values.push(chip.envelope_step);
         chip.step_envelope();
     }
-    assert_eq!(
-        chip.envelope_step, cycle_start,
-        "Saw8 must be periodic with period 32"
-    );
+    assert_eq!(chip.envelope_step, cycle_start, "Saw8 must be periodic with period 32");
     for i in 0..31 {
-        assert_eq!(
-            values[i + 1],
-            (values[i] - 1) & 31,
-            "Saw8 must decrement mod 32 at step {i}"
-        );
+        assert_eq!(values[i + 1], (values[i] - 1) & 31,
+            "Saw8 must decrement mod 32 at step {i}");
     }
 }
 
@@ -450,16 +402,10 @@ fn envelope_saw12_cycles_through_all_32_values() {
         values.push(chip.envelope_step);
         chip.step_envelope();
     }
-    assert_eq!(
-        chip.envelope_step, cycle_start,
-        "Saw12 must be periodic with period 32"
-    );
+    assert_eq!(chip.envelope_step, cycle_start, "Saw12 must be periodic with period 32");
     for i in 0..31 {
-        assert_eq!(
-            values[i + 1],
-            (values[i] + 1) & 31,
-            "Saw12 must increment mod 32 at step {i}"
-        );
+        assert_eq!(values[i + 1], (values[i] + 1) & 31,
+            "Saw12 must increment mod 32 at step {i}");
     }
 }
 
@@ -469,22 +415,14 @@ fn envelope_hold0_decays_then_holds() {
     let mut chip = SoundChip::default();
     chip.set_envelope_register(0);
     for _ in 0..64 {
-        if !chip.first_period {
-            break;
-        }
+        if !chip.first_period { break; }
         chip.step_envelope();
     }
-    assert!(
-        !chip.first_period,
-        "Hold0 should have completed its first period"
-    );
+    assert!(!chip.first_period, "Hold0 should have completed its first period");
     let held = chip.envelope_step;
     for _ in 0..10 {
         chip.step_envelope();
-        assert_eq!(
-            chip.envelope_step, held,
-            "Hold0 must hold after first period ends"
-        );
+        assert_eq!(chip.envelope_step, held, "Hold0 must hold after first period ends");
     }
 }
 
@@ -494,19 +432,14 @@ fn envelope_hold31_holds_after_attack() {
     let mut chip = SoundChip::default();
     chip.set_envelope_register(4);
     for _ in 0..64 {
-        if !chip.first_period {
-            break;
-        }
+        if !chip.first_period { break; }
         chip.step_envelope();
     }
     assert!(!chip.first_period, "Hold31 first period should end");
     let held = chip.envelope_step;
     for _ in 0..10 {
         chip.step_envelope();
-        assert_eq!(
-            chip.envelope_step, held,
-            "Hold31 must hold after first period ends"
-        );
+        assert_eq!(chip.envelope_step, held, "Hold31 must hold after first period ends");
     }
 }
 
@@ -520,14 +453,8 @@ fn envelope_triangle10_bounces() {
         values.push(chip.envelope_step);
         chip.step_envelope();
     }
-    assert!(
-        values.windows(2).any(|w| w[1] < w[0]),
-        "Triangle10 must have a decreasing phase"
-    );
-    assert!(
-        values.windows(2).any(|w| w[1] > w[0]),
-        "Triangle10 must have an increasing phase"
-    );
+    assert!(values.windows(2).any(|w| w[1] < w[0]), "Triangle10 must have a decreasing phase");
+    assert!(values.windows(2).any(|w| w[1] > w[0]), "Triangle10 must have an increasing phase");
 }
 
 /// Triangle14 (type 14): up then down, bounces between 0 and 31.
@@ -540,14 +467,8 @@ fn envelope_triangle14_bounces() {
         values.push(chip.envelope_step);
         chip.step_envelope();
     }
-    assert!(
-        values.windows(2).any(|w| w[1] < w[0]),
-        "Triangle14 must have a decreasing phase"
-    );
-    assert!(
-        values.windows(2).any(|w| w[1] > w[0]),
-        "Triangle14 must have an increasing phase"
-    );
+    assert!(values.windows(2).any(|w| w[1] < w[0]), "Triangle14 must have a decreasing phase");
+    assert!(values.windows(2).any(|w| w[1] > w[0]), "Triangle14 must have an increasing phase");
 }
 
 /// DecayHold (type 11): decays then holds at 31.
@@ -557,15 +478,10 @@ fn envelope_decay_hold_holds_at_31() {
     chip.set_envelope_register(11);
     for _ in 0..64 {
         chip.step_envelope();
-        if !chip.first_period {
-            break;
-        }
+        if !chip.first_period { break; }
     }
     assert!(!chip.first_period, "DecayHold first period should end");
-    assert_eq!(
-        chip.envelope_step, 31,
-        "DecayHold must hold at 31 after first period"
-    );
+    assert_eq!(chip.envelope_step, 31, "DecayHold must hold at 31 after first period");
     let held = chip.envelope_step;
     for _ in 0..10 {
         chip.step_envelope();
@@ -580,15 +496,10 @@ fn envelope_attack_hold_holds_at_31() {
     chip.set_envelope_register(13);
     for _ in 0..64 {
         chip.step_envelope();
-        if !chip.first_period {
-            break;
-        }
+        if !chip.first_period { break; }
     }
     assert!(!chip.first_period, "AttackHold first period should end");
-    assert_eq!(
-        chip.envelope_step, 31,
-        "AttackHold must hold at 31 after first period"
-    );
+    assert_eq!(chip.envelope_step, 31, "AttackHold must hold at 31 after first period");
     let held = chip.envelope_step;
     for _ in 0..10 {
         chip.step_envelope();
@@ -604,13 +515,9 @@ fn synthesizer_logic_q_noise_seed_changes_over_time() {
     chip.registers.noise = 1;
     chip.set_mixer_register(0b11_000_000); // noise A/B/C enabled
     let initial_seed = chip.noise_seed;
-    for _ in 0..100 {
-        chip.synthesizer_logic_q();
-    }
-    assert_ne!(
-        chip.noise_seed, initial_seed,
-        "noise_seed must change after 100 synthesizer_logic_q steps"
-    );
+    for _ in 0..100 { chip.synthesizer_logic_q(); }
+    assert_ne!(chip.noise_seed, initial_seed,
+        "noise_seed must change after 100 synthesizer_logic_q steps");
 }
 
 #[test]
@@ -621,11 +528,8 @@ fn synthesizer_logic_q_envelope_triggers_step() {
     chip.set_envelope_register(12); // Saw12 — ascending
     let initial = chip.envelope_step;
     chip.synthesizer_logic_q();
-    assert_eq!(
-        chip.envelope_step,
-        (initial + 1) & 31,
-        "one synthesizer_logic_q step with period=1 should advance the envelope once"
-    );
+    assert_eq!(chip.envelope_step, (initial + 1) & 31,
+        "one synthesizer_logic_q step with period=1 should advance the envelope once");
 }
 
 #[test]
@@ -633,10 +537,8 @@ fn synthesizer_logic_q_tone_b_toggles_with_period_1() {
     let mut chip = SoundChip::default();
     chip.registers.ton_b = 1;
     assert_eq!(chip.ton_b, 0);
-    chip.synthesizer_logic_q();
-    assert_eq!(chip.ton_b, 1);
-    chip.synthesizer_logic_q();
-    assert_eq!(chip.ton_b, 0);
+    chip.synthesizer_logic_q(); assert_eq!(chip.ton_b, 1);
+    chip.synthesizer_logic_q(); assert_eq!(chip.ton_b, 0);
 }
 
 #[test]
@@ -644,10 +546,8 @@ fn synthesizer_logic_q_tone_c_toggles_with_period_1() {
     let mut chip = SoundChip::default();
     chip.registers.ton_c = 1;
     assert_eq!(chip.ton_c, 0);
-    chip.synthesizer_logic_q();
-    assert_eq!(chip.ton_c, 1);
-    chip.synthesizer_logic_q();
-    assert_eq!(chip.ton_c, 0);
+    chip.synthesizer_logic_q(); assert_eq!(chip.ton_c, 1);
+    chip.synthesizer_logic_q(); assert_eq!(chip.ton_c, 0);
 }
 
 // ─── Synthesizer: apply_registers + render smoke test ────────────────────────
@@ -655,50 +555,32 @@ fn synthesizer_logic_q_tone_c_toggles_with_period_1() {
 #[test]
 fn synthesizer_apply_registers_then_render_is_stable() {
     use vti_core::AyRegisters;
-    let cfg = AyConfig {
-        is_filt: false,
-        ..AyConfig::default()
-    };
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
     let mut synth = Synthesizer::new(cfg, 1, ChipType::AY);
 
     // mixer = 0b00_111_000: bits 3-5 set → noise A/B/C off; bits 0-2 clear → tone A/B/C on.
     // Small periods (50, 60, 40) guarantee tone counters toggle within 256 frames.
     let regs = AyRegisters {
-        ton_a: 50,
-        ton_b: 60,
-        ton_c: 40,
+        ton_a: 50, ton_b: 60, ton_c: 40,
         mixer: 0b00_111_000,
-        amplitude_a: 10,
-        amplitude_b: 8,
-        amplitude_c: 6,
+        amplitude_a: 10, amplitude_b: 8, amplitude_c: 6,
         ..AyRegisters::default()
     };
     synth.apply_registers(0, &regs);
     synth.render_frame(256);
 
-    let total: i64 = synth
-        .output_buf
-        .iter()
+    let total: i64 = synth.output_buf.iter()
         .map(|s| s.left.abs() as i64 + s.right.abs() as i64)
         .sum();
-    assert!(
-        total > 0,
-        "rendering with active tones should produce non-zero output"
-    );
+    assert!(total > 0, "rendering with active tones should produce non-zero output");
 }
 
 #[test]
 fn synthesizer_render_frame_zero_is_noop() {
-    let cfg = AyConfig {
-        is_filt: false,
-        ..AyConfig::default()
-    };
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
     let mut synth = Synthesizer::new(cfg, 1, ChipType::YM);
     synth.render_frame(0);
-    assert!(
-        synth.output_buf.is_empty(),
-        "rendering 0 frames should produce no output"
-    );
+    assert!(synth.output_buf.is_empty(), "rendering 0 frames should produce no output");
 }
 
 // ─── Quality mode render ──────────────────────────────────────────────────────
@@ -707,10 +589,7 @@ fn synthesizer_render_frame_zero_is_noop() {
 fn render_frame_quality_produces_correct_sample_count() {
     // Quality mode Bresenham upsampler: ay_tiks_in_interrupt (4434) AY ticks
     // → sample_tiks_in_interrupt (960) audio samples @ 48 kHz / 50 Hz.
-    let cfg = AyConfig {
-        is_filt: false,
-        ..AyConfig::default()
-    };
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
     let expected = cfg.sample_tiks_in_interrupt() as usize;
     let mut synth = Synthesizer::new(cfg, 1, ChipType::AY);
     synth.render_frame_quality();
@@ -719,17 +598,13 @@ fn render_frame_quality_produces_correct_sample_count() {
     assert!(
         got.abs_diff(expected) <= 1,
         "quality render should produce ~{} samples, got {}",
-        expected,
-        got
+        expected, got
     );
 }
 
 #[test]
 fn render_frame_quality_produces_nonzero_with_active_tone() {
-    let cfg = AyConfig {
-        is_filt: false,
-        ..AyConfig::default()
-    };
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
     let mut synth = Synthesizer::new(cfg, 1, ChipType::AY);
     let regs = AyRegisters {
         ton_a: 200,
@@ -740,20 +615,14 @@ fn render_frame_quality_produces_nonzero_with_active_tone() {
     synth.apply_registers(0, &regs);
     synth.render_frame_quality();
     let any_nonzero = synth.output_buf.iter().any(|s| s.left != 0 || s.right != 0);
-    assert!(
-        any_nonzero,
-        "quality render with active tone should produce non-zero samples"
-    );
+    assert!(any_nonzero, "quality render with active tone should produce non-zero samples");
 }
 
 #[test]
 fn render_frame_quality_phase_continuous_across_frames() {
     // Verify the Bresenham upsampler state persists correctly across multiple
     // frame calls (total sample count across 3 frames ≈ 3 × sample_tiks_in_interrupt).
-    let cfg = AyConfig {
-        is_filt: false,
-        ..AyConfig::default()
-    };
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
     let expected_per_frame = cfg.sample_tiks_in_interrupt() as usize;
     let mut synth = Synthesizer::new(cfg, 1, ChipType::AY);
     let regs = AyRegisters {
@@ -772,8 +641,7 @@ fn render_frame_quality_phase_continuous_across_frames() {
     assert!(
         total.abs_diff(expected_total) <= 3,
         "3 quality frames should produce ~{} samples total, got {}",
-        expected_total,
-        total
+        expected_total, total
     );
 }
 
@@ -830,10 +698,7 @@ fn render_frame_quality_interpolation_smooths_step_transitions() {
     // Run with filter disabled first to get the "raw" output as a baseline, then
     // compare with filter+interpolation enabled to confirm smoother transitions.
     let make_synth = |is_filt: bool| {
-        let cfg = AyConfig {
-            is_filt,
-            ..AyConfig::default()
-        };
+        let cfg = AyConfig { is_filt, ..AyConfig::default() };
         let mut synth = Synthesizer::new(cfg, 1, ChipType::AY);
         // Tone A at a low period → frequent square-wave transitions
         let regs = AyRegisters {
@@ -847,19 +712,18 @@ fn render_frame_quality_interpolation_smooths_step_transitions() {
         synth.output_buf.clone()
     };
 
-    let raw_buf = make_synth(false);
-    let filt_buf = make_synth(true);
+    let raw_buf   = make_synth(false);
+    let filt_buf  = make_synth(true);
 
-    assert_eq!(
-        raw_buf.len(),
-        filt_buf.len(),
-        "both paths should produce the same number of samples"
-    );
+    assert_eq!(raw_buf.len(), filt_buf.len(),
+        "both paths should produce the same number of samples");
 
     // The filtered+interpolated output must not be identical to the raw output
     // (it should be smoother).
-    let raw_distinct: std::collections::HashSet<i16> = raw_buf.iter().map(|s| s.left).collect();
-    let filt_distinct: std::collections::HashSet<i16> = filt_buf.iter().map(|s| s.left).collect();
+    let raw_distinct: std::collections::HashSet<i16> =
+        raw_buf.iter().map(|s| s.left).collect();
+    let filt_distinct: std::collections::HashSet<i16> =
+        filt_buf.iter().map(|s| s.left).collect();
 
     // The filtered signal has more distinct values because intermediate amplitudes
     // are produced during transitions (FIR ramp + interpolation), while the raw
@@ -868,7 +732,6 @@ fn render_frame_quality_interpolation_smooths_step_transitions() {
         filt_distinct.len() > raw_distinct.len(),
         "filtered+interpolated output should have more distinct amplitude levels \
          than the raw square-wave (got raw={}, filtered={})",
-        raw_distinct.len(),
-        filt_distinct.len()
+        raw_distinct.len(), filt_distinct.len()
     );
 }

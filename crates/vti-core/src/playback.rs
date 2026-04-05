@@ -78,7 +78,10 @@ impl<'a> Engine<'a> {
     ///
     /// Renders the current pattern row into `ay_regs` without advancing.
     /// Returns computed amplitude/tone/mixer values in place.
-    pub fn pattern_play_only_current_line(&mut self, ay_regs: &mut AyRegisters) {
+    pub fn pattern_play_only_current_line(
+        &mut self,
+        ay_regs: &mut AyRegisters,
+    ) {
         let pat_idx = Module::pat_idx(self.vars.current_pattern);
         if self.module.patterns[pat_idx].is_none() {
             return;
@@ -99,15 +102,17 @@ impl<'a> Engine<'a> {
         ay_regs.amplitude_b = self.vars.params_of_chan[1].amplitude;
         ay_regs.amplitude_c = self.vars.params_of_chan[2].amplitude;
         ay_regs.noise = (self.vars.pt3_noise.wrapping_add(self.vars.add_to_noise)) & 31;
-        ay_regs.envelope =
-            (self.vars.add_to_env as i16 + self.vars.cur_env_slide + self.vars.env_base) as u16;
+        ay_regs.envelope = (self.vars.add_to_env as i16 + self.vars.cur_env_slide + self.vars.env_base) as u16;
     }
 
     /// Corresponds to `Pattern_PlayCurrentLine` in Pascal.
     ///
     /// Interprets the current pattern row (effects, notes, …), advances the
     /// line pointer and calls `pattern_play_only_current_line`.
-    pub fn pattern_play_current_line(&mut self, ay_regs: &mut AyRegisters) -> PlayResult {
+    pub fn pattern_play_current_line(
+        &mut self,
+        ay_regs: &mut AyRegisters,
+    ) -> PlayResult {
         if self.vars.current_pattern == -1 {
             let pat_idx = Module::pat_idx(-1);
             if let Some(pat) = &self.module.patterns[pat_idx] {
@@ -153,7 +158,10 @@ impl<'a> Engine<'a> {
     }
 
     /// Corresponds to `Module_PlayCurrentLine` in Pascal.
-    pub fn module_play_current_line(&mut self, ay_regs: &mut AyRegisters) -> PlayResult {
+    pub fn module_play_current_line(
+        &mut self,
+        ay_regs: &mut AyRegisters,
+    ) -> PlayResult {
         if self.module.positions.length == 0 {
             return PlayResult::ModuleLoop;
         }
@@ -163,14 +171,12 @@ impl<'a> Engine<'a> {
             self.vars.current_position += 1;
             if self.vars.current_position >= self.module.positions.length {
                 self.vars.current_position = self.module.positions.loop_pos;
-                self.vars.current_pattern =
-                    self.module.positions.value[self.vars.current_position] as i32;
+                self.vars.current_pattern = self.module.positions.value[self.vars.current_position] as i32;
                 self.vars.current_line = 0;
                 self.pattern_play_current_line(ay_regs);
                 return PlayResult::ModuleLoop;
             }
-            self.vars.current_pattern =
-                self.module.positions.value[self.vars.current_position] as i32;
+            self.vars.current_pattern = self.module.positions.value[self.vars.current_position] as i32;
             self.vars.current_line = 0;
             self.pattern_play_current_line(ay_regs);
         }
@@ -179,12 +185,7 @@ impl<'a> Engine<'a> {
 
     // ─── Internal helpers ─────────────────────────────────────────────────
 
-    fn get_channel_registers(
-        &mut self,
-        ch: usize,
-        temp_mixer: &mut u8,
-        _ay_regs: &mut AyRegisters,
-    ) {
+    fn get_channel_registers(&mut self, ch: usize, temp_mixer: &mut u8, _ay_regs: &mut AyRegisters) {
         let pat_idx = Module::pat_idx(self.vars.current_pattern);
         if self.module.patterns[pat_idx].is_none() {
             return;
@@ -222,11 +223,7 @@ impl<'a> Engine<'a> {
         // Apply ornament
         let ornament_offset: i8 = if let Some(Some(orn)) = self.module.ornaments.get(ornament_idx) {
             let op = params.ornament_position as usize;
-            if op < orn.length {
-                orn.items[op]
-            } else {
-                0
-            }
+            if op < orn.length { orn.items[op] } else { 0 }
         } else {
             0
         };
@@ -234,8 +231,7 @@ impl<'a> Engine<'a> {
         let raw_note = (params.note as i16 + ornament_offset as i16).clamp(0, 95) as u8;
         let note_freq = get_note_freq(self.module.ton_table, raw_note);
 
-        let ton_val =
-            (params.ton as i32 + params.current_ton_sliding as i32 + note_freq as i32) & 0xFFF;
+        let ton_val = (params.ton as i32 + params.current_ton_sliding as i32 + note_freq as i32) & 0xFFF;
         params.ton = ton_val as u16;
 
         // Glissando update
@@ -285,16 +281,13 @@ impl<'a> Engine<'a> {
 
                 // Envelope / noise accumulation
                 if !tick.mixer_noise {
-                    let env_add =
-                        params.current_envelope_sliding + tick.add_to_envelope_or_noise as i8;
+                    let env_add = params.current_envelope_sliding + tick.add_to_envelope_or_noise as i8;
                     if tick.envelope_or_noise_accumulation {
                         params.current_envelope_sliding = env_add;
                     }
                     self.vars.add_to_env += env_add;
                 } else {
-                    let noise = (params.current_noise_sliding as i16
-                        + tick.add_to_envelope_or_noise as i16)
-                        as i8;
+                    let noise = (params.current_noise_sliding as i16 + tick.add_to_envelope_or_noise as i16) as i8;
                     if tick.envelope_or_noise_accumulation {
                         params.current_noise_sliding = noise;
                     }
@@ -302,12 +295,8 @@ impl<'a> Engine<'a> {
                 }
 
                 // Update mixer bits
-                if !tick.mixer_ton {
-                    *temp_mixer |= 1 << ch;
-                }
-                if !tick.mixer_noise {
-                    *temp_mixer |= 1 << (ch + 3);
-                }
+                if !tick.mixer_ton { *temp_mixer |= 1 << ch; }
+                if !tick.mixer_noise { *temp_mixer |= 1 << (ch + 3); }
 
                 // Advance sample position
                 let new_sp = sp + 1;
@@ -324,11 +313,7 @@ impl<'a> Engine<'a> {
         // Advance ornament position
         if let Some(Some(orn)) = self.module.ornaments.get(ornament_idx) {
             let op = params.ornament_position as usize + 1;
-            params.ornament_position = if op >= orn.length {
-                orn.loop_pos as u8
-            } else {
-                op as u8
-            };
+            params.ornament_position = if op >= orn.length { orn.loop_pos as u8 } else { op as u8 };
         }
 
         // On/off toggling
@@ -364,19 +349,14 @@ impl<'a> Engine<'a> {
             return;
         };
 
-        let ch_idx = if self.vars.current_pattern == -1 {
-            1
-        } else {
-            ch
-        }; // MidChan fallback
+        let ch_idx = if self.vars.current_pattern == -1 { 1 } else { ch }; // MidChan fallback
         let params = &mut self.vars.params_of_chan[ch_idx];
 
         let prev_note = params.note;
         let prev_ts = params.current_ton_sliding;
 
         match cell.note {
-            -2 => {
-                // NOTE_SOUND_OFF
+            -2 => { // NOTE_SOUND_OFF
                 params.sound_enabled = false;
                 params.current_envelope_sliding = 0;
                 params.ton_slide_count = 0;
@@ -468,12 +448,8 @@ impl<'a> Engine<'a> {
                     p.current_on_off = 0;
                 }
             }
-            4 => {
-                p.sample_position = cmd.parameter;
-            }
-            5 => {
-                p.ornament_position = cmd.parameter;
-            }
+            4 => { p.sample_position = cmd.parameter; }
+            5 => { p.ornament_position = cmd.parameter; }
             6 => {
                 p.off_on_delay = (cmd.parameter & 0x0F) as i8;
                 p.on_off_delay = (cmd.parameter >> 4) as i8;

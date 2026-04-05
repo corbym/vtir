@@ -187,11 +187,7 @@ pub fn parse(data: &[u8]) -> Result<Module> {
                 let k = k as usize;
                 let sam_entry = sam_ptr + k * 4;
                 let l = data.get(sam_entry).copied().unwrap_or(0) as usize;
-                if l > 0 {
-                    (l.saturating_sub(1).min(31)) + 1
-                } else {
-                    1
-                }
+                if l > 0 { (l.saturating_sub(1).min(31)) + 1 } else { 1 }
             } else {
                 1
             };
@@ -281,11 +277,7 @@ pub fn parse(data: &[u8]) -> Result<Module> {
 
         // Extended ticks (loop region)
         if sam.loop_pos == 32 && sam.length > 33 {
-            let lp1 = if l > 0 {
-                l.saturating_sub(1).min(31) + 1
-            } else {
-                1
-            };
+            let lp1 = if l > 0 { l.saturating_sub(1).min(31) + 1 } else { 1 };
             for k in 32..sam.length as usize {
                 sam.items[k] = sam.items[k + lp1 - 33];
             }

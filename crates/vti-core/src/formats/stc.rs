@@ -58,8 +58,8 @@ pub fn parse(data: &[u8]) -> Result<Module> {
     // ── Title ─────────────────────────────────────────────────────────────────
     if data.len() >= OFF_NAME + 18 {
         let raw_name = &data[OFF_NAME..OFF_NAME + 18];
-        let is_generic =
-            GENERIC_TITLES.iter().any(|&t| raw_name == t) || (raw_name == b"S.T.FULL EDITION \x7F");
+        let is_generic = GENERIC_TITLES.iter().any(|&t| raw_name == t)
+            || (raw_name == b"S.T.FULL EDITION \x7F");
         if is_generic {
             module.title = String::new();
         } else {
@@ -125,7 +125,9 @@ pub fn parse(data: &[u8]) -> Result<Module> {
         let trans = data[trans_off] as i32;
 
         // Find or create VTM pattern slot for (stc_numb, trans) combination
-        let j = if let Some(idx) = pats.iter().position(|&(n, t)| n == stc_numb && t == trans) {
+        let j = if let Some(idx) =
+            pats.iter().position(|&(n, t)| n == stc_numb && t == trans)
+        {
             idx
         } else {
             let idx = vtm_pat_max;
@@ -198,24 +200,25 @@ pub fn parse(data: &[u8]) -> Result<Module> {
             orn.length = 32;
         } else {
             orn.loop_pos = (l - 1).min(31);
-            let extra =
-                if SAMPLES_BASE + SAMPLE_ENTRY_SIZE * (k.saturating_sub(1)) + 0x62 < data.len() {
-                    // find sample n again for extra byte
-                    let target = (k - 1) as u8;
-                    let mut ext = 0usize;
-                    for n in 0..16usize {
-                        if SAMPLES_BASE + SAMPLE_ENTRY_SIZE * n >= data.len() {
-                            break;
-                        }
-                        if data[SAMPLES_BASE + SAMPLE_ENTRY_SIZE * n] == target {
-                            ext = data[SAMPLES_BASE + SAMPLE_ENTRY_SIZE * n + 0x62] as usize;
-                            break;
-                        }
+            let extra = if SAMPLES_BASE + SAMPLE_ENTRY_SIZE * (k.saturating_sub(1)) + 0x62
+                < data.len()
+            {
+                // find sample n again for extra byte
+                let target = (k - 1) as u8;
+                let mut ext = 0usize;
+                for n in 0..16usize {
+                    if SAMPLES_BASE + SAMPLE_ENTRY_SIZE * n >= data.len() {
+                        break;
                     }
-                    ext
-                } else {
-                    0
-                };
+                    if data[SAMPLES_BASE + SAMPLE_ENTRY_SIZE * n] == target {
+                        ext = data[SAMPLES_BASE + SAMPLE_ENTRY_SIZE * n + 0x62] as usize;
+                        break;
+                    }
+                }
+                ext
+            } else {
+                0
+            };
             orn.length = (l + extra).min(32);
             if orn.length == 0 {
                 orn.length = 1;

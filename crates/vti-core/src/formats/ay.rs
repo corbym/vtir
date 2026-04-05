@@ -15,9 +15,9 @@
 //! Reference: `legacy/trfuncs.pas` (file-loading section ~lines 7310–7460)
 //! and `ST12STC` (lines 4102–4394).
 
-use super::{pt3, stp};
 use crate::types::Module;
 use anyhow::{bail, ensure, Result};
+use super::{pt3, stp};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 /// Known magic-byte prefixes for formats that embed a recognisable header.
@@ -26,7 +26,7 @@ const PT3_MAGIC_2: &[u8] = b"Vortex Tracker II";
 /// `KSA_ID` from `stp.rs` — used here to locate STP binaries inside EMUL payloads.
 /// The trailing spaces are part of the fixed-width field in the original Sound Tracker Pro
 /// header and must be matched exactly (28 bytes total, padded with spaces to the right).
-const STP_MAGIC: &[u8] = b"KSA SOFTWARE COMPILER V2.0  ";
+const STP_MAGIC:   &[u8] = b"KSA SOFTWARE COMPILER V2.0  ";
 
 // ── ZXAY magic / TypeID constants ────────────────────────────────────────────
 
@@ -193,8 +193,8 @@ pub fn parse(data: &[u8], song_index: usize) -> Result<Module> {
     let st1_len = ST1_PAT_BASE + (excess / ST1_PAT_SIZE) * ST1_PAT_SIZE;
     let st1_data = &raw_st1[..st1_len];
 
-    let stc_data =
-        st1_to_stc(st1_data).map_err(|e| anyhow::anyhow!("AY: ST1→STC conversion failed: {e}"))?;
+    let stc_data = st1_to_stc(st1_data)
+        .map_err(|e| anyhow::anyhow!("AY: ST1→STC conversion failed: {e}"))?;
 
     let mut module = super::stc::parse(&stc_data)
         .map_err(|e| anyhow::anyhow!("AY: STC parse failed after conversion: {e}"))?;
@@ -211,19 +211,11 @@ pub fn parse(data: &[u8], song_index: usize) -> Result<Module> {
     Ok(module)
 }
 
-fn parse_emul_song(
-    data: &[u8],
-    song_struct_off: usize,
-    song_name: &str,
-    author: &str,
-) -> Result<Module> {
+fn parse_emul_song(data: &[u8], song_struct_off: usize, song_name: &str, author: &str) -> Result<Module> {
     // EMUL songs still use TSongStructure[PSongData] to point at song payload.
     let song_data_field = song_struct_off + 2;
     let song_data_abs = resolve_offset(data, song_data_field)?;
-    ensure!(
-        song_data_abs < data.len(),
-        "AY: EMUL song data offset is out of bounds"
-    );
+    ensure!(song_data_abs < data.len(), "AY: EMUL song data offset is out of bounds");
 
     let payload = &data[song_data_abs..];
     let mut module = extract_embedded_module(payload)?;
@@ -328,12 +320,7 @@ fn is_playable_tracker_module(module: &Module) -> bool {
                 note_events += 1;
                 let sample_idx = line.sample as usize;
                 if sample_idx > 0 {
-                    if module
-                        .samples
-                        .get(sample_idx)
-                        .and_then(|s| s.as_ref())
-                        .is_some()
-                    {
+                    if module.samples.get(sample_idx).and_then(|s| s.as_ref()).is_some() {
                         playable_events += 1;
                     }
                 } else if sample1_exists {
@@ -537,10 +524,7 @@ fn st1_to_stc(data: &[u8]) -> Result<Vec<u8>> {
         }
     }
 
-    ensure!(
-        n_pats_u > 0,
-        "ST1: no patterns are used by the position list"
-    );
+    ensure!(n_pats_u > 0, "ST1: no patterns are used by the position list");
 
     // Trim unused patterns beyond the last used one (fixes broken modules).
     for i in (0..=ST1_MAX_PAT).rev() {
@@ -578,8 +562,9 @@ fn st1_to_stc(data: &[u8]) -> Result<Vec<u8>> {
         if pat_used[i] {
             let mut ofs = [0usize; 3];
             for c in 0..3usize {
-                let bytecode =
-                    build_channel_bytecode(data, ir, c, pat_len, &mut smp_used, &mut orn_used)?;
+                let bytecode = build_channel_bytecode(
+                    data, ir, c, pat_len, &mut smp_used, &mut orn_used,
+                )?;
                 ofs[c] = pats_bytecodes.len();
                 pats_bytecodes.extend_from_slice(&bytecode);
             }
@@ -759,11 +744,7 @@ fn build_channel_bytecode(
                     pat.push(eonum); // envelope period (1 byte)
                 }
             } else if en == 1 || en == 15 {
-                let o = if en == 1 {
-                    0usize
-                } else {
-                    (eonum & 0x0F) as usize
-                };
+                let o = if en == 1 { 0usize } else { (eonum & 0x0F) as usize };
                 if o as i32 != cur_orn {
                     cur_et = -1;
                     cur_ep = -1;
@@ -883,7 +864,7 @@ mod tests {
         // data[14..16] = PMisc = 0 (unused)
         data[16] = 1; // NumOfSongs
         data[17] = 0; // FirstSong
-                      // PSongsStructure (field at 18): relative offset 12 → songs at 18+12 = 30
+        // PSongsStructure (field at 18): relative offset 12 → songs at 18+12 = 30
         data[18..20].copy_from_slice(&[0x00, 0x0C]);
 
         // ── Author string at offset 22 ───────────────────────────────────────
@@ -960,6 +941,7 @@ mod tests {
         assert_eq!(songs[0].name, "Tst");
     }
 
+
     // ── ST11 round-trip ───────────────────────────────────────────────────────
 
     #[test]
@@ -985,9 +967,7 @@ mod tests {
     fn st11_pattern_has_one_empty_row() {
         let data = build_minimal_ay();
         let module = parse(&data, 0).unwrap();
-        let pat = module.patterns[0]
-            .as_deref()
-            .expect("pattern 0 should exist");
+        let pat = module.patterns[0].as_deref().expect("pattern 0 should exist");
         assert_eq!(pat.length, 1, "pattern should have 1 row (PatLen=1)");
         // All channels should have no note (NOTE_NONE)
         for ch in 0..3 {
@@ -1007,11 +987,7 @@ mod tests {
         let st1 = &data[50..]; // ST1 binary starts at offset 50
         let stc = st1_to_stc(st1).expect("st1_to_stc should not fail on minimal data");
         // STC buffer must be at least 126 bytes (stc::parse MIN_FILE_SIZE)
-        assert!(
-            stc.len() >= 126,
-            "stc output too short: {} bytes",
-            stc.len()
-        );
+        assert!(stc.len() >= 126, "stc output too short: {} bytes", stc.len());
         // Verify the STC can be parsed
         super::super::stc::parse(&stc).expect("stc::parse should succeed");
     }
@@ -1025,7 +1001,7 @@ mod tests {
     #[test]
     fn st1_unaligned_size_is_rejected() {
         let mut data = vec![0u8; ST1_MIN_VALID + 1]; // off by 1
-                                                     // Fill all positions with PNum=1
+        // Fill all positions with PNum=1
         for i in 0..256 {
             data[ST1_POS_BASE + i * 2] = 1;
         }

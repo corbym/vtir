@@ -311,24 +311,16 @@ fn parse_asc1(data: &[u8]) -> Result<Module> {
                 orn.items[k] = n as i8;
                 k += 1;
                 jj += 2;
-                if k >= MAX_ORN_LEN {
-                    break 'outer;
-                }
-                if (flags & 0x40) != 0 {
-                    break;
-                } // end of sequence
+                if k >= MAX_ORN_LEN { break 'outer; }
+                if (flags & 0x40) != 0 { break; } // end of sequence
             }
             if k >= MAX_ORN_LEN || n == nb || n < -0x55 || n > 0x55 {
                 break;
             }
         }
         orn.length = k;
-        if orn.length == 0 {
-            orn.length = 1;
-        }
-        if orn.loop_pos >= orn.length {
-            orn.loop_pos = orn.length - 1;
-        }
+        if orn.length == 0 { orn.length = 1; }
+        if orn.loop_pos >= orn.length { orn.loop_pos = orn.length - 1; }
 
         module.ornaments[vtm_idx] = Some(Box::new(orn));
     }
@@ -360,9 +352,7 @@ fn parse_asc1(data: &[u8]) -> Result<Module> {
         //       bit2=envelope_enable (val&6=2), bit7:4=amplitude
         let mut jj = j;
         loop {
-            if jj + 2 >= data.len() {
-                break;
-            }
+            if jj + 2 >= data.len() { break; }
             let b0 = data[jj];
             let b1 = data[jj + 1];
             let b2 = data[jj + 2];
@@ -392,9 +382,7 @@ fn parse_asc1(data: &[u8]) -> Result<Module> {
             }
             k += 1;
             jj += 3;
-            if k >= MAX_SAM_LEN {
-                break;
-            }
+            if k >= MAX_SAM_LEN { break; }
             // Termination
             let flags = b0 & (0x40 | 0x20);
             if flags != 0 {
@@ -411,12 +399,8 @@ fn parse_asc1(data: &[u8]) -> Result<Module> {
             }
         }
         sam.length = k as u8;
-        if sam.length == 0 {
-            sam.length = 1;
-        }
-        if sam.loop_pos >= sam.length {
-            sam.loop_pos = sam.length - 1;
-        }
+        if sam.length == 0 { sam.length = 1; }
+        if sam.loop_pos >= sam.length { sam.loop_pos = sam.length - 1; }
 
         module.samples[vtm_idx] = Some(Box::new(sam));
     }
@@ -497,9 +481,7 @@ fn decode_pattern(
                 // TS counter update even when skipping
                 for _ in 0..c_delay {
                     if ts_cnt[k] != 0 {
-                        if ts_cnt[k] > 0 {
-                            ts_cnt[k] -= 1;
-                        }
+                        if ts_cnt[k] > 0 { ts_cnt[k] -= 1; }
                         ts[k] = ts[k].wrapping_sub(ts[k]);
                     }
                 }
@@ -585,9 +567,7 @@ fn interpret_channel(
                 // Note
                 prev_note[ch] = b;
                 pattern.items[row].channel[ch].note = b as i8;
-                if ts_cnt[ch] <= 0 {
-                    ts[ch] = 0;
-                }
+                if ts_cnt[ch] <= 0 { ts[ch] = 0; }
                 if env_en[ch] {
                     pattern.items[row].channel[ch].envelope = *env_t as u8;
                     let ep = data.get(*ptr).copied().unwrap_or(0);
@@ -603,9 +583,7 @@ fn interpret_channel(
                 // Update ts counters
                 for _ in 0..c_delay {
                     if ts_cnt[ch] != 0 {
-                        if ts_cnt[ch] > 0 {
-                            ts_cnt[ch] -= 1;
-                        }
+                        if ts_cnt[ch] > 0 { ts_cnt[ch] -= 1; }
                         ts[ch] = ts[ch].wrapping_sub(ts[ch]);
                     }
                 }
@@ -615,9 +593,7 @@ fn interpret_channel(
                 // Skip (no note)
                 for _ in 0..c_delay {
                     if ts_cnt[ch] != 0 {
-                        if ts_cnt[ch] > 0 {
-                            ts_cnt[ch] -= 1;
-                        }
+                        if ts_cnt[ch] > 0 { ts_cnt[ch] -= 1; }
                         ts[ch] = ts[ch].wrapping_sub(ts[ch]);
                     }
                 }
@@ -628,9 +604,7 @@ fn interpret_channel(
                 pattern.items[row].channel[ch].note = NOTE_SOUND_OFF;
                 for _ in 0..c_delay {
                     if ts_cnt[ch] != 0 {
-                        if ts_cnt[ch] > 0 {
-                            ts_cnt[ch] -= 1;
-                        }
+                        if ts_cnt[ch] > 0 { ts_cnt[ch] -= 1; }
                         ts[ch] = ts[ch].wrapping_sub(ts[ch]);
                     }
                 }
@@ -640,9 +614,7 @@ fn interpret_channel(
                 pattern.items[row].channel[ch].note = NOTE_SOUND_OFF;
                 for _ in 0..c_delay {
                     if ts_cnt[ch] != 0 {
-                        if ts_cnt[ch] > 0 {
-                            ts_cnt[ch] -= 1;
-                        }
+                        if ts_cnt[ch] > 0 { ts_cnt[ch] -= 1; }
                         ts[ch] = ts[ch].wrapping_sub(ts[ch]);
                     }
                 }
@@ -760,15 +732,11 @@ fn interpret_channel(
                 init_sample_disabled = true;
                 calc_slide(data, ptr, row, ch, ts_cnt, ts, prev_note, pattern);
             }
-            0xF8 => {
-                *env_t = 8;
-            }
+            0xF8 => { *env_t = 8; }
             0xF9 => {
                 calc_slide(data, ptr, row, ch, ts_cnt, ts, prev_note, pattern);
             }
-            0xFA => {
-                *env_t = 10;
-            }
+            0xFA => { *env_t = 10; }
             0xFB => {
                 // Volume counter
                 let v = data.get(*ptr).copied().unwrap_or(0);
@@ -779,12 +747,8 @@ fn interpret_channel(
                 }
                 vc_dop[ch] = 0;
             }
-            0xFC => {
-                *env_t = 12;
-            }
-            0xFE => {
-                *env_t = 14;
-            }
+            0xFC => { *env_t = 12; }
+            0xFE => { *env_t = 14; }
             _ => {} // 0xFD, 0xFF — unrecognised
         }
     }
@@ -819,11 +783,7 @@ fn calc_slide(
     };
     // FeaturesLevel >= 1: add ts[ch]
     let delta_ton = delta_ton + ts[ch] as i32;
-    let ts_add = if speed > 0 {
-        delta_ton / speed
-    } else {
-        delta_ton
-    };
+    let ts_add = if speed > 0 { delta_ton / speed } else { delta_ton };
     ts[ch] = (delta_ton - (if speed > 0 { delta_ton % speed } else { 0 })) as i16;
     ts_cnt[ch] = speed as i16;
     let delta_abs = (delta_ton / 16).abs();
@@ -831,10 +791,12 @@ fn calc_slide(
         let i = delta_abs / speed;
         if i > 0 {
             pattern.items[row].channel[ch].additional_command.delay = 1;
-            pattern.items[row].channel[ch].additional_command.parameter = i.min(255) as u8;
+            pattern.items[row].channel[ch].additional_command.parameter =
+                i.min(255) as u8;
         } else {
             let d = speed / delta_abs;
-            pattern.items[row].channel[ch].additional_command.delay = d.min(15) as u8;
+            pattern.items[row].channel[ch].additional_command.delay =
+                d.min(15) as u8;
             pattern.items[row].channel[ch].additional_command.parameter = 1;
         }
     } else {
@@ -868,9 +830,7 @@ fn find_zero_ornament(orns: &[i32; 32], data: &[u8], orn_ptrs_base: usize) -> us
                 let tmp = n;
                 let delta = data.get(jj + 1).copied().unwrap_or(0) as i8 as i32;
                 n = n.wrapping_add(delta);
-                if n < -0x55 || n > 0x55 {
-                    break 'outer;
-                }
+                if n < -0x55 || n > 0x55 { break 'outer; }
                 let flags = data.get(jj).copied().unwrap_or(0);
                 if (flags as i8) < 0 {
                     nb = tmp;
@@ -878,16 +838,10 @@ fn find_zero_ornament(orns: &[i32; 32], data: &[u8], orn_ptrs_base: usize) -> us
                 }
                 k += 1;
                 jj += 2;
-                if k >= MAX_ORN_LEN {
-                    break 'outer;
-                }
-                if (flags & 0x40) != 0 {
-                    break;
-                }
+                if k >= MAX_ORN_LEN { break 'outer; }
+                if (flags & 0x40) != 0 { break; }
             }
-            if k >= MAX_ORN_LEN || n == nb || n < -0x55 || n > 0x55 {
-                break;
-            }
+            if k >= MAX_ORN_LEN || n == nb || n < -0x55 || n > 0x55 { break; }
         }
         if k == 1 && n == 0 {
             return l as usize;

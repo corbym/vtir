@@ -62,14 +62,9 @@ impl SampleEditor {
                             ui.label(if tick.amplitude_sliding { "S" } else { "." });
                             ui.label(if tick.amplitude_slide_up { "U" } else { "." });
                             ui.label(if tick.envelope_enabled { "E" } else { "." });
-                            ui.label(if tick.envelope_or_noise_accumulation {
-                                "A"
-                            } else {
-                                "."
-                            });
+                            ui.label(if tick.envelope_or_noise_accumulation { "A" } else { "." });
                             ui.label(format!("{:+}", tick.add_to_envelope_or_noise));
-                            ui.label(format!(
-                                "{}{}",
+                            ui.label(format!("{}{}",
                                 if tick.mixer_ton { "T" } else { "." },
                                 if tick.mixer_noise { "N" } else { "." }
                             ));

@@ -1,18 +1,17 @@
 //! Integration tests for vti-core: data types, playback engine, note tables.
 
-use vti_core::note_tables::{
-    get_note_by_envelope, get_note_freq, PT3_NOTE_TABLE_ASM, PT3_NOTE_TABLE_NATURAL,
-    PT3_NOTE_TABLE_PT, PT3_NOTE_TABLE_REAL, PT3_NOTE_TABLE_ST,
-};
-use vti_core::playback::{init_tracker_parameters, Engine, PlayResult, PlayVars};
-use vti_core::util::{
-    int1d_to_str, int2_to_str, int2d_to_str, int4d_to_str, ints_to_time, note_to_str, samp_to_str,
-};
 use vti_core::{
-    AdditionalCommand, ChannelLine, FeaturesLevel, Module, Ornament, Pattern, PatternRow,
-    PositionList, Sample, SampleTick, MAX_ORN_LEN, MAX_PAT_LEN, MAX_PAT_NUM, MAX_SAM_LEN,
-    NOTE_NONE, NOTE_SOUND_OFF,
+    AdditionalCommand, ChannelLine, FeaturesLevel, Module, Ornament, Pattern,
+    PatternRow, PositionList, Sample, SampleTick, NOTE_NONE, NOTE_SOUND_OFF,
+    MAX_PAT_LEN, MAX_PAT_NUM, MAX_SAM_LEN, MAX_ORN_LEN,
 };
+use vti_core::note_tables::{
+    get_note_freq, get_note_by_envelope,
+    PT3_NOTE_TABLE_PT, PT3_NOTE_TABLE_ST, PT3_NOTE_TABLE_ASM,
+    PT3_NOTE_TABLE_REAL, PT3_NOTE_TABLE_NATURAL,
+};
+use vti_core::playback::{Engine, PlayResult, PlayVars, init_tracker_parameters};
+use vti_core::util::{note_to_str, samp_to_str, int1d_to_str, int2_to_str, int4d_to_str, int2d_to_str, ints_to_time};
 
 // ─── note_tables ────────────────────────────────────────────────────────────
 
@@ -48,8 +47,8 @@ fn get_note_freq_unknown_table_falls_back_to_natural() {
 fn get_note_by_envelope_round_trips() {
     // envelope period 16× a note frequency should find that note
     let note_freq = PT3_NOTE_TABLE_PT[12] as i32; // note 12 = C-2
-    let env_period = note_freq; // envelope = note_freq * 1 (approx)
-                                // Result may be 0 if no exact match, so just check it doesn't panic.
+    let env_period = note_freq;                    // envelope = note_freq * 1 (approx)
+    // Result may be 0 if no exact match, so just check it doesn't panic.
     let _ = get_note_by_envelope(0, env_period);
 }
 
@@ -227,10 +226,7 @@ fn pattern_play_returns_updated_on_first_tick() {
     init_tracker_parameters(&mut m, &mut vars, true);
 
     let mut regs = vti_core::AyRegisters::default();
-    let mut engine = Engine {
-        module: &mut m,
-        vars: &mut vars,
-    };
+    let mut engine = Engine { module: &mut m, vars: &mut vars };
     let result = engine.pattern_play_current_line(&mut regs);
     assert_eq!(result, PlayResult::Updated);
 }
@@ -249,10 +245,7 @@ fn pattern_advances_line_after_delay() {
 
     let mut regs = vti_core::AyRegisters::default();
     for _ in 0..3 {
-        let mut engine = Engine {
-            module: &mut m,
-            vars: &mut vars,
-        };
+        let mut engine = Engine { module: &mut m, vars: &mut vars };
         engine.pattern_play_current_line(&mut regs);
     }
     assert_eq!(vars.current_line, 3);
@@ -276,10 +269,7 @@ fn pattern_end_returned_at_pattern_boundary() {
     let mut regs = vti_core::AyRegisters::default();
     let mut last = PlayResult::Updated;
     for _ in 0..6 {
-        let mut engine = Engine {
-            module: &mut m,
-            vars: &mut vars,
-        };
+        let mut engine = Engine { module: &mut m, vars: &mut vars };
         last = engine.pattern_play_current_line(&mut regs);
     }
     assert_eq!(last, PlayResult::PatternEnd);
@@ -303,10 +293,7 @@ fn module_play_loops_at_end() {
     let mut regs = vti_core::AyRegisters::default();
     let mut saw_loop = false;
     for _ in 0..20 {
-        let mut engine = Engine {
-            module: &mut m,
-            vars: &mut vars,
-        };
+        let mut engine = Engine { module: &mut m, vars: &mut vars };
         if engine.module_play_current_line(&mut regs) == PlayResult::ModuleLoop {
             saw_loop = true;
             break;
@@ -337,17 +324,11 @@ fn sound_off_note_disables_channel() {
     let mut regs = vti_core::AyRegisters::default();
     // Tick past row 0 to row 1
     {
-        let mut engine = Engine {
-            module: &mut m,
-            vars: &mut vars,
-        };
+        let mut engine = Engine { module: &mut m, vars: &mut vars };
         engine.pattern_play_current_line(&mut regs);
     }
     {
-        let mut engine = Engine {
-            module: &mut m,
-            vars: &mut vars,
-        };
+        let mut engine = Engine { module: &mut m, vars: &mut vars };
         engine.pattern_play_current_line(&mut regs);
     }
     // After sound-off, channel 0 should not be sounding
@@ -428,10 +409,7 @@ fn make_arpeggio_module() -> Module {
     pat.length = 16;
 
     let make_chan = |note: i8, sample: u8, ornament: u8, volume: u8| ChannelLine {
-        note,
-        sample,
-        ornament,
-        volume,
+        note, sample, ornament, volume,
         envelope: 0,
         additional_command: AdditionalCommand::default(),
     };
@@ -439,7 +417,7 @@ fn make_arpeggio_module() -> Module {
     // Row 0 – C major (I): Ch A C-5, Ch B C-3, Ch C noise drum
     pat.items[0].channel[0] = make_chan(48, 1, 1, 15);
     pat.items[0].channel[1] = make_chan(24, 2, 1, 12);
-    pat.items[0].channel[2] = make_chan(0, 3, 0, 15);
+    pat.items[0].channel[2] = make_chan(0,  3, 0, 15);
 
     // Row 4 – G major (V): Ch A G-4, Ch B G-3
     pat.items[4].channel[0] = make_chan(43, 1, 1, 15);
@@ -448,7 +426,7 @@ fn make_arpeggio_module() -> Module {
     // Row 8 – A minor (vi): Ch A A-4, Ch B A-3, Ch C noise drum
     pat.items[8].channel[0] = make_chan(45, 1, 2, 15);
     pat.items[8].channel[1] = make_chan(33, 2, 2, 12);
-    pat.items[8].channel[2] = make_chan(0, 3, 0, 15);
+    pat.items[8].channel[2] = make_chan(0,  3, 0, 15);
 
     // Row 12 – F major (IV): Ch A F-4, Ch B F-3
     pat.items[12].channel[0] = make_chan(41, 1, 1, 15);
@@ -494,34 +472,22 @@ fn arpeggio_ornament_produces_distinct_tone_periods() {
     // on tick 1 and then re-rendered twice while delay_counter counts down).
     for _ in 0..3 {
         regs = vti_core::AyRegisters::default();
-        let mut engine = Engine {
-            module: &mut m,
-            vars: &mut vars,
-        };
+        let mut engine = Engine { module: &mut m, vars: &mut vars };
         engine.pattern_play_current_line(&mut regs);
         tones.push(regs.ton_a);
     }
 
     // All three should be non-zero (tone is sounding)
-    assert!(
-        tones.iter().all(|&t| t > 0),
-        "tone_a must be non-zero on each tick: {tones:?}"
-    );
+    assert!(tones.iter().all(|&t| t > 0), "tone_a must be non-zero on each tick: {tones:?}");
 
     // All three should be distinct (arpeggio steps produce different periods)
     let unique: std::collections::HashSet<_> = tones.iter().copied().collect();
-    assert_eq!(
-        unique.len(),
-        3,
-        "arpeggio should produce 3 distinct tone periods: {tones:?}"
-    );
+    assert_eq!(unique.len(), 3, "arpeggio should produce 3 distinct tone periods: {tones:?}");
 
     // The first tick period must match the root note (C-5 = note 48, PT table 0)
     let root_period = PT3_NOTE_TABLE_PT[48];
-    assert_eq!(
-        tones[0], root_period,
-        "first tick must be the root note period (C-5 = {root_period})"
-    );
+    assert_eq!(tones[0], root_period,
+        "first tick must be the root note period (C-5 = {root_period})");
 }
 
 /// The noise drum sample (sample 3) must produce non-zero amplitude on channel
@@ -541,33 +507,21 @@ fn noise_drum_produces_amplitude_on_channel_c() {
     vars.delay_counter = 1;
 
     let mut regs = vti_core::AyRegisters::default();
-    let mut engine = Engine {
-        module: &mut m,
-        vars: &mut vars,
-    };
+    let mut engine = Engine { module: &mut m, vars: &mut vars };
     engine.pattern_play_current_line(&mut regs);
 
     // Channel C must have non-zero amplitude (the drum hit)
-    assert!(
-        regs.amplitude_c > 0,
-        "channel C amplitude must be non-zero when drum hits"
-    );
+    assert!(regs.amplitude_c > 0, "channel C amplitude must be non-zero when drum hits");
 
     // Noise must be enabled for channel C in the mixer.
     // AY mixer bit 5 (value 32) = noise-C disable; must be 0 for noise to be on.
-    assert_eq!(
-        regs.mixer & 0x20,
-        0,
-        "noise must be enabled for channel C (mixer bit 5 must be 0)"
-    );
+    assert_eq!(regs.mixer & 0x20, 0,
+        "noise must be enabled for channel C (mixer bit 5 must be 0)");
 
     // Tone must be disabled for channel C (drum has no tone component).
     // AY mixer bit 2 (value 4) = tone-C disable; must be 1 for tone to be off.
-    assert_ne!(
-        regs.mixer & 0x04,
-        0,
-        "tone must be disabled for channel C when drum plays (mixer bit 2 must be 1)"
-    );
+    assert_ne!(regs.mixer & 0x04, 0,
+        "tone must be disabled for channel C when drum plays (mixer bit 2 must be 1)");
 }
 
 /// After a noise drum hit, the drum sample decays and the channel falls silent
@@ -592,18 +546,12 @@ fn noise_drum_decays_to_silence() {
     // (indices 0–7) and loops on tick 7 which has amplitude 0.
     for _ in 0..8 {
         regs = vti_core::AyRegisters::default();
-        let mut engine = Engine {
-            module: &mut m,
-            vars: &mut vars,
-        };
+        let mut engine = Engine { module: &mut m, vars: &mut vars };
         engine.pattern_play_current_line(&mut regs);
     }
 
     // After 8 ticks the sample is held at loop_pos=7 (amplitude 0).
-    assert_eq!(
-        regs.amplitude_c, 0,
-        "drum channel must be silent after decay"
-    );
+    assert_eq!(regs.amplitude_c, 0, "drum channel must be silent after decay");
 }
 
 /// The arpeggio module must advance through all 16 rows of the pattern and
@@ -629,10 +577,7 @@ fn arpeggio_module_loops_after_full_pattern() {
     // 16 rows at delay=1 → 16 ticks to exhaust the pattern, then one more
     // to trigger the loop.  Give it a generous budget.
     for _ in 0..40 {
-        let mut engine = Engine {
-            module: &mut m,
-            vars: &mut vars,
-        };
+        let mut engine = Engine { module: &mut m, vars: &mut vars };
         if engine.module_play_current_line(&mut regs) == PlayResult::ModuleLoop {
             saw_loop = true;
             break;
@@ -658,32 +603,15 @@ fn arpeggio_channels_a_and_b_are_active_after_row0() {
     vars.delay_counter = 1;
 
     let mut regs = vti_core::AyRegisters::default();
-    let mut engine = Engine {
-        module: &mut m,
-        vars: &mut vars,
-    };
+    let mut engine = Engine { module: &mut m, vars: &mut vars };
     engine.pattern_play_current_line(&mut regs);
 
-    assert!(
-        regs.amplitude_a > 0,
-        "channel A must have non-zero amplitude"
-    );
-    assert!(
-        regs.amplitude_b > 0,
-        "channel B must have non-zero amplitude"
-    );
+    assert!(regs.amplitude_a > 0, "channel A must have non-zero amplitude");
+    assert!(regs.amplitude_b > 0, "channel B must have non-zero amplitude");
 
     // Tone must be enabled on both channels A and B
-    assert_eq!(
-        regs.mixer & 0x01,
-        0,
-        "tone must be ON for channel A (bit 0 = 0)"
-    );
-    assert_eq!(
-        regs.mixer & 0x02,
-        0,
-        "tone must be ON for channel B (bit 1 = 0)"
-    );
+    assert_eq!(regs.mixer & 0x01, 0, "tone must be ON for channel A (bit 0 = 0)");
+    assert_eq!(regs.mixer & 0x02, 0, "tone must be ON for channel B (bit 1 = 0)");
 }
 
 // ─── playback cursor tracking ────────────────────────────────────────────────
@@ -704,7 +632,7 @@ fn arpeggio_channels_a_and_b_are_active_after_row0() {
 /// one row per tick until pattern end).
 #[test]
 fn current_line_advances_one_per_tick_at_delay_1() {
-    let mut m = make_module_with_pattern(); // 4-row pattern
+    let mut m = make_module_with_pattern();   // 4-row pattern
     let mut vars = PlayVars {
         current_pattern: 0,
         current_line: 0,
@@ -720,16 +648,11 @@ fn current_line_advances_one_per_tick_at_delay_1() {
 
     for expected_line in 1..=3 {
         {
-            let mut engine = Engine {
-                module: &mut m,
-                vars: &mut vars,
-            };
+            let mut engine = Engine { module: &mut m, vars: &mut vars };
             engine.pattern_play_current_line(&mut regs);
         }
-        assert_eq!(
-            vars.current_line, expected_line,
-            "current_line should be {expected_line} after {expected_line} ticks"
-        );
+        assert_eq!(vars.current_line, expected_line,
+            "current_line should be {expected_line} after {expected_line} ticks");
     }
 }
 
@@ -754,19 +677,12 @@ fn display_row_is_current_line_minus_one() {
 
     for expected_display in 0..=2 {
         {
-            let mut engine = Engine {
-                module: &mut m,
-                vars: &mut vars,
-            };
+            let mut engine = Engine { module: &mut m, vars: &mut vars };
             engine.pattern_play_current_line(&mut regs);
         }
         let display = vars.current_line.saturating_sub(1);
-        assert_eq!(
-            display,
-            expected_display,
-            "display row should be {expected_display} after {} ticks",
-            expected_display + 1
-        );
+        assert_eq!(display, expected_display,
+            "display row should be {expected_display} after {} ticks", expected_display + 1);
     }
 }
 
@@ -784,36 +700,20 @@ fn current_line_after_pattern_transition_is_one() {
     // Pattern 0 – 2-row pattern
     let mut pat0 = Pattern::default();
     pat0.length = 2;
-    pat0.items[0].channel[0] = ChannelLine {
-        note: 48,
-        sample: 1,
-        ornament: 0,
-        volume: 15,
-        ..ChannelLine::default()
-    };
+    pat0.items[0].channel[0] = ChannelLine { note: 48, sample: 1, ornament: 0, volume: 15, ..ChannelLine::default() };
     m.patterns[0] = Some(Box::new(pat0));
 
     // Pattern 1 – 2-row pattern
     let mut pat1 = Pattern::default();
     pat1.length = 2;
-    pat1.items[0].channel[0] = ChannelLine {
-        note: 36,
-        sample: 1,
-        ornament: 0,
-        volume: 15,
-        ..ChannelLine::default()
-    };
+    pat1.items[0].channel[0] = ChannelLine { note: 36, sample: 1, ornament: 0, volume: 15, ..ChannelLine::default() };
     m.patterns[1] = Some(Box::new(pat1));
 
     // A one-note sample so the engine produces something
     let mut s = Sample::default();
     s.length = 1;
     s.loop_pos = 0;
-    s.items[0] = SampleTick {
-        amplitude: 10,
-        mixer_ton: true,
-        ..SampleTick::default()
-    };
+    s.items[0] = SampleTick { amplitude: 10, mixer_ton: true, ..SampleTick::default() };
     m.samples[1] = Some(Box::new(s));
 
     m.positions.length = 2;
@@ -839,33 +739,22 @@ fn current_line_after_pattern_transition_is_one() {
     for _ in 0..10 {
         let old_pat = vars.current_pattern;
         {
-            let mut engine = Engine {
-                module: &mut m,
-                vars: &mut vars,
-            };
+            let mut engine = Engine { module: &mut m, vars: &mut vars };
             engine.module_play_current_line(&mut regs);
         }
         if vars.current_pattern != old_pat {
             // The engine eagerly processed row 0 of the new pattern, so the
             // pointer is at 1.  The display row (`current_line - 1`) is 0,
             // correctly showing the top of the new pattern to the user.
-            assert_eq!(
-                vars.current_line, 1,
-                "after transition, current_line should be 1 (row 0 processed eagerly)"
-            );
-            assert_eq!(
-                vars.current_line.saturating_sub(1),
-                0,
-                "display row should be 0 (first row of the new pattern)"
-            );
+            assert_eq!(vars.current_line, 1,
+                "after transition, current_line should be 1 (row 0 processed eagerly)");
+            assert_eq!(vars.current_line.saturating_sub(1), 0,
+                "display row should be 0 (first row of the new pattern)");
             changed_pattern = true;
             break;
         }
     }
-    assert!(
-        changed_pattern,
-        "engine should have advanced to pattern 1 within 10 ticks"
-    );
+    assert!(changed_pattern, "engine should have advanced to pattern 1 within 10 ticks");
 }
 
 /// `current_position` must increment as the module advances through positions.
@@ -902,10 +791,7 @@ fn current_position_advances_through_positions() {
     let mut saw_position_1 = false;
     for _ in 0..15 {
         {
-            let mut engine = Engine {
-                module: &mut m,
-                vars: &mut vars,
-            };
+            let mut engine = Engine { module: &mut m, vars: &mut vars };
             engine.module_play_current_line(&mut regs);
         }
         if vars.current_position == 1 {
@@ -913,10 +799,7 @@ fn current_position_advances_through_positions() {
             break;
         }
     }
-    assert!(
-        saw_position_1,
-        "current_position should advance to 1 after the first pattern ends"
-    );
+    assert!(saw_position_1, "current_position should advance to 1 after the first pattern ends");
 }
 
 /// After a full module loop the pattern and line pointers must return to the
@@ -940,10 +823,7 @@ fn current_line_and_pattern_reset_on_module_loop() {
 
     for _ in 0..40 {
         let result = {
-            let mut engine = Engine {
-                module: &mut m,
-                vars: &mut vars,
-            };
+            let mut engine = Engine { module: &mut m, vars: &mut vars };
             engine.module_play_current_line(&mut regs)
         };
         if result == PlayResult::ModuleLoop {
@@ -954,20 +834,14 @@ fn current_line_and_pattern_reset_on_module_loop() {
 
     assert!(looped, "module must loop");
     // After looping, position is at loop_pos (0) and line is at the first row
-    assert_eq!(
-        vars.current_position, 0,
-        "position must be at loop_pos=0 after module loop"
-    );
-    assert_eq!(
-        vars.current_pattern, 0,
-        "pattern must be 0 after module loop"
-    );
+    assert_eq!(vars.current_position, 0, "position must be at loop_pos=0 after module loop");
+    assert_eq!(vars.current_pattern, 0, "pattern must be 0 after module loop");
 }
 
 // ─── VTM text-format round-trip ──────────────────────────────────────────────
 
-use vti_core::formats::load as format_load;
 use vti_core::formats::vtm;
+use vti_core::formats::load as format_load;
 
 /// Rebuild the demo module from `src/app.rs` inside the test crate so we can
 /// use it without a dependency on the binary.
@@ -1039,21 +913,17 @@ fn make_demo_module_for_test() -> Module {
     let mut pat = Pattern::default();
     pat.length = 16;
     let mk = |note: i8, sample: u8, ornament: u8, volume: u8| ChannelLine {
-        note,
-        sample,
-        ornament,
-        volume,
-        envelope: 0,
+        note, sample, ornament, volume, envelope: 0,
         additional_command: AdditionalCommand::default(),
     };
-    pat.items[0].channel[0] = mk(48, 1, 1, 15); // C-5 lead
-    pat.items[0].channel[1] = mk(24, 2, 1, 12); // C-3 bass
-    pat.items[0].channel[2] = mk(0, 3, 0, 15); // noise drum
-    pat.items[4].channel[0] = mk(43, 1, 1, 15);
-    pat.items[4].channel[1] = mk(31, 2, 1, 12);
-    pat.items[8].channel[0] = mk(45, 1, 2, 15);
-    pat.items[8].channel[1] = mk(33, 2, 2, 12);
-    pat.items[8].channel[2] = mk(0, 3, 0, 15);
+    pat.items[0].channel[0]  = mk(48, 1, 1, 15); // C-5 lead
+    pat.items[0].channel[1]  = mk(24, 2, 1, 12); // C-3 bass
+    pat.items[0].channel[2]  = mk(0,  3, 0, 15); // noise drum
+    pat.items[4].channel[0]  = mk(43, 1, 1, 15);
+    pat.items[4].channel[1]  = mk(31, 2, 1, 12);
+    pat.items[8].channel[0]  = mk(45, 1, 2, 15);
+    pat.items[8].channel[1]  = mk(33, 2, 2, 12);
+    pat.items[8].channel[2]  = mk(0,  3, 0, 15);
     pat.items[12].channel[0] = mk(41, 1, 1, 15);
     pat.items[12].channel[1] = mk(29, 2, 1, 12);
     module.patterns[0] = Some(Box::new(pat));
@@ -1073,113 +943,73 @@ fn vtm_round_trip_demo_song() {
     // --- save ---
     let text = vtm::write(&original);
     assert!(!text.is_empty(), "write should produce non-empty output");
-    assert!(
-        text.contains("[Module]"),
-        "output must contain [Module] section"
-    );
-    assert!(
-        text.contains("[Pattern0]"),
-        "output must contain [Pattern0] section"
-    );
-    assert!(
-        text.contains("[Sample1]"),
-        "output must contain [Sample1] section"
-    );
-    assert!(
-        text.contains("[Ornament1]"),
-        "output must contain [Ornament1] section"
-    );
+    assert!(text.contains("[Module]"),  "output must contain [Module] section");
+    assert!(text.contains("[Pattern0]"), "output must contain [Pattern0] section");
+    assert!(text.contains("[Sample1]"),  "output must contain [Sample1] section");
+    assert!(text.contains("[Ornament1]"), "output must contain [Ornament1] section");
 
     // --- load ---
     let loaded = vtm::parse(&text).expect("VTM parse should succeed");
 
     // Module metadata
-    assert_eq!(loaded.title, original.title);
-    assert_eq!(loaded.author, original.author);
+    assert_eq!(loaded.title,         original.title);
+    assert_eq!(loaded.author,        original.author);
     assert_eq!(loaded.initial_delay, original.initial_delay);
-    assert_eq!(loaded.ton_table, original.ton_table);
+    assert_eq!(loaded.ton_table,     original.ton_table);
     assert_eq!(loaded.features_level, original.features_level);
 
     // Position list
-    assert_eq!(loaded.positions.length, original.positions.length);
+    assert_eq!(loaded.positions.length,   original.positions.length);
     assert_eq!(loaded.positions.loop_pos, original.positions.loop_pos);
     assert_eq!(loaded.positions.value[0], original.positions.value[0]);
 
     // Sample 1 – lead tone
     let s1_orig = original.samples[1].as_deref().expect("sample 1 must exist");
-    let s1_load = loaded.samples[1]
-        .as_deref()
-        .expect("sample 1 must round-trip");
-    assert_eq!(s1_load.length, s1_orig.length);
-    assert_eq!(s1_load.loop_pos, s1_orig.loop_pos);
-    assert_eq!(s1_load.items[0].amplitude, s1_orig.items[0].amplitude);
-    assert_eq!(s1_load.items[0].mixer_ton, s1_orig.items[0].mixer_ton);
+    let s1_load = loaded.samples[1].as_deref().expect("sample 1 must round-trip");
+    assert_eq!(s1_load.length,          s1_orig.length);
+    assert_eq!(s1_load.loop_pos,        s1_orig.loop_pos);
+    assert_eq!(s1_load.items[0].amplitude,   s1_orig.items[0].amplitude);
+    assert_eq!(s1_load.items[0].mixer_ton,   s1_orig.items[0].mixer_ton);
     assert_eq!(s1_load.items[0].mixer_noise, s1_orig.items[0].mixer_noise);
 
     // Sample 3 – noise drum (8 ticks, loop on tick 7)
     let s3_orig = original.samples[3].as_deref().expect("sample 3 must exist");
-    let s3_load = loaded.samples[3]
-        .as_deref()
-        .expect("sample 3 must round-trip");
-    assert_eq!(s3_load.length, s3_orig.length);
+    let s3_load = loaded.samples[3].as_deref().expect("sample 3 must round-trip");
+    assert_eq!(s3_load.length,   s3_orig.length);
     assert_eq!(s3_load.loop_pos, s3_orig.loop_pos);
     for i in 0..s3_orig.length as usize {
         assert_eq!(
-            s3_load.items[i].amplitude, s3_orig.items[i].amplitude,
+            s3_load.items[i].amplitude,
+            s3_orig.items[i].amplitude,
             "drum tick {i} amplitude mismatch",
         );
         assert_eq!(
-            s3_load.items[i].mixer_noise, s3_orig.items[i].mixer_noise,
+            s3_load.items[i].mixer_noise,
+            s3_orig.items[i].mixer_noise,
             "drum tick {i} mixer_noise mismatch",
         );
     }
 
     // Ornament 1 – major arpeggio
-    let o1_orig = original.ornaments[1]
-        .as_deref()
-        .expect("ornament 1 must exist");
-    let o1_load = loaded.ornaments[1]
-        .as_deref()
-        .expect("ornament 1 must round-trip");
-    assert_eq!(o1_load.length, o1_orig.length);
+    let o1_orig = original.ornaments[1].as_deref().expect("ornament 1 must exist");
+    let o1_load = loaded.ornaments[1].as_deref().expect("ornament 1 must round-trip");
+    assert_eq!(o1_load.length,   o1_orig.length);
     assert_eq!(o1_load.loop_pos, o1_orig.loop_pos);
     let orn_len = o1_orig.length;
     assert_eq!(&o1_load.items[..orn_len], &o1_orig.items[..orn_len]);
 
     // Pattern 0 – spot-check key rows
-    let p0_orig = original.patterns[0]
-        .as_deref()
-        .expect("pattern 0 must exist");
-    let p0_load = loaded.patterns[0]
-        .as_deref()
-        .expect("pattern 0 must round-trip");
+    let p0_orig = original.patterns[0].as_deref().expect("pattern 0 must exist");
+    let p0_load = loaded.patterns[0].as_deref().expect("pattern 0 must round-trip");
     assert_eq!(p0_load.length, p0_orig.length);
     // Row 0: C major hit
-    assert_eq!(
-        p0_load.items[0].channel[0].note,
-        p0_orig.items[0].channel[0].note
-    );
-    assert_eq!(
-        p0_load.items[0].channel[0].sample,
-        p0_orig.items[0].channel[0].sample
-    );
-    assert_eq!(
-        p0_load.items[0].channel[0].ornament,
-        p0_orig.items[0].channel[0].ornament
-    );
-    assert_eq!(
-        p0_load.items[0].channel[0].volume,
-        p0_orig.items[0].channel[0].volume
-    );
+    assert_eq!(p0_load.items[0].channel[0].note,    p0_orig.items[0].channel[0].note);
+    assert_eq!(p0_load.items[0].channel[0].sample,  p0_orig.items[0].channel[0].sample);
+    assert_eq!(p0_load.items[0].channel[0].ornament,p0_orig.items[0].channel[0].ornament);
+    assert_eq!(p0_load.items[0].channel[0].volume,  p0_orig.items[0].channel[0].volume);
     // Row 8: A minor hit
-    assert_eq!(
-        p0_load.items[8].channel[0].note,
-        p0_orig.items[8].channel[0].note
-    );
-    assert_eq!(
-        p0_load.items[8].channel[2].note,
-        p0_orig.items[8].channel[2].note
-    );
+    assert_eq!(p0_load.items[8].channel[0].note,    p0_orig.items[8].channel[0].note);
+    assert_eq!(p0_load.items[8].channel[2].note,    p0_orig.items[8].channel[2].note);
 }
 
 /// Load the long-form "Descent Into Madness" fixture and verify that each
@@ -1202,10 +1032,7 @@ fn load_madness_descent_vtm_sections_and_playback_loop() {
     assert_eq!(module.positions.length, 11);
     assert_eq!(module.positions.loop_pos, 0);
     let expected_order: [usize; 11] = [0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1];
-    assert_eq!(
-        &module.positions.value[..module.positions.length],
-        &expected_order
-    );
+    assert_eq!(&module.positions.value[..module.positions.length], &expected_order);
 
     // Ornaments and samples sections
     assert!(module.ornaments[1].is_some(), "ornament 1 should exist");
@@ -1218,12 +1045,8 @@ fn load_madness_descent_vtm_sections_and_playback_loop() {
     assert_eq!(module.samples[3].as_deref().expect("s3").length, 4);
 
     // Pattern sections
-    let pat0 = module.patterns[0]
-        .as_deref()
-        .expect("pattern 0 should exist");
-    let pat1 = module.patterns[1]
-        .as_deref()
-        .expect("pattern 1 should exist");
+    let pat0 = module.patterns[0].as_deref().expect("pattern 0 should exist");
+    let pat1 = module.patterns[1].as_deref().expect("pattern 1 should exist");
     assert_eq!(pat0.length, 32);
     assert_eq!(pat1.length, 32);
     assert_eq!(note_to_str(pat0.items[0].channel[0].note), "D-3");
@@ -1247,10 +1070,7 @@ fn load_madness_descent_vtm_sections_and_playback_loop() {
 
     for t in 1..=3000usize {
         let result = {
-            let mut engine = Engine {
-                module: &mut module,
-                vars: &mut vars,
-            };
+            let mut engine = Engine { module: &mut module, vars: &mut vars };
             engine.module_play_current_line(&mut regs)
         };
         if result == PlayResult::ModuleLoop {
@@ -1260,10 +1080,7 @@ fn load_madness_descent_vtm_sections_and_playback_loop() {
     }
 
     let t = loop_tick.expect("fixture should loop within 3000 ticks");
-    assert!(
-        t >= 2100 && t <= 2150,
-        "loop tick out of expected range: {t}"
-    );
+    assert!(t >= 2100 && t <= 2150, "loop tick out of expected range: {t}");
 }
 
 // ─── PT3 binary format: load, save, round-trip ───────────────────────────────
@@ -1316,20 +1133,13 @@ fn pt3_round_trip_minimal() {
     assert_eq!(reloaded.title.trim(), original.title.trim(), "title");
     assert_eq!(reloaded.initial_delay, original.initial_delay, "delay");
     assert_eq!(reloaded.ton_table, original.ton_table, "ton_table");
-    assert_eq!(
-        reloaded.positions.length, original.positions.length,
-        "num_positions"
-    );
-    assert_eq!(
-        reloaded.positions.loop_pos, original.positions.loop_pos,
-        "loop_pos"
-    );
+    assert_eq!(reloaded.positions.length, original.positions.length, "num_positions");
+    assert_eq!(reloaded.positions.loop_pos, original.positions.loop_pos, "loop_pos");
 
     for i in 0..original.positions.length {
         assert_eq!(
             reloaded.positions.value[i], original.positions.value[i],
-            "position[{}]",
-            i
+            "position[{}]", i
         );
     }
 
@@ -1341,26 +1151,19 @@ fn pt3_round_trip_minimal() {
         let new_pat = reloaded.patterns[pat_idx]
             .as_deref()
             .expect("reloaded pattern must exist");
-        assert_eq!(
-            new_pat.length, orig_pat.length,
-            "pattern {} length",
-            pat_idx
-        );
+        assert_eq!(new_pat.length, orig_pat.length, "pattern {} length", pat_idx);
         for row in 0..orig_pat.length {
             for ch in 0..3 {
                 assert_eq!(
-                    new_pat.items[row].channel[ch].note, orig_pat.items[row].channel[ch].note,
-                    "pattern[{}] row[{}] ch[{}] note",
-                    pat_idx, row, ch
+                    new_pat.items[row].channel[ch].note,
+                    orig_pat.items[row].channel[ch].note,
+                    "pattern[{}] row[{}] ch[{}] note", pat_idx, row, ch
                 );
                 if orig_pat.items[row].channel[ch].volume != 0 {
                     assert_eq!(
                         new_pat.items[row].channel[ch].volume,
                         orig_pat.items[row].channel[ch].volume,
-                        "pattern[{}] row[{}] ch[{}] volume",
-                        pat_idx,
-                        row,
-                        ch
+                        "pattern[{}] row[{}] ch[{}] volume", pat_idx, row, ch
                     );
                 }
             }
@@ -1408,30 +1211,26 @@ fn pt3_round_trip_madness_descent() {
     let written = save_pt3(&original).expect("write PT3");
     let reloaded = pt3_fmt::parse(&written).expect("re-parse");
 
-    assert_eq!(
-        reloaded.positions.length, original.positions.length,
-        "num_positions"
-    );
+    assert_eq!(reloaded.positions.length, original.positions.length, "num_positions");
     assert_eq!(reloaded.initial_delay, original.initial_delay, "delay");
 
     for i in 0..original.positions.length {
         assert_eq!(
             reloaded.positions.value[i], original.positions.value[i],
-            "position[{}]",
-            i
+            "position[{}]", i
         );
     }
 
     let orig_p0 = original.patterns[0].as_deref().expect("orig pattern 0");
-    let new_p0 = reloaded.patterns[0].as_deref().expect("reloaded pattern 0");
+    let new_p0  = reloaded.patterns[0].as_deref().expect("reloaded pattern 0");
     assert_eq!(new_p0.length, orig_p0.length, "pattern 0 length");
 
     // First note row should survive the round-trip unchanged
     for ch in 0..3 {
         assert_eq!(
-            new_p0.items[0].channel[ch].note, orig_p0.items[0].channel[ch].note,
-            "pattern[0] row[0] ch[{}] note",
-            ch
+            new_p0.items[0].channel[ch].note,
+            orig_p0.items[0].channel[ch].note,
+            "pattern[0] row[0] ch[{}] note", ch
         );
     }
 }
@@ -1458,17 +1257,13 @@ fn vtm_to_pt3_to_vtm_round_trip() {
     assert_eq!(from_pt3.title.trim(), from_vtm.title.trim(), "title");
     assert_eq!(from_pt3.initial_delay, from_vtm.initial_delay, "delay");
     assert_eq!(from_pt3.ton_table, from_vtm.ton_table, "ton_table");
-    assert_eq!(
-        from_pt3.positions.length, from_vtm.positions.length,
-        "num_positions"
-    );
+    assert_eq!(from_pt3.positions.length, from_vtm.positions.length, "num_positions");
 
     // Positions order must be preserved
     for i in 0..from_vtm.positions.length {
         assert_eq!(
             from_pt3.positions.value[i], from_vtm.positions.value[i],
-            "position[{}]",
-            i
+            "position[{}]", i
         );
     }
 
@@ -1479,8 +1274,7 @@ fn vtm_to_pt3_to_vtm_round_trip() {
     for ch in 0..3 {
         assert_eq!(
             dest.items[0].channel[ch].note, orig.items[0].channel[ch].note,
-            "p0 row0 ch{} note",
-            ch
+            "p0 row0 ch{} note", ch
         );
     }
 }
@@ -1491,7 +1285,7 @@ fn vtm_to_pt3_to_vtm_round_trip() {
 fn int1d_to_str_formats_with_decimal() {
     assert_eq!(int1d_to_str(32), "3.2");
     assert_eq!(int1d_to_str(10), "1.0");
-    assert_eq!(int1d_to_str(0), "0.0");
+    assert_eq!(int1d_to_str(0),  "0.0");
     assert_eq!(int1d_to_str(-15), "-1.5");
 }
 
@@ -1505,17 +1299,15 @@ fn int4d_to_str_pads_to_four_hex_digits() {
 
 #[test]
 fn int2d_to_str_pads_to_two_hex_digits() {
-    assert_eq!(int2d_to_str(0), "00");
+    assert_eq!(int2d_to_str(0),    "00");
     assert_eq!(int2d_to_str(0xFF), "FF");
     assert_eq!(int2d_to_str(0x0A), "0A");
-    assert_eq!(int2d_to_str(1), "01");
+    assert_eq!(int2d_to_str(1),    "01");
 }
 
 #[test]
 fn note_to_str_all_12_in_octave_1() {
-    let expected = [
-        "C-1", "C#1", "D-1", "D#1", "E-1", "F-1", "F#1", "G-1", "G#1", "A-1", "A#1", "B-1",
-    ];
+    let expected = ["C-1","C#1","D-1","D#1","E-1","F-1","F#1","G-1","G#1","A-1","A#1","B-1"];
     for (i, name) in expected.iter().enumerate() {
         assert_eq!(note_to_str(i as i8), *name, "note {} should be {}", i, name);
     }
@@ -1555,11 +1347,7 @@ fn get_note_freq_table_4_natural() {
 #[test]
 fn get_note_freq_all_tables_non_zero_at_note_0() {
     for table in 0u8..=4 {
-        assert!(
-            get_note_freq(table, 0) > 0,
-            "table {} note 0 frequency should be non-zero",
-            table
-        );
+        assert!(get_note_freq(table, 0) > 0, "table {} note 0 frequency should be non-zero", table);
     }
 }
 
@@ -1569,25 +1357,14 @@ fn get_note_freq_decreasing_within_table() {
     for i in 0..95u8 {
         let lo = get_note_freq(0, i);
         let hi = get_note_freq(0, i + 1);
-        assert!(
-            hi <= lo,
-            "PT table[{}] ({}) should be >= table[{}] ({})",
-            i + 1,
-            hi,
-            i,
-            lo
-        );
+        assert!(hi <= lo, "PT table[{}] ({}) should be >= table[{}] ({})", i+1, hi, i, lo);
     }
 }
 
 #[test]
 fn get_note_by_envelope_returns_zero_for_no_match() {
     // An arbitrary env_period very unlikely to match any note.
-    assert_eq!(
-        get_note_by_envelope(0, 99999),
-        0,
-        "no match should return 0"
-    );
+    assert_eq!(get_note_by_envelope(0, 99999), 0, "no match should return 0");
 }
 
 #[test]
@@ -1610,12 +1387,7 @@ fn make_effect_module(cmd: AdditionalCommand) -> Module {
     let mut s = Sample::default();
     s.length = 1;
     s.loop_pos = 0;
-    s.items[0] = SampleTick {
-        amplitude: 15,
-        mixer_ton: true,
-        mixer_noise: false,
-        ..SampleTick::default()
-    };
+    s.items[0] = SampleTick { amplitude: 15, mixer_ton: true, mixer_noise: false, ..SampleTick::default() };
     m.samples[1] = Some(Box::new(s));
 
     let mut pat = Pattern::default();
@@ -1645,46 +1417,29 @@ fn run_one_tick(module: &mut Module) -> PlayVars {
     vars.delay = 1;
     vars.delay_counter = 1;
     let mut regs = vti_core::AyRegisters::default();
-    let mut engine = Engine {
-        module,
-        vars: &mut vars,
-    };
+    let mut engine = Engine { module, vars: &mut vars };
     engine.pattern_play_current_line(&mut regs);
     vars
 }
 
 #[test]
 fn effect_cmd1_glide_up_sets_positive_slide_step() {
-    let cmd = AdditionalCommand {
-        number: 1,
-        delay: 2,
-        parameter: 5,
-    };
+    let cmd = AdditionalCommand { number: 1, delay: 2, parameter: 5 };
     let mut m = make_effect_module(cmd);
     let vars = run_one_tick(&mut m);
     let p = &vars.params_of_chan[0];
-    assert!(
-        p.ton_slide_step > 0,
-        "cmd1 (glide up) must set a positive ton_slide_step"
-    );
+    assert!(p.ton_slide_step > 0, "cmd1 (glide up) must set a positive ton_slide_step");
     assert_eq!(p.ton_slide_step, 5);
     assert_eq!(p.ton_slide_type, 0, "glide-up is type 0 (free glide)");
 }
 
 #[test]
 fn effect_cmd2_glide_down_sets_negative_slide_step() {
-    let cmd = AdditionalCommand {
-        number: 2,
-        delay: 2,
-        parameter: 3,
-    };
+    let cmd = AdditionalCommand { number: 2, delay: 2, parameter: 3 };
     let mut m = make_effect_module(cmd);
     let vars = run_one_tick(&mut m);
     let p = &vars.params_of_chan[0];
-    assert!(
-        p.ton_slide_step < 0,
-        "cmd2 (glide down) must set a negative ton_slide_step"
-    );
+    assert!(p.ton_slide_step < 0, "cmd2 (glide down) must set a negative ton_slide_step");
     assert_eq!(p.ton_slide_step, -3);
     assert_eq!(p.ton_slide_type, 0, "glide-down is type 0 (free glide)");
 }
@@ -1698,80 +1453,35 @@ fn effect_cmd3_tone_slide_sets_type_1() {
     m.positions.value[0] = 0;
 
     let mut s = Sample::default();
-    s.length = 1;
-    s.loop_pos = 0;
-    s.items[0] = SampleTick {
-        amplitude: 15,
-        mixer_ton: true,
-        ..SampleTick::default()
-    };
+    s.length = 1; s.loop_pos = 0;
+    s.items[0] = SampleTick { amplitude: 15, mixer_ton: true, ..SampleTick::default() };
     m.samples[1] = Some(Box::new(s));
 
     let mut pat = Pattern::default();
     pat.length = 4;
     pat.items[0].channel[0] = ChannelLine {
-        note: 36,
-        sample: 1,
-        ornament: 0,
-        volume: 15,
-        envelope: 0,
+        note: 36, sample: 1, ornament: 0, volume: 15, envelope: 0,
         additional_command: AdditionalCommand::default(),
     };
     pat.items[1].channel[0] = ChannelLine {
-        note: 48,
-        sample: 1,
-        ornament: 0,
-        volume: 15,
-        envelope: 0,
-        additional_command: AdditionalCommand {
-            number: 3,
-            delay: 1,
-            parameter: 8,
-        },
+        note: 48, sample: 1, ornament: 0, volume: 15, envelope: 0,
+        additional_command: AdditionalCommand { number: 3, delay: 1, parameter: 8 },
     };
     m.patterns[0] = Some(Box::new(pat));
 
-    let mut vars = PlayVars {
-        current_pattern: 0,
-        current_line: 0,
-        delay: 1,
-        delay_counter: 1,
-        ..PlayVars::default()
-    };
+    let mut vars = PlayVars { current_pattern: 0, current_line: 0, delay: 1, delay_counter: 1, ..PlayVars::default() };
     init_tracker_parameters(&mut m, &mut vars, true);
-    vars.delay = 1;
-    vars.delay_counter = 1;
+    vars.delay = 1; vars.delay_counter = 1;
     let mut regs = vti_core::AyRegisters::default();
     // Tick 1: process row 0 (C-4 establishes prev note).
-    {
-        let mut e = Engine {
-            module: &mut m,
-            vars: &mut vars,
-        };
-        e.pattern_play_current_line(&mut regs);
-    }
+    { let mut e = Engine { module: &mut m, vars: &mut vars }; e.pattern_play_current_line(&mut regs); }
     // Tick 2: process row 1 (C-5 + cmd3).
-    {
-        let mut e = Engine {
-            module: &mut m,
-            vars: &mut vars,
-        };
-        e.pattern_play_current_line(&mut regs);
-    }
+    { let mut e = Engine { module: &mut m, vars: &mut vars }; e.pattern_play_current_line(&mut regs); }
 
     let p = &vars.params_of_chan[0];
-    assert_eq!(
-        p.ton_slide_type, 1,
-        "cmd3 sets ton_slide_type = 1 (targeted slide)"
-    );
-    assert_eq!(
-        p.slide_to_note, 48,
-        "slide_to_note must be the target note (C-5 = 48)"
-    );
-    assert_eq!(
-        p.note, 36,
-        "note is restored to prev_note (C-4) during the tone slide"
-    );
+    assert_eq!(p.ton_slide_type, 1, "cmd3 sets ton_slide_type = 1 (targeted slide)");
+    assert_eq!(p.slide_to_note, 48, "slide_to_note must be the target note (C-5 = 48)");
+    assert_eq!(p.note, 36, "note is restored to prev_note (C-4) during the tone slide");
 }
 
 #[test]
@@ -1783,39 +1493,24 @@ fn effect_cmd4_sample_pos_jump() {
     m.positions.value[0] = 0;
 
     let mut s = Sample::default();
-    s.length = 8;
-    s.loop_pos = 0;
+    s.length = 8; s.loop_pos = 0;
     for i in 0..8 {
-        s.items[i] = SampleTick {
-            amplitude: i as u8 + 1,
-            mixer_ton: true,
-            ..SampleTick::default()
-        };
+        s.items[i] = SampleTick { amplitude: i as u8 + 1, mixer_ton: true, ..SampleTick::default() };
     }
     m.samples[1] = Some(Box::new(s));
 
     let mut pat = Pattern::default();
     pat.length = 4;
     pat.items[0].channel[0] = ChannelLine {
-        note: 36,
-        sample: 1,
-        ornament: 0,
-        volume: 15,
-        envelope: 0,
-        additional_command: AdditionalCommand {
-            number: 4,
-            delay: 0,
-            parameter: 3,
-        },
+        note: 36, sample: 1, ornament: 0, volume: 15, envelope: 0,
+        additional_command: AdditionalCommand { number: 4, delay: 0, parameter: 3 },
     };
     m.patterns[0] = Some(Box::new(pat));
 
     let vars = run_one_tick(&mut m);
     // cmd4 sets sample_position to 3; get_channel_registers then advances by 1 → 4.
-    assert_eq!(
-        vars.params_of_chan[0].sample_position, 4,
-        "cmd4 jumps to position 3 then the engine advances by 1 → expect 4"
-    );
+    assert_eq!(vars.params_of_chan[0].sample_position, 4,
+        "cmd4 jumps to position 3 then the engine advances by 1 → expect 4");
 }
 
 #[test]
@@ -1826,56 +1521,33 @@ fn effect_cmd5_ornament_pos_jump() {
     m.positions.value[0] = 0;
 
     let mut s = Sample::default();
-    s.length = 1;
-    s.loop_pos = 0;
-    s.items[0] = SampleTick {
-        amplitude: 15,
-        mixer_ton: true,
-        ..SampleTick::default()
-    };
+    s.length = 1; s.loop_pos = 0;
+    s.items[0] = SampleTick { amplitude: 15, mixer_ton: true, ..SampleTick::default() };
     m.samples[1] = Some(Box::new(s));
 
     let mut orn = Ornament::default();
-    orn.length = 4;
-    orn.loop_pos = 0;
-    orn.items[0] = 0;
-    orn.items[1] = 2;
-    orn.items[2] = 4;
-    orn.items[3] = 7;
+    orn.length = 4; orn.loop_pos = 0;
+    orn.items[0] = 0; orn.items[1] = 2; orn.items[2] = 4; orn.items[3] = 7;
     m.ornaments[1] = Some(Box::new(orn));
 
     let mut pat = Pattern::default();
     pat.length = 4;
     pat.items[0].channel[0] = ChannelLine {
-        note: 36,
-        sample: 1,
-        ornament: 1,
-        volume: 15,
-        envelope: 0,
-        additional_command: AdditionalCommand {
-            number: 5,
-            delay: 0,
-            parameter: 2,
-        },
+        note: 36, sample: 1, ornament: 1, volume: 15, envelope: 0,
+        additional_command: AdditionalCommand { number: 5, delay: 0, parameter: 2 },
     };
     m.patterns[0] = Some(Box::new(pat));
 
     let vars = run_one_tick(&mut m);
     // cmd5 sets ornament_position to 2; engine advances by 1 → 3.
-    assert_eq!(
-        vars.params_of_chan[0].ornament_position, 3,
-        "cmd5 jumps ornament to pos 2 then engine advances by 1 → expect 3"
-    );
+    assert_eq!(vars.params_of_chan[0].ornament_position, 3,
+        "cmd5 jumps ornament to pos 2 then engine advances by 1 → expect 3");
 }
 
 #[test]
 fn effect_cmd6_on_off_sets_delays() {
     // parameter = (on_off_delay<<4) | off_on_delay  →  0x32 = on_off=3, off_on=2
-    let cmd = AdditionalCommand {
-        number: 6,
-        delay: 0,
-        parameter: 0x32,
-    };
+    let cmd = AdditionalCommand { number: 6, delay: 0, parameter: 0x32 };
     let mut m = make_effect_module(cmd);
     let vars = run_one_tick(&mut m);
     let p = &vars.params_of_chan[0];
@@ -1884,264 +1556,136 @@ fn effect_cmd6_on_off_sets_delays() {
     // get_channel_registers decrements current_on_off once in the same tick that
     // pattern_interpreter sets it (Pascal original behaviour), so after one full
     // tick the observable value is on_off_delay - 1.
-    assert_eq!(
-        p.current_on_off, 2,
-        "current_on_off is on_off_delay decremented once by get_channel_registers"
-    );
+    assert_eq!(p.current_on_off, 2,
+        "current_on_off is on_off_delay decremented once by get_channel_registers");
 }
 
 #[test]
 fn effect_cmd6_channel_toggles_after_on_off_delay() {
     // on_off_delay=2, off_on_delay=1: channel goes off after 2 ticks of sounding.
-    let cmd = AdditionalCommand {
-        number: 6,
-        delay: 0,
-        parameter: 0x21,
-    };
+    let cmd = AdditionalCommand { number: 6, delay: 0, parameter: 0x21 };
     let mut m = make_effect_module(cmd);
-    if let Some(Some(pat)) = m.patterns.get_mut(0) {
-        pat.length = 8;
-    }
+    if let Some(Some(pat)) = m.patterns.get_mut(0) { pat.length = 8; }
 
-    let mut vars = PlayVars {
-        current_pattern: 0,
-        current_line: 0,
-        delay: 1,
-        delay_counter: 1,
-        ..PlayVars::default()
-    };
+    let mut vars = PlayVars { current_pattern: 0, current_line: 0, delay: 1, delay_counter: 1, ..PlayVars::default() };
     init_tracker_parameters(&mut m, &mut vars, true);
-    vars.delay = 1;
-    vars.delay_counter = 1;
+    vars.delay = 1; vars.delay_counter = 1;
     let mut regs = vti_core::AyRegisters::default();
 
     // Tick 1: row 0 processed, cmd6 applied, current_on_off=2 (then decremented→1 by get_channel_regs)
-    {
-        let mut e = Engine {
-            module: &mut m,
-            vars: &mut vars,
-        };
-        e.pattern_play_current_line(&mut regs);
-    }
-    assert!(
-        vars.params_of_chan[0].sound_enabled,
-        "channel should still be enabled after tick 1"
-    );
+    { let mut e = Engine { module: &mut m, vars: &mut vars }; e.pattern_play_current_line(&mut regs); }
+    assert!(vars.params_of_chan[0].sound_enabled, "channel should still be enabled after tick 1");
 
     // Tick 2: current_on_off 1→0 → toggle; sound_enabled flips to false
-    {
-        let mut e = Engine {
-            module: &mut m,
-            vars: &mut vars,
-        };
-        e.pattern_play_current_line(&mut regs);
-    }
-    assert!(
-        !vars.params_of_chan[0].sound_enabled,
-        "channel should be disabled after on_off_delay ticks"
-    );
+    { let mut e = Engine { module: &mut m, vars: &mut vars }; e.pattern_play_current_line(&mut regs); }
+    assert!(!vars.params_of_chan[0].sound_enabled, "channel should be disabled after on_off_delay ticks");
 }
 
 #[test]
 fn effect_cmd9_env_slide_up_sets_positive_add() {
-    let cmd = AdditionalCommand {
-        number: 9,
-        delay: 2,
-        parameter: 4,
-    };
+    let cmd = AdditionalCommand { number: 9, delay: 2, parameter: 4 };
     let mut m = make_effect_module(cmd);
     let vars = run_one_tick(&mut m);
-    assert_eq!(
-        vars.env_slide_add, 4,
-        "cmd9 sets env_slide_add = +parameter"
-    );
-    assert_eq!(vars.env_delay, 2, "cmd9 sets env_delay from delay field");
+    assert_eq!(vars.env_slide_add, 4, "cmd9 sets env_slide_add = +parameter");
+    assert_eq!(vars.env_delay,     2, "cmd9 sets env_delay from delay field");
 }
 
 #[test]
 fn effect_cmd10_env_slide_down_sets_negative_add() {
-    let cmd = AdditionalCommand {
-        number: 10,
-        delay: 3,
-        parameter: 7,
-    };
+    let cmd = AdditionalCommand { number: 10, delay: 3, parameter: 7 };
     let mut m = make_effect_module(cmd);
     let vars = run_one_tick(&mut m);
-    assert_eq!(
-        vars.env_slide_add, -7,
-        "cmd10 sets env_slide_add = -parameter"
-    );
-    assert_eq!(vars.env_delay, 3, "cmd10 sets env_delay from delay field");
+    assert_eq!(vars.env_slide_add, -7, "cmd10 sets env_slide_add = -parameter");
+    assert_eq!(vars.env_delay,      3, "cmd10 sets env_delay from delay field");
 }
 
 #[test]
 fn effect_cmd11_delay_change() {
-    let cmd = AdditionalCommand {
-        number: 11,
-        delay: 0,
-        parameter: 5,
-    };
+    let cmd = AdditionalCommand { number: 11, delay: 0, parameter: 5 };
     let mut m = make_effect_module(cmd);
     let vars = run_one_tick(&mut m);
-    assert_eq!(
-        vars.delay, 5,
-        "cmd11 must change the module delay to parameter value"
-    );
+    assert_eq!(vars.delay, 5, "cmd11 must change the module delay to parameter value");
 }
 
 #[test]
 fn effect_cmd11_zero_parameter_does_not_change_delay() {
     // parameter=0 is a no-op (Pascal: if param <> 0 then Delay := param).
-    let cmd = AdditionalCommand {
-        number: 11,
-        delay: 0,
-        parameter: 0,
-    };
+    let cmd = AdditionalCommand { number: 11, delay: 0, parameter: 0 };
     let mut m = make_effect_module(cmd);
 
-    let mut vars = PlayVars {
-        current_pattern: 0,
-        current_line: 0,
-        delay: 3,
-        delay_counter: 1,
-        ..PlayVars::default()
-    };
+    let mut vars = PlayVars { current_pattern: 0, current_line: 0, delay: 3, delay_counter: 1, ..PlayVars::default() };
     init_tracker_parameters(&mut m, &mut vars, true);
-    vars.delay = 3;
-    vars.delay_counter = 1;
+    vars.delay = 3; vars.delay_counter = 1;
     let mut regs = vti_core::AyRegisters::default();
-    let mut e = Engine {
-        module: &mut m,
-        vars: &mut vars,
-    };
+    let mut e = Engine { module: &mut m, vars: &mut vars };
     e.pattern_play_current_line(&mut regs);
-    assert_eq!(
-        vars.delay, 3,
-        "cmd11 with parameter=0 must not change the delay"
-    );
+    assert_eq!(vars.delay, 3, "cmd11 with parameter=0 must not change the delay");
 }
 
 /// With glide-up (cmd1) the accumulated tone sliding grows positive over ticks.
 #[test]
 fn effect_cmd1_glide_up_increases_sliding_over_ticks() {
-    let cmd = AdditionalCommand {
-        number: 1,
-        delay: 2,
-        parameter: 1,
-    };
+    let cmd = AdditionalCommand { number: 1, delay: 2, parameter: 1 };
     let mut m = make_effect_module(cmd);
-    if let Some(Some(pat)) = m.patterns.get_mut(0) {
-        pat.length = 32;
-    }
+    if let Some(Some(pat)) = m.patterns.get_mut(0) { pat.length = 32; }
 
-    let mut vars = PlayVars {
-        current_pattern: 0,
-        current_line: 0,
-        delay: 1,
-        delay_counter: 1,
-        ..PlayVars::default()
-    };
+    let mut vars = PlayVars { current_pattern: 0, current_line: 0, delay: 1, delay_counter: 1, ..PlayVars::default() };
     init_tracker_parameters(&mut m, &mut vars, true);
-    vars.delay = 1;
-    vars.delay_counter = 1;
+    vars.delay = 1; vars.delay_counter = 1;
 
     let mut regs = vti_core::AyRegisters::default();
     let mut slides = Vec::new();
     for _ in 0..20 {
-        let mut e = Engine {
-            module: &mut m,
-            vars: &mut vars,
-        };
+        let mut e = Engine { module: &mut m, vars: &mut vars };
         e.pattern_play_current_line(&mut regs);
         slides.push(vars.params_of_chan[0].current_ton_sliding);
     }
-    assert!(
-        slides.iter().any(|&s| s > 0),
-        "glide-up should produce a positive current_ton_sliding over ticks: {:?}",
-        slides
-    );
+    assert!(slides.iter().any(|&s| s > 0),
+        "glide-up should produce a positive current_ton_sliding over ticks: {:?}", slides);
 }
 
 /// With glide-down (cmd2) the accumulated tone sliding becomes negative over ticks.
 #[test]
 fn effect_cmd2_glide_down_decreases_sliding_over_ticks() {
-    let cmd = AdditionalCommand {
-        number: 2,
-        delay: 2,
-        parameter: 1,
-    };
+    let cmd = AdditionalCommand { number: 2, delay: 2, parameter: 1 };
     let mut m = make_effect_module(cmd);
-    if let Some(Some(pat)) = m.patterns.get_mut(0) {
-        pat.length = 32;
-    }
+    if let Some(Some(pat)) = m.patterns.get_mut(0) { pat.length = 32; }
 
-    let mut vars = PlayVars {
-        current_pattern: 0,
-        current_line: 0,
-        delay: 1,
-        delay_counter: 1,
-        ..PlayVars::default()
-    };
+    let mut vars = PlayVars { current_pattern: 0, current_line: 0, delay: 1, delay_counter: 1, ..PlayVars::default() };
     init_tracker_parameters(&mut m, &mut vars, true);
-    vars.delay = 1;
-    vars.delay_counter = 1;
+    vars.delay = 1; vars.delay_counter = 1;
 
     let mut regs = vti_core::AyRegisters::default();
     let mut slides = Vec::new();
     for _ in 0..20 {
-        let mut e = Engine {
-            module: &mut m,
-            vars: &mut vars,
-        };
+        let mut e = Engine { module: &mut m, vars: &mut vars };
         e.pattern_play_current_line(&mut regs);
         slides.push(vars.params_of_chan[0].current_ton_sliding);
     }
-    assert!(
-        slides.iter().any(|&s| s < 0),
-        "glide-down should produce a negative current_ton_sliding over ticks: {:?}",
-        slides
-    );
+    assert!(slides.iter().any(|&s| s < 0),
+        "glide-down should produce a negative current_ton_sliding over ticks: {:?}", slides);
 }
 
 /// Envelope slide up (cmd9) causes `cur_env_slide` to grow after `env_delay` ticks.
 #[test]
 fn effect_cmd9_envelope_slide_accumulates_over_ticks() {
-    let cmd = AdditionalCommand {
-        number: 9,
-        delay: 1,
-        parameter: 2,
-    };
+    let cmd = AdditionalCommand { number: 9, delay: 1, parameter: 2 };
     let mut m = make_effect_module(cmd);
-    if let Some(Some(pat)) = m.patterns.get_mut(0) {
-        pat.length = 32;
-    }
+    if let Some(Some(pat)) = m.patterns.get_mut(0) { pat.length = 32; }
 
-    let mut vars = PlayVars {
-        current_pattern: 0,
-        current_line: 0,
-        delay: 1,
-        delay_counter: 1,
-        ..PlayVars::default()
-    };
+    let mut vars = PlayVars { current_pattern: 0, current_line: 0, delay: 1, delay_counter: 1, ..PlayVars::default() };
     init_tracker_parameters(&mut m, &mut vars, true);
-    vars.delay = 1;
-    vars.delay_counter = 1;
+    vars.delay = 1; vars.delay_counter = 1;
 
     let mut regs = vti_core::AyRegisters::default();
     let mut slides = Vec::new();
     for _ in 0..20 {
-        let mut e = Engine {
-            module: &mut m,
-            vars: &mut vars,
-        };
+        let mut e = Engine { module: &mut m, vars: &mut vars };
         e.pattern_play_current_line(&mut regs);
         slides.push(vars.cur_env_slide);
     }
-    assert!(
-        slides.iter().any(|&s| s > 0),
-        "cmd9 env slide up should make cur_env_slide grow: {:?}",
-        slides
-    );
+    assert!(slides.iter().any(|&s| s > 0),
+        "cmd9 env slide up should make cur_env_slide grow: {:?}", slides);
 }
 
 // ─── PT2 format tests ─────────────────────────────────────────────────────────
@@ -2171,16 +1715,10 @@ fn pt2_roundtrip_via_pt3() {
     let pt3_bytes = save_pt3(&original).expect("save as PT3");
     let reloaded = pt3_fmt::parse(&pt3_bytes).expect("re-parse PT3");
     assert_eq!(reloaded.initial_delay, original.initial_delay, "delay");
-    assert_eq!(
-        reloaded.positions.length, original.positions.length,
-        "positions"
-    );
+    assert_eq!(reloaded.positions.length, original.positions.length, "positions");
     let orig_p0 = original.patterns[0].as_deref().expect("orig pat 0");
     let new_p0 = reloaded.patterns[0].as_deref().expect("reloaded pat 0");
-    assert_eq!(
-        new_p0.items[0].channel[0].note, orig_p0.items[0].channel[0].note,
-        "note"
-    );
+    assert_eq!(new_p0.items[0].channel[0].note, orig_p0.items[0].channel[0].note, "note");
 }
 
 // ─── PT1 format tests ─────────────────────────────────────────────────────────
@@ -2227,16 +1765,10 @@ fn pt1_roundtrip_via_pt3() {
     let pt3_bytes = save_pt3(&original).expect("save as PT3");
     let reloaded = pt3_fmt::parse(&pt3_bytes).expect("re-parse PT3");
     assert_eq!(reloaded.initial_delay, original.initial_delay, "delay");
-    assert_eq!(
-        reloaded.positions.length, original.positions.length,
-        "positions"
-    );
+    assert_eq!(reloaded.positions.length, original.positions.length, "positions");
     let orig_p0 = original.patterns[0].as_deref().expect("orig pat 0");
     let new_p0 = reloaded.patterns[0].as_deref().expect("reloaded pat 0");
-    assert_eq!(
-        new_p0.items[0].channel[0].note, orig_p0.items[0].channel[0].note,
-        "note"
-    );
+    assert_eq!(new_p0.items[0].channel[0].note, orig_p0.items[0].channel[0].note, "note");
 }
 
 // ─── STC format tests ─────────────────────────────────────────────────────────
@@ -2261,16 +1793,10 @@ fn stc_roundtrip_via_pt3() {
     let pt3_bytes = save_pt3(&original).expect("save as PT3");
     let reloaded = pt3_fmt::parse(&pt3_bytes).expect("re-parse PT3");
     assert_eq!(reloaded.initial_delay, original.initial_delay, "delay");
-    assert_eq!(
-        reloaded.positions.length, original.positions.length,
-        "positions"
-    );
+    assert_eq!(reloaded.positions.length, original.positions.length, "positions");
     let orig_p0 = original.patterns[0].as_deref().expect("orig pat 0");
     let new_p0 = reloaded.patterns[0].as_deref().expect("reloaded pat 0");
-    assert_eq!(
-        new_p0.items[0].channel[0].note, orig_p0.items[0].channel[0].note,
-        "note"
-    );
+    assert_eq!(new_p0.items[0].channel[0].note, orig_p0.items[0].channel[0].note, "note");
 }
 
 // ─── STP format tests ─────────────────────────────────────────────────────────
@@ -2295,16 +1821,10 @@ fn stp_roundtrip_via_pt3() {
     let pt3_bytes = save_pt3(&original).expect("save as PT3");
     let reloaded = pt3_fmt::parse(&pt3_bytes).expect("re-parse PT3");
     assert_eq!(reloaded.initial_delay, original.initial_delay, "delay");
-    assert_eq!(
-        reloaded.positions.length, original.positions.length,
-        "positions"
-    );
+    assert_eq!(reloaded.positions.length, original.positions.length, "positions");
     let orig_p0 = original.patterns[0].as_deref().expect("orig pat 0");
     let new_p0 = reloaded.patterns[0].as_deref().expect("reloaded pat 0");
-    assert_eq!(
-        new_p0.items[0].channel[0].note, orig_p0.items[0].channel[0].note,
-        "note"
-    );
+    assert_eq!(new_p0.items[0].channel[0].note, orig_p0.items[0].channel[0].note, "note");
 }
 
 /// `formats::load()` dispatches correctly for all supported extensions.
@@ -2319,6 +1839,7 @@ fn format_load_dispatch_all_formats() {
         assert_eq!(m.positions.length, 1, "{}: positions", ext);
     }
 }
+
 
 // ─── ZX Spectrum export tests ─────────────────────────────────────────────────
 
@@ -2340,16 +1861,8 @@ fn make_duplicate_heavy_module() -> Module {
         let mut s = Sample::default();
         s.length = 2;
         s.loop_pos = 0;
-        s.items[0] = SampleTick {
-            amplitude: 12,
-            mixer_ton: true,
-            ..SampleTick::default()
-        };
-        s.items[1] = SampleTick {
-            amplitude: 8,
-            mixer_ton: true,
-            ..SampleTick::default()
-        };
+        s.items[0] = SampleTick { amplitude: 12, mixer_ton: true, ..SampleTick::default() };
+        s.items[1] = SampleTick { amplitude: 8,  mixer_ton: true, ..SampleTick::default() };
         s
     };
     // Register the same sample data under indices 1-8.
@@ -2412,16 +1925,8 @@ fn pt3_dedup_reduces_size_for_duplicate_heavy_module() {
         s.length = 2;
         s.loop_pos = 0;
         // Give each sample a distinct amplitude so no two are equal.
-        s.items[0] = SampleTick {
-            amplitude: i as u8,
-            mixer_ton: true,
-            ..SampleTick::default()
-        };
-        s.items[1] = SampleTick {
-            amplitude: (i + 8) as u8,
-            mixer_ton: true,
-            ..SampleTick::default()
-        };
+        s.items[0] = SampleTick { amplitude: i as u8,      mixer_ton: true, ..SampleTick::default() };
+        s.items[1] = SampleTick { amplitude: (i + 8) as u8, mixer_ton: true, ..SampleTick::default() };
         m_unique.samples[i] = Some(Box::new(s));
     }
     let unique_bytes = save_pt3(&m_unique).expect("unique must write");
@@ -2448,19 +1953,15 @@ fn pt3_dedup_reduces_size_for_duplicate_heavy_module() {
     // identical content, even though the file stores only 1 copy.
     let reloaded = pt3_fmt::parse(&dedup_bytes).expect("must re-parse");
     for i in 1..=8usize {
-        let s = reloaded.samples[i]
-            .as_deref()
-            .expect(&format!("sample {} must exist", i));
+        let s = reloaded.samples[i].as_deref().expect(&format!("sample {} must exist", i));
         assert_eq!(s.length, 2, "sample {} length", i);
         assert_eq!(s.items[0].amplitude, 12, "sample {} tick0 amplitude", i);
-        assert_eq!(s.items[1].amplitude, 8, "sample {} tick1 amplitude", i);
+        assert_eq!(s.items[1].amplitude, 8,  "sample {} tick1 amplitude", i);
     }
     for i in 1..=6usize {
-        let o = reloaded.ornaments[i]
-            .as_deref()
-            .expect(&format!("ornament {} must exist", i));
+        let o = reloaded.ornaments[i].as_deref().expect(&format!("ornament {} must exist", i));
         assert_eq!(o.length, 2, "ornament {} length", i);
-        assert_eq!(o.items[0], 0, "ornament {} step0", i);
+        assert_eq!(o.items[0], 0,  "ornament {} step0", i);
         assert_eq!(o.items[1], 12, "ornament {} step1", i);
     }
 }
@@ -2476,20 +1977,14 @@ fn pt3_dedup_no_change_for_unique_samples() {
         let mut s = Sample::default();
         s.length = 1;
         s.loop_pos = 0;
-        s.items[0] = SampleTick {
-            amplitude: i as u8,
-            mixer_ton: true,
-            ..SampleTick::default()
-        };
+        s.items[0] = SampleTick { amplitude: i as u8, mixer_ton: true, ..SampleTick::default() };
         m.samples[i] = Some(Box::new(s));
     }
     let mut pat = Pattern::default();
     pat.length = 4;
     for row in 0..4usize {
         pat.items[row].channel[0] = ChannelLine {
-            note: 36,
-            sample: row as u8 + 1,
-            ..ChannelLine::default()
+            note: 36, sample: row as u8 + 1, ..ChannelLine::default()
         };
     }
     m.patterns[0] = Some(Box::new(pat));
@@ -2499,14 +1994,8 @@ fn pt3_dedup_no_change_for_unique_samples() {
     let bytes = save_pt3(&m).expect("must write");
     let reloaded = vti_core::formats::pt3::parse(&bytes).expect("must re-parse");
     for i in 1..=4usize {
-        let s = reloaded.samples[i]
-            .as_deref()
-            .expect(&format!("sample {} exists", i));
-        assert_eq!(
-            s.items[0].amplitude, i as u8,
-            "sample {} amplitude preserved",
-            i
-        );
+        let s = reloaded.samples[i].as_deref().expect(&format!("sample {} exists", i));
+        assert_eq!(s.items[0].amplitude, i as u8, "sample {} amplitude preserved", i);
     }
 }
 
@@ -2521,20 +2010,12 @@ fn make_simple_module() -> Module {
     let mut s = Sample::default();
     s.length = 1;
     s.loop_pos = 0;
-    s.items[0] = SampleTick {
-        amplitude: 12,
-        mixer_ton: true,
-        ..SampleTick::default()
-    };
+    s.items[0] = SampleTick { amplitude: 12, mixer_ton: true, ..SampleTick::default() };
     m.samples[1] = Some(Box::new(s));
 
     let mut pat = Pattern::default();
     pat.length = 2;
-    pat.items[0].channel[0] = ChannelLine {
-        note: 36,
-        sample: 1,
-        ..ChannelLine::default()
-    };
+    pat.items[0].channel[0] = ChannelLine { note: 36, sample: 1, ..ChannelLine::default() };
     m.patterns[0] = Some(Box::new(pat));
     m.positions.length = 1;
     m.positions.value[0] = 0;
@@ -2561,20 +2042,11 @@ fn zx_export_tap_basic_structure() {
     let mut blocks = Vec::new();
     while pos + 2 <= data.len() {
         let blen = u16::from_le_bytes([data[pos], data[pos + 1]]) as usize;
-        assert!(
-            pos + 2 + blen <= data.len(),
-            "block overflows at pos {}",
-            pos
-        );
+        assert!(pos + 2 + blen <= data.len(), "block overflows at pos {}", pos);
         blocks.push(data[pos + 2..pos + 2 + blen].to_vec());
         pos += 2 + blen;
     }
-    assert_eq!(
-        blocks.len(),
-        4,
-        "expected 4 TAP blocks, got {}",
-        blocks.len()
-    );
+    assert_eq!(blocks.len(), 4, "expected 4 TAP blocks, got {}", blocks.len());
 
     // Block 0 and 2 are header blocks (flag byte 0x00).
     assert_eq!(blocks[0][0], 0x00, "block 0 flag must be 0x00 (header)");
@@ -2715,8 +2187,9 @@ fn zx_export_ay_file_block_offsets_are_correct() {
 
     // ── helpers ──────────────────────────────────────────────────────────────
     // Returns a BE u16 from the given file offset as usize (for arithmetic).
-    let read_be16 =
-        |off: usize| -> usize { u16::from_be_bytes([data[off], data[off + 1]]) as usize };
+    let read_be16 = |off: usize| -> usize {
+        u16::from_be_bytes([data[off], data[off + 1]]) as usize
+    };
 
     // ── header magic ─────────────────────────────────────────────────────────
     assert_eq!(&data[..4], b"ZXAY");
@@ -2724,10 +2197,7 @@ fn zx_export_ay_file_block_offsets_are_correct() {
 
     // ── PSongsStructure → TSongStructure must be at offset 20 ────────────────
     let songs_struct_pos = 18 + read_be16(18);
-    assert_eq!(
-        songs_struct_pos, 20,
-        "PSongsStructure must point to offset 20"
-    );
+    assert_eq!(songs_struct_pos, 20, "PSongsStructure must point to offset 20");
 
     // ── PSongData → TSongData must be at offset 24 ───────────────────────────
     let song_data_pos = 22 + read_be16(22);
@@ -2739,32 +2209,21 @@ fn zx_export_ay_file_block_offsets_are_correct() {
 
     // ── PAddresses → TPoints.Adr1 must be at offset 44 ──────────────────────
     let paddresses_pos = 36 + read_be16(36);
-    assert_eq!(
-        paddresses_pos, 44,
-        "PAddresses must point to offset 44 (TPoints.Adr1)"
-    );
+    assert_eq!(paddresses_pos, 44, "PAddresses must point to offset 44 (TPoints.Adr1)");
 
     // ── TPoints fields ────────────────────────────────────────────────────────
-    let stek = read_be16(38);
-    let init = read_be16(40);
+    let stek  = read_be16(38);
+    let init  = read_be16(40);
     let inter = read_be16(42);
-    assert_eq!(stek as u16, load_addr, "Stek must equal load_addr");
-    assert_eq!(init as u16, load_addr, "Init must equal load_addr");
-    assert_eq!(
-        inter as u16,
-        load_addr + 5,
-        "Inter must equal load_addr+5 (play entry)"
-    );
+    assert_eq!(stek as u16,  load_addr,     "Stek must equal load_addr");
+    assert_eq!(init as u16,  load_addr,     "Init must equal load_addr");
+    assert_eq!(inter as u16, load_addr + 5, "Inter must equal load_addr+5 (play entry)");
 
     let adr1 = read_be16(44) as u16;
     let len1 = read_be16(46);
     assert_eq!(adr1, load_addr, "Adr1 must be load_addr");
     // len1 is the player code size; it must be positive and reasonable
-    assert!(
-        len1 > 0 && len1 < 8192,
-        "Len1 ({}) must be a sane player size",
-        len1
-    );
+    assert!(len1 > 0 && len1 < 8192, "Len1 ({}) must be a sane player size", len1);
     let zxplsz = len1;
 
     let adr2 = read_be16(50) as u16;
@@ -2778,10 +2237,7 @@ fn zx_export_ay_file_block_offsets_are_correct() {
     assert!(
         player_start + zxplsz <= data.len(),
         "Offs1 ({}) + len1 ({}) = {} must fit within file ({})",
-        player_start,
-        zxplsz,
-        player_start + zxplsz,
-        data.len()
+        player_start, zxplsz, player_start + zxplsz, data.len()
     );
 
     // ── Offs2 must reach the PT3 data ────────────────────────────────────────
@@ -2792,10 +2248,7 @@ fn zx_export_ay_file_block_offsets_are_correct() {
     assert!(
         pt3_start + pt3_size <= data.len(),
         "Offs2 ({}) + len2 ({}) = {} must fit within file ({})",
-        pt3_start,
-        pt3_size,
-        pt3_start + pt3_size,
-        data.len()
+        pt3_start, pt3_size, pt3_start + pt3_size, data.len()
     );
 
     // ── There must be NO zxdtsz gap in the file between player and PT3 ───────
@@ -2815,8 +2268,7 @@ fn zx_export_ay_file_block_offsets_are_correct() {
     assert!(
         adr2 >= load_addr + zxplsz as u16,
         "Adr2 ({:#06x}) must be >= load_addr+zxplsz ({:#06x})",
-        adr2,
-        load_addr + zxplsz as u16
+        adr2, load_addr + zxplsz as u16
     );
 
     // ── PT3 data at Offs2 must start with the PT3 header signature ────────────
@@ -2827,7 +2279,8 @@ fn zx_export_ay_file_block_offsets_are_correct() {
         pt3_data.len() >= 13,
         "PT3 data must be at least 13 bytes long"
     );
-    let id_str = std::str::from_utf8(&pt3_data[..13]).expect("PT3 header must be valid UTF-8");
+    let id_str = std::str::from_utf8(&pt3_data[..13])
+        .expect("PT3 header must be valid UTF-8");
     assert!(
         id_str.starts_with("ProTracker") || id_str.starts_with("Vortex"),
         "PT3 data at Offs2 must start with a valid PT3 header ID, got: {:?}",
@@ -2844,10 +2297,7 @@ fn zx_export_ay_file_block_offsets_are_correct() {
         data.len(),
         expected_size,
         "AY file size must be exactly header({}) + strings({}) + player({}) + pt3({})",
-        58,
-        strings_len,
-        zxplsz,
-        pt3_size
+        58, strings_len, zxplsz, pt3_size
     );
 }
 
@@ -2867,14 +2317,13 @@ fn zx_export_hobeta_mem_no_player() {
         format: ZxFormat::HobetaCode,
         ..opts_mem.clone()
     };
-    let mem_data = export_zx(&m, &opts_mem).expect("mem export");
+    let mem_data  = export_zx(&m, &opts_mem).expect("mem export");
     let code_data = export_zx(&m, &opts_code).expect("code export");
     // $M is smaller because it omits the player binary.
     assert!(
         mem_data.len() < code_data.len(),
         "HobetaMem ({}) should be smaller than HobetaCode ({})",
-        mem_data.len(),
-        code_data.len()
+        mem_data.len(), code_data.len()
     );
     // $M type byte is 'm'.
     assert_eq!(mem_data[8], b'm', "HobetaMem type byte must be 'm'");
@@ -2884,12 +2333,7 @@ fn zx_export_hobeta_mem_no_player() {
 fn zx_export_duplicate_heavy_module_fits_in_zx_ram() {
     use vti_core::formats::zx_export::{export_zx, ZxExportOptions, ZxFormat};
     let m = make_duplicate_heavy_module();
-    for fmt in [
-        ZxFormat::HobetaCode,
-        ZxFormat::Tap,
-        ZxFormat::Scl,
-        ZxFormat::AyFile,
-    ] {
+    for fmt in [ZxFormat::HobetaCode, ZxFormat::Tap, ZxFormat::Scl, ZxFormat::AyFile] {
         let opts = ZxExportOptions {
             format: fmt,
             load_addr: 0xC000,
@@ -2899,12 +2343,7 @@ fn zx_export_duplicate_heavy_module_fits_in_zx_ram() {
             author: "Test".to_string(),
         };
         let result = export_zx(&m, &opts);
-        assert!(
-            result.is_ok(),
-            "export {:?} must succeed: {:?}",
-            fmt,
-            result
-        );
+        assert!(result.is_ok(), "export {:?} must succeed: {:?}", fmt, result);
     }
 }
 
@@ -2924,20 +2363,18 @@ fn ay_load_minimal_fixture_via_dispatch() {
 #[test]
 fn ay_list_songs_minimal_fixture() {
     let bytes = include_bytes!("fixtures/tunes/minimal.ay");
-    let songs =
-        vti_core::formats::ay::list_songs(bytes).expect("list_songs should succeed on minimal.ay");
+    let songs = vti_core::formats::ay::list_songs(bytes)
+        .expect("list_songs should succeed on minimal.ay");
     assert_eq!(songs.len(), 1);
-    assert!(
-        songs[0].is_supported,
-        "ST11 song should be marked supported"
-    );
+    assert!(songs[0].is_supported, "ST11 song should be marked supported");
     assert_eq!(songs[0].name, "Tst");
 }
 
 #[test]
 fn ay_parse_first_song_has_one_empty_row() {
     let bytes = include_bytes!("fixtures/tunes/minimal.ay");
-    let module = vti_core::formats::ay::parse(bytes, 0).expect("ay::parse should succeed");
+    let module = vti_core::formats::ay::parse(bytes, 0)
+        .expect("ay::parse should succeed");
     let pat = module.patterns[0].as_deref().expect("pattern 0 must exist");
     assert_eq!(pat.length, 1);
     for ch in 0..3 {
@@ -2973,9 +2410,10 @@ fn ay_reject_song_index_out_of_range() {
 
 #[test]
 fn ay_smoke_play_first_line() {
-    use vti_core::playback::{init_tracker_parameters, Engine, PlayVars};
+    use vti_core::playback::{Engine, PlayVars, init_tracker_parameters};
     let bytes = include_bytes!("fixtures/tunes/minimal.ay");
-    let mut module = vti_core::formats::ay::parse(bytes, 0).expect("ay::parse should succeed");
+    let mut module = vti_core::formats::ay::parse(bytes, 0)
+        .expect("ay::parse should succeed");
     let mut vars = PlayVars::default();
     init_tracker_parameters(&mut module, &mut vars, true);
     vars.delay = module.initial_delay as i8;
@@ -2984,10 +2422,7 @@ fn ay_smoke_play_first_line() {
     vars.delay_counter = 1;
 
     let mut ay_regs = vti_core::AyRegisters::default();
-    let mut engine = Engine {
-        module: &mut module,
-        vars: &mut vars,
-    };
+    let mut engine = Engine { module: &mut module, vars: &mut vars };
     // Must not panic
     engine.module_play_current_line(&mut ay_regs);
 }
@@ -3029,6 +2464,7 @@ fn ay_emul_megaparty_returns_error_without_hanging() {
     );
 }
 
+
 // ─── Bug regression: mixer rotation for disabled channels ────────────────────
 
 /// When a tracker channel has `sound_enabled = false` the mixer byte must not be
@@ -3047,8 +2483,8 @@ fn ay_emul_megaparty_returns_error_without_hanging() {
 /// are set.
 #[test]
 fn disabled_channel_does_not_corrupt_mixer_register() {
-    use vti_core::playback::{init_tracker_parameters, Engine, PlayVars};
-    use vti_core::{AyRegisters, ChannelLine, Module, Pattern, Sample, SampleTick, NOTE_SOUND_OFF};
+    use vti_core::{Module, Sample, SampleTick, AyRegisters, Pattern, ChannelLine, NOTE_SOUND_OFF};
+    use vti_core::playback::{PlayVars, Engine, init_tracker_parameters};
 
     // Build a minimal module with three channels:
     //   ch A = tone-only (mixer_ton=true, mixer_noise=false)
@@ -3076,24 +2512,11 @@ fn disabled_channel_does_not_corrupt_mixer_register() {
     let mut pat = Pattern::default();
     pat.length = 1;
     // ch A: play note 24 with sample 1
-    pat.items[0].channel[0] = ChannelLine {
-        note: 24,
-        sample: 1,
-        volume: 15,
-        ..ChannelLine::default()
-    };
+    pat.items[0].channel[0] = ChannelLine { note: 24, sample: 1, volume: 15, ..ChannelLine::default() };
     // ch B: sound-off — sets sound_enabled=false
-    pat.items[0].channel[1] = ChannelLine {
-        note: NOTE_SOUND_OFF,
-        ..ChannelLine::default()
-    };
+    pat.items[0].channel[1] = ChannelLine { note: NOTE_SOUND_OFF, ..ChannelLine::default() };
     // ch C: play note 24 with sample 3
-    pat.items[0].channel[2] = ChannelLine {
-        note: 24,
-        sample: 3,
-        volume: 15,
-        ..ChannelLine::default()
-    };
+    pat.items[0].channel[2] = ChannelLine { note: 24, sample: 3, volume: 15, ..ChannelLine::default() };
     module.patterns[0] = Some(Box::new(pat));
 
     let mut vars = PlayVars::default();
@@ -3106,10 +2529,7 @@ fn disabled_channel_does_not_corrupt_mixer_register() {
     // then pattern_play_only_current_line (builds mixer register from params).
     let mut ay_regs = AyRegisters::default();
     {
-        let mut engine = Engine {
-            module: &mut module,
-            vars: &mut vars,
-        };
+        let mut engine = Engine { module: &mut module, vars: &mut vars };
         engine.pattern_play_current_line(&mut ay_regs);
     }
 
@@ -3134,8 +2554,7 @@ fn disabled_channel_does_not_corrupt_mixer_register() {
 
     // Verify no bits leaked into the upper 2 bits (the rotation bug's signature)
     assert_eq!(
-        ay_regs.mixer & 0b1100_0000,
-        0,
+        ay_regs.mixer & 0b1100_0000, 0,
         "bits 6-7 of mixer register must be zero (unused by AY); \
          got 0x{:02X} — indicates the rotation bug is present",
         ay_regs.mixer
@@ -3143,15 +2562,13 @@ fn disabled_channel_does_not_corrupt_mixer_register() {
 
     // Noise-disable for channels A and C must be set (bits 3 and 5)
     assert_ne!(
-        ay_regs.mixer & (1 << 3),
-        0,
+        ay_regs.mixer & (1 << 3), 0,
         "noise ch A (bit 3) should be set (noise disabled for tone-only ch A); \
          got 0x{:02X}",
         ay_regs.mixer
     );
     assert_ne!(
-        ay_regs.mixer & (1 << 5),
-        0,
+        ay_regs.mixer & (1 << 5), 0,
         "noise ch C (bit 5) should be set (noise disabled for tone-only ch C); \
          got 0x{:02X}",
         ay_regs.mixer
@@ -3159,8 +2576,7 @@ fn disabled_channel_does_not_corrupt_mixer_register() {
 
     // Tone for all channels should be enabled (bits 0,1,2 = 0)
     assert_eq!(
-        ay_regs.mixer & 0b0000_0111,
-        0,
+        ay_regs.mixer & 0b0000_0111, 0,
         "tone bits (0-2) should be 0 (all tone channels enabled); \
          got 0x{:02X}",
         ay_regs.mixer
@@ -3233,12 +2649,7 @@ fn parse_tap_blocks(tap: &[u8]) -> Vec<(u8, Vec<u8>, u8)> {
             block_len,
             tap.len()
         );
-        assert!(
-            block_len >= 2,
-            "TAP block {} too short ({} bytes)",
-            blocks.len(),
-            block_len
-        );
+        assert!(block_len >= 2, "TAP block {} too short ({} bytes)", blocks.len(), block_len);
         let flag = tap[pos + 2];
         let payload = tap[pos + 3..pos + 2 + block_len - 1].to_vec();
         let stored_cs = tap[pos + 2 + block_len - 1];
@@ -3281,12 +2692,7 @@ fn tap_file_loads_and_runs_in_z80_emulator() {
 
     // ── 2. Parse and checksum-verify all four blocks ──────────────────────────
     let blocks = parse_tap_blocks(&tap);
-    assert_eq!(
-        blocks.len(),
-        4,
-        "expected exactly 4 TAP blocks, got {}",
-        blocks.len()
-    );
+    assert_eq!(blocks.len(), 4, "expected exactly 4 TAP blocks, got {}", blocks.len());
 
     for (i, (flag, payload, stored_cs)) in blocks.iter().enumerate() {
         let mut computed = *flag;
@@ -3349,10 +2755,12 @@ fn tap_file_loads_and_runs_in_z80_emulator() {
     let mut bus = FlatBus::new();
 
     // Player code at load_addr
-    bus.mem[pl_start as usize..pl_start as usize + pl_data.len()].copy_from_slice(pl_data);
+    bus.mem[pl_start as usize..pl_start as usize + pl_data.len()]
+        .copy_from_slice(pl_data);
 
     // PT3 data at pt3_start
-    bus.mem[pt3_start as usize..pt3_start as usize + pt3_data.len()].copy_from_slice(pt3_data);
+    bus.mem[pt3_start as usize..pt3_start as usize + pt3_data.len()]
+        .copy_from_slice(pt3_data);
 
     // ── 5. Execute init entry ─────────────────────────────────────────────────
     // Place a HALT sentinel at a free address below the player.  We write this
@@ -3365,7 +2773,7 @@ fn tap_file_loads_and_runs_in_z80_emulator() {
     // SP += 2.  We write the sentinel address at SP so the first RET goes
     // there.
     const STACK_PTR: u16 = 0xBFFE;
-    bus.mem[STACK_PTR as usize] = (SENTINEL & 0xFF) as u8;
+    bus.mem[STACK_PTR as usize]     = (SENTINEL & 0xFF) as u8;
     bus.mem[STACK_PTR as usize + 1] = (SENTINEL >> 8) as u8;
 
     use rustzx_z80::Z80;

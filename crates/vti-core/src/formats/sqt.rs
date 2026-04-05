@@ -59,8 +59,8 @@ const MIN_FILE_SIZE: usize = 12;
 struct SqtChan {
     enable_effects: bool,
     pat_chan_number: usize, // index into SQT_PatternsPointer channel table
-    vol: u8,                // initial volume (0..15)
-    trans: i8,              // semitone transposition
+    vol: u8,               // initial volume (0..15)
+    trans: i8,             // semitone transposition
 }
 
 #[derive(Clone, Copy, Default)]
@@ -205,8 +205,13 @@ pub fn parse(data: &[u8]) -> Result<Module> {
         let lp_raw = data[j] as usize;
         let extra = data.get(j + 1).copied().unwrap_or(0) as usize;
 
-        let (loop_pos, orn_len) =
-            compute_loop_len(lp_raw, extra, orn2sam[vtm_idx] as usize, sam_ptr, data);
+        let (loop_pos, orn_len) = compute_loop_len(
+            lp_raw,
+            extra,
+            orn2sam[vtm_idx] as usize,
+            sam_ptr,
+            data,
+        );
 
         let mut orn = Ornament::default();
         orn.loop_pos = loop_pos;
@@ -219,9 +224,7 @@ pub fn parse(data: &[u8]) -> Result<Module> {
         }
 
         // 32 items
-        let lp1 = if lp_raw < 32 {
-            lp_raw
-        } else {
+        let lp1 = if lp_raw < 32 { lp_raw } else {
             // Use paired sample's lp for extension base
             orn2sam[vtm_idx] as usize
         };
@@ -230,9 +233,7 @@ pub fn parse(data: &[u8]) -> Result<Module> {
             orn.items[k] = data.get(j + 2 + k).copied().unwrap_or(0) as i8;
         }
         // Extended items: Pascal Items[k] := Items[k - 32 + lp]
-        let base_lp = if lp_raw < 32 {
-            lp_raw
-        } else {
+        let base_lp = if lp_raw < 32 { lp_raw } else {
             // Use the underlying lp that applies to the extended region
             loop_pos.min(31)
         };
@@ -475,8 +476,9 @@ fn interpret_channel(
         *ix21 -= 1;
         if *b7ix0 {
             call_lc191(
-                data, row, ch, cpat, pat_ptr, is_sample, orns, orn2sam, n_orns, ch_ptr, ix27,
-                env_en, env_t, env_p, prev_note, prev_samp, prev_orn, c_vol, pattern,
+                data, row, ch, cpat, pat_ptr, is_sample, orns, orn2sam, n_orns,
+                ch_ptr, ix27, env_en, env_t, env_p, prev_note, prev_samp, prev_orn,
+                c_vol, pattern,
             );
         }
         // track orn2sam
@@ -499,21 +501,17 @@ fn interpret_channel(
             0x00..=0x5F => {
                 // Note with transposition
                 let mut nt = b as i32 + cpat.chn[ch].trans as i32 + 2;
-                if nt < 0 {
-                    nt = 0;
-                }
-                if nt > 0x5F {
-                    nt = 0x5F;
-                }
+                if nt < 0 { nt = 0; }
+                if nt > 0x5F { nt = 0x5F; }
                 let nt = nt as u8;
                 pattern.items[row].channel[ch].note = nt as i8;
                 *prev_note = nt;
                 *ix27 = ptr;
                 ptr += 1;
                 call_lc283(
-                    data, row, ch, cpat, pat_ptr, is_sample, orns, orn2sam, n_orns, &mut ptr,
-                    &mut b6ix0, ix27, env_en, env_t, env_p, prev_note, prev_samp, prev_orn, c_vol,
-                    pattern,
+                    data, row, ch, cpat, pat_ptr, is_sample, orns, orn2sam, n_orns,
+                    &mut ptr, &mut b6ix0, ix27, env_en, env_t, env_p,
+                    prev_note, prev_samp, prev_orn, c_vol, pattern,
                 );
                 if b6ix0 {
                     *ch_ptr = ptr;
@@ -525,8 +523,8 @@ fn interpret_channel(
                 let a = b - 0x60;
                 ptr += 1;
                 call_lc1d1(
-                    data, row, ch, cpat, a, &mut ptr, &mut b6ix0, env_en, env_t, env_p, c_vol,
-                    pattern,
+                    data, row, ch, cpat, a, &mut ptr, &mut b6ix0,
+                    env_en, env_t, env_p, c_vol, pattern,
                 );
                 break;
             }
@@ -542,8 +540,8 @@ fn interpret_channel(
                 let a = b - 0x6F;
                 ptr += 1;
                 call_lc1d1(
-                    data, row, ch, cpat, a, &mut ptr, &mut b6ix0, env_en, env_t, env_p, c_vol,
-                    pattern,
+                    data, row, ch, cpat, a, &mut ptr, &mut b6ix0,
+                    env_en, env_t, env_p, c_vol, pattern,
                 );
                 break;
             }
@@ -555,13 +553,12 @@ fn interpret_channel(
                 } else {
                     *prev_note = prev_note.wrapping_sub(b & 0x0F);
                 }
-                if *prev_note > 0x5F {
-                    *prev_note = 0x5F;
-                }
+                if *prev_note > 0x5F { *prev_note = 0x5F; }
                 pattern.items[row].channel[ch].note = *prev_note as i8;
                 call_lc191(
-                    data, row, ch, cpat, pat_ptr, is_sample, orns, orn2sam, n_orns, ch_ptr, ix27,
-                    env_en, env_t, env_p, prev_note, prev_samp, prev_orn, c_vol, pattern,
+                    data, row, ch, cpat, pat_ptr, is_sample, orns, orn2sam, n_orns,
+                    ch_ptr, ix27, env_en, env_t, env_p, prev_note, prev_samp, prev_orn,
+                    c_vol, pattern,
                 );
                 break;
             }
@@ -576,8 +573,9 @@ fn interpret_channel(
                     *b7ix0 = true;
                 }
                 call_lc191(
-                    data, row, ch, cpat, pat_ptr, is_sample, orns, orn2sam, n_orns, ch_ptr, ix27,
-                    env_en, env_t, env_p, prev_note, prev_samp, prev_orn, c_vol, pattern,
+                    data, row, ch, cpat, pat_ptr, is_sample, orns, orn2sam, n_orns,
+                    ch_ptr, ix27, env_en, env_t, env_p, prev_note, prev_samp, prev_orn,
+                    c_vol, pattern,
                 );
                 break;
             }
@@ -587,8 +585,8 @@ fn interpret_channel(
                 *ix27 = ptr;
                 let a = b & 0x1F;
                 call_lc2a8(
-                    row, ch, a, is_sample, orns, orn2sam, prev_samp, prev_note, prev_orn, env_en,
-                    env_t, env_p, c_vol, pattern,
+                    row, ch, a, is_sample, orns, orn2sam, prev_samp, prev_note,
+                    prev_orn, env_en, env_t, env_p, c_vol, pattern,
                 );
                 break;
             }
@@ -631,16 +629,16 @@ fn call_lc191(
         0x00..=0x7F => {
             ptr2 += 1;
             call_lc283(
-                data, row, ch, cpat, pat_ptr, is_sample, orns, orn2sam, n_orns, &mut ptr2,
-                &mut b6ix0, ix27, env_en, env_t, env_p, prev_note, prev_samp, prev_orn, c_vol,
-                pattern,
+                data, row, ch, cpat, pat_ptr, is_sample, orns, orn2sam, n_orns,
+                &mut ptr2, &mut b6ix0, ix27, env_en, env_t, env_p,
+                prev_note, prev_samp, prev_orn, c_vol, pattern,
             );
         }
         0x80..=0xFF => {
             let a = b & 0x1F;
             call_lc2a8(
-                row, ch, a, is_sample, orns, orn2sam, prev_samp, prev_note, prev_orn, env_en,
-                env_t, env_p, c_vol, pattern,
+                row, ch, a, is_sample, orns, orn2sam, prev_samp, prev_note,
+                prev_orn, env_en, env_t, env_p, c_vol, pattern,
             );
         }
     }
@@ -678,15 +676,16 @@ fn call_lc283(
     match b {
         0x00..=0x7F => {
             call_lc1d1(
-                data, row, ch, cpat, b, ptr, b6ix0, env_en, env_t, env_p, c_vol, pattern,
+                data, row, ch, cpat, b, ptr, b6ix0,
+                env_en, env_t, env_p, c_vol, pattern,
             );
         }
         0x80..=0xFF => {
             let sample_idx = (b >> 1) & 0x1F;
             if sample_idx != 0 {
                 call_lc2a8(
-                    row, ch, sample_idx, is_sample, orns, orn2sam, prev_samp, prev_note, prev_orn,
-                    env_en, env_t, env_p, c_vol, pattern,
+                    row, ch, sample_idx, is_sample, orns, orn2sam, prev_samp, prev_note,
+                    prev_orn, env_en, env_t, env_p, c_vol, pattern,
                 );
             }
             if (b & 0x40) != 0 {
@@ -694,18 +693,8 @@ fn call_lc283(
                 let orn_idx = (b2 >> 4) | (if (b & 0x01) != 0 { 0x10 } else { 0 });
                 if orn_idx != 0 {
                     call_lc2d9(
-                        row,
-                        ch,
-                        orn_idx as usize,
-                        orns,
-                        orn2sam,
-                        n_orns,
-                        prev_samp,
-                        prev_orn,
-                        env_en,
-                        env_t,
-                        env_p,
-                        pattern,
+                        row, ch, orn_idx as usize, orns, orn2sam, n_orns,
+                        prev_samp, prev_orn, env_en, env_t, env_p, pattern,
                     );
                 }
                 *ptr += 1;
@@ -713,8 +702,8 @@ fn call_lc283(
                 if lo_cmd != 0 {
                     let mut p2 = *ptr;
                     call_lc1d1(
-                        data, row, ch, cpat, lo_cmd, &mut p2, b6ix0, env_en, env_t, env_p, c_vol,
-                        pattern,
+                        data, row, ch, cpat, lo_cmd, &mut p2, b6ix0,
+                        env_en, env_t, env_p, c_vol, pattern,
                     );
                     *ptr = p2;
                 }
@@ -798,9 +787,7 @@ fn call_lc1d1(
             // Envelope (n >= 8 maps to envelope type)
             *env_en = true;
             let mut et = (n + 1) & 0x0F;
-            if et == 15 {
-                et = 7;
-            }
+            if et == 15 { et = 7; }
             *env_t = et;
             row_ch.envelope = et;
             if *prev_orn_ref_noop() != 255 {
@@ -874,13 +861,9 @@ fn call_lc2d9(
     env_p: &mut u8,
     pattern: &mut Pattern,
 ) {
-    if a == 0 {
-        return;
-    }
+    if a == 0 { return; }
     let orn = if orns[a] < 0 {
-        if *n_orns >= 15 {
-            return;
-        }
+        if *n_orns >= 15 { return; }
         *n_orns += 1;
         orns[a] = *n_orns as i32;
         *n_orns

@@ -18,14 +18,15 @@
 //! source change is a regression — investigate before merging.
 
 use serde::Deserialize;
-use vti_core::note_tables::PT3_VOL;
 use vti_core::note_tables::{
-    PT3_NOTE_TABLE_ASM, PT3_NOTE_TABLE_NATURAL, PT3_NOTE_TABLE_PT, PT3_NOTE_TABLE_REAL,
-    PT3_NOTE_TABLE_ST,
+    PT3_NOTE_TABLE_PT, PT3_NOTE_TABLE_ST, PT3_NOTE_TABLE_ASM,
+    PT3_NOTE_TABLE_REAL, PT3_NOTE_TABLE_NATURAL,
 };
-use vti_core::playback::{init_tracker_parameters, Engine, PlayVars};
+use vti_core::note_tables::PT3_VOL;
+use vti_core::playback::{Engine, PlayVars, init_tracker_parameters};
 use vti_core::{
-    AdditionalCommand, AyRegisters, ChannelLine, Module, Ornament, Pattern, Sample, SampleTick,
+    AdditionalCommand, AyRegisters, ChannelLine, Module, Ornament, Pattern,
+    Sample, SampleTick,
 };
 
 // ─── Fixture types ────────────────────────────────────────────────────────────
@@ -92,7 +93,8 @@ fn load_core_fixture(name: &str) -> String {
         env!("CARGO_MANIFEST_DIR"),
         name
     );
-    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("Cannot read fixture {}: {}", path, e))
+    std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("Cannot read fixture {}: {}", path, e))
 }
 
 /// Pascal result code → PlayResult:
@@ -106,7 +108,8 @@ fn pascal_result_is_pattern_end(result: i32) -> bool {
 #[test]
 fn pt3_vol_matches_pascal_baseline() {
     let raw = load_core_fixture("pt3_vol");
-    let fixture: PT3VolFixture = serde_json::from_str(&raw).expect("parse pt3_vol.json");
+    let fixture: PT3VolFixture =
+        serde_json::from_str(&raw).expect("parse pt3_vol.json");
 
     for (r, row) in fixture.table.iter().enumerate() {
         for (c, &expected) in row.iter().enumerate() {
@@ -126,23 +129,19 @@ fn pt3_vol_matches_pascal_baseline() {
 #[test]
 fn note_tables_match_pascal_baseline() {
     let raw = load_core_fixture("note_tables");
-    let fixture: NoteTablesFixture = serde_json::from_str(&raw).expect("parse note_tables.json");
+    let fixture: NoteTablesFixture =
+        serde_json::from_str(&raw).expect("parse note_tables.json");
 
     let tables: &[(&str, &[u16; 96], &Vec<u16>)] = &[
-        ("PT", &PT3_NOTE_TABLE_PT, &fixture.tables.pt),
-        ("ST", &PT3_NOTE_TABLE_ST, &fixture.tables.st),
-        ("ASM", &PT3_NOTE_TABLE_ASM, &fixture.tables.asm),
-        ("REAL", &PT3_NOTE_TABLE_REAL, &fixture.tables.real),
+        ("PT",      &PT3_NOTE_TABLE_PT,      &fixture.tables.pt),
+        ("ST",      &PT3_NOTE_TABLE_ST,      &fixture.tables.st),
+        ("ASM",     &PT3_NOTE_TABLE_ASM,     &fixture.tables.asm),
+        ("REAL",    &PT3_NOTE_TABLE_REAL,    &fixture.tables.real),
         ("NATURAL", &PT3_NOTE_TABLE_NATURAL, &fixture.tables.natural),
     ];
 
     for (name, rust_table, pascal_table) in tables {
-        assert_eq!(
-            rust_table.len(),
-            pascal_table.len(),
-            "table {} length",
-            name
-        );
+        assert_eq!(rust_table.len(), pascal_table.len(), "table {} length", name);
         for (i, (&got, &expected)) in rust_table.iter().zip(pascal_table.iter()).enumerate() {
             assert_eq!(
                 got, expected,
@@ -227,7 +226,8 @@ fn make_harness_module(with_envelope: bool) -> Module {
 
 fn run_pattern_play_baseline(fixture_name: &str, with_envelope: bool) {
     let raw = load_core_fixture(fixture_name);
-    let fixture: PatternPlayFixture = serde_json::from_str(&raw).expect("parse fixture");
+    let fixture: PatternPlayFixture =
+        serde_json::from_str(&raw).expect("parse fixture");
 
     let mut m = make_harness_module(with_envelope);
     let mut vars = PlayVars {
@@ -242,10 +242,7 @@ fn run_pattern_play_baseline(fixture_name: &str, with_envelope: bool) {
     for expected_tick in &fixture.ticks {
         let line_before = vars.current_line;
         let mut regs = AyRegisters::default();
-        let mut engine = Engine {
-            module: &mut m,
-            vars: &mut vars,
-        };
+        let mut engine = Engine { module: &mut m, vars: &mut vars };
         let result = engine.pattern_play_current_line(&mut regs);
 
         // Map PlayResult to Pascal integer:
@@ -254,14 +251,10 @@ fn run_pattern_play_baseline(fixture_name: &str, with_envelope: bool) {
         //   Updated without advance  = 0 (delay_counter still counting down)
         let got_result = match result {
             vti_core::playback::PlayResult::PatternEnd => 2,
-            vti_core::playback::PlayResult::ModuleLoop => 3,
-            vti_core::playback::PlayResult::Updated => {
+            vti_core::playback::PlayResult::ModuleLoop  => 3,
+            vti_core::playback::PlayResult::Updated     => {
                 // A line was advanced this tick when current_line increased.
-                if vars.current_line > line_before {
-                    1
-                } else {
-                    0
-                }
+                if vars.current_line > line_before { 1 } else { 0 }
             }
         };
 
@@ -291,31 +284,15 @@ fn run_pattern_play_baseline(fixture_name: &str, with_envelope: bool) {
 
         // ── AY register values ───────────────────────────────────────────────
         let e = &expected_tick.regs;
-        assert_eq!(regs.ton_a, e.ton_a, "tick {}: ton_a", expected_tick.tick);
-        assert_eq!(regs.ton_b, e.ton_b, "tick {}: ton_b", expected_tick.tick);
-        assert_eq!(regs.ton_c, e.ton_c, "tick {}: ton_c", expected_tick.tick);
-        assert_eq!(regs.noise, e.noise, "tick {}: noise", expected_tick.tick);
-        assert_eq!(regs.mixer, e.mixer, "tick {}: mixer", expected_tick.tick);
-        assert_eq!(
-            regs.amplitude_a, e.ampl_a,
-            "tick {}: amplitude_a",
-            expected_tick.tick
-        );
-        assert_eq!(
-            regs.amplitude_b, e.ampl_b,
-            "tick {}: amplitude_b",
-            expected_tick.tick
-        );
-        assert_eq!(
-            regs.amplitude_c, e.ampl_c,
-            "tick {}: amplitude_c",
-            expected_tick.tick
-        );
-        assert_eq!(
-            regs.envelope, e.envelope,
-            "tick {}: envelope",
-            expected_tick.tick
-        );
+        assert_eq!(regs.ton_a,       e.ton_a,  "tick {}: ton_a",       expected_tick.tick);
+        assert_eq!(regs.ton_b,       e.ton_b,  "tick {}: ton_b",       expected_tick.tick);
+        assert_eq!(regs.ton_c,       e.ton_c,  "tick {}: ton_c",       expected_tick.tick);
+        assert_eq!(regs.noise,       e.noise,  "tick {}: noise",       expected_tick.tick);
+        assert_eq!(regs.mixer,       e.mixer,  "tick {}: mixer",       expected_tick.tick);
+        assert_eq!(regs.amplitude_a, e.ampl_a, "tick {}: amplitude_a", expected_tick.tick);
+        assert_eq!(regs.amplitude_b, e.ampl_b, "tick {}: amplitude_b", expected_tick.tick);
+        assert_eq!(regs.amplitude_c, e.ampl_c, "tick {}: amplitude_c", expected_tick.tick);
+        assert_eq!(regs.envelope,    e.envelope, "tick {}: envelope",  expected_tick.tick);
 
         // ── Playback state ───────────────────────────────────────────────────
         assert_eq!(
@@ -361,13 +338,13 @@ fn make_harness_arpeggio_module() -> Module {
 
     // IsChans: all globals true, default sample/volume
     for ch in 0..3 {
-        m.is_chans[ch].global_ton = true;
-        m.is_chans[ch].global_noise = true;
+        m.is_chans[ch].global_ton      = true;
+        m.is_chans[ch].global_noise    = true;
         m.is_chans[ch].global_envelope = true;
         m.is_chans[ch].envelope_enabled = false;
-        m.is_chans[ch].ornament = 0;
-        m.is_chans[ch].sample = 1;
-        m.is_chans[ch].volume = 15;
+        m.is_chans[ch].ornament        = 0;
+        m.is_chans[ch].sample          = 1;
+        m.is_chans[ch].volume          = 15;
     }
 
     // Ornament 0: single step, zero offset  (already in Module::default())
@@ -445,10 +422,7 @@ fn make_harness_arpeggio_module() -> Module {
     }
 
     let make_chan = |note: i8, sample: u8, ornament: u8, volume: u8| ChannelLine {
-        note,
-        sample,
-        ornament,
-        volume,
+        note, sample, ornament, volume,
         envelope: 0,
         additional_command: AdditionalCommand::default(),
     };
@@ -456,7 +430,7 @@ fn make_harness_arpeggio_module() -> Module {
     // Row 0: C major (I)
     pat.items[0].channel[0] = make_chan(48, 1, 1, 15);
     pat.items[0].channel[1] = make_chan(24, 2, 1, 12);
-    pat.items[0].channel[2] = make_chan(0, 3, 0, 15);
+    pat.items[0].channel[2] = make_chan( 0, 3, 0, 15);
 
     // Row 4: G major (V)
     pat.items[4].channel[0] = make_chan(43, 1, 1, 15);
@@ -465,7 +439,7 @@ fn make_harness_arpeggio_module() -> Module {
     // Row 8: A minor (vi)
     pat.items[8].channel[0] = make_chan(45, 1, 2, 15);
     pat.items[8].channel[1] = make_chan(33, 2, 2, 12);
-    pat.items[8].channel[2] = make_chan(0, 3, 0, 15);
+    pat.items[8].channel[2] = make_chan( 0, 3, 0, 15);
 
     // Row 12: F major (IV)
     pat.items[12].channel[0] = make_chan(41, 1, 1, 15);
@@ -503,21 +477,14 @@ fn pattern_play_arpeggio_matches_pascal_baseline() {
     for expected_tick in &fixture.ticks {
         let line_before = vars.current_line;
         let mut regs = AyRegisters::default();
-        let mut engine = Engine {
-            module: &mut m,
-            vars: &mut vars,
-        };
+        let mut engine = Engine { module: &mut m, vars: &mut vars };
         let result = engine.pattern_play_current_line(&mut regs);
 
         let got_result = match result {
             vti_core::playback::PlayResult::PatternEnd => 2,
-            vti_core::playback::PlayResult::ModuleLoop => 3,
-            vti_core::playback::PlayResult::Updated => {
-                if vars.current_line > line_before {
-                    1
-                } else {
-                    0
-                }
+            vti_core::playback::PlayResult::ModuleLoop  => 3,
+            vti_core::playback::PlayResult::Updated     => {
+                if vars.current_line > line_before { 1 } else { 0 }
             }
         };
 
@@ -528,56 +495,28 @@ fn pattern_play_arpeggio_matches_pascal_baseline() {
         );
 
         if pascal_result_is_pattern_end(expected_tick.result) {
-            assert_eq!(
-                vars.current_line, expected_tick.current_line,
-                "tick {}: current_line on PatternEnd",
-                expected_tick.tick
-            );
-            assert_eq!(
-                vars.delay_counter, expected_tick.delay_counter,
-                "tick {}: delay_counter on PatternEnd",
-                expected_tick.tick
-            );
+            assert_eq!(vars.current_line, expected_tick.current_line,
+                "tick {}: current_line on PatternEnd", expected_tick.tick);
+            assert_eq!(vars.delay_counter, expected_tick.delay_counter,
+                "tick {}: delay_counter on PatternEnd", expected_tick.tick);
             continue;
         }
 
         let e = &expected_tick.regs;
-        assert_eq!(regs.ton_a, e.ton_a, "tick {}: ton_a", expected_tick.tick);
-        assert_eq!(regs.ton_b, e.ton_b, "tick {}: ton_b", expected_tick.tick);
-        assert_eq!(regs.ton_c, e.ton_c, "tick {}: ton_c", expected_tick.tick);
-        assert_eq!(regs.noise, e.noise, "tick {}: noise", expected_tick.tick);
-        assert_eq!(regs.mixer, e.mixer, "tick {}: mixer", expected_tick.tick);
-        assert_eq!(
-            regs.amplitude_a, e.ampl_a,
-            "tick {}: amplitude_a",
-            expected_tick.tick
-        );
-        assert_eq!(
-            regs.amplitude_b, e.ampl_b,
-            "tick {}: amplitude_b",
-            expected_tick.tick
-        );
-        assert_eq!(
-            regs.amplitude_c, e.ampl_c,
-            "tick {}: amplitude_c",
-            expected_tick.tick
-        );
-        assert_eq!(
-            regs.envelope, e.envelope,
-            "tick {}: envelope",
-            expected_tick.tick
-        );
+        assert_eq!(regs.ton_a,       e.ton_a,  "tick {}: ton_a",       expected_tick.tick);
+        assert_eq!(regs.ton_b,       e.ton_b,  "tick {}: ton_b",       expected_tick.tick);
+        assert_eq!(regs.ton_c,       e.ton_c,  "tick {}: ton_c",       expected_tick.tick);
+        assert_eq!(regs.noise,       e.noise,  "tick {}: noise",       expected_tick.tick);
+        assert_eq!(regs.mixer,       e.mixer,  "tick {}: mixer",       expected_tick.tick);
+        assert_eq!(regs.amplitude_a, e.ampl_a, "tick {}: amplitude_a", expected_tick.tick);
+        assert_eq!(regs.amplitude_b, e.ampl_b, "tick {}: amplitude_b", expected_tick.tick);
+        assert_eq!(regs.amplitude_c, e.ampl_c, "tick {}: amplitude_c", expected_tick.tick);
+        assert_eq!(regs.envelope,    e.envelope, "tick {}: envelope",  expected_tick.tick);
 
-        assert_eq!(
-            vars.current_line, expected_tick.current_line,
-            "tick {}: current_line",
-            expected_tick.tick
-        );
-        assert_eq!(
-            vars.delay_counter, expected_tick.delay_counter,
-            "tick {}: delay_counter",
-            expected_tick.tick
-        );
+        assert_eq!(vars.current_line, expected_tick.current_line,
+            "tick {}: current_line", expected_tick.tick);
+        assert_eq!(vars.delay_counter, expected_tick.delay_counter,
+            "tick {}: delay_counter", expected_tick.tick);
     }
 }
 
@@ -658,12 +597,11 @@ fn make_song_timing_module() -> Module {
 /// `get_time_params` match the Pascal baseline.
 #[test]
 fn song_timing_matches_pascal_baseline() {
-    use vti_core::playback::{
-        get_module_time, get_position_time, get_position_time_ex, get_time_params,
-    };
+    use vti_core::playback::{get_module_time, get_position_time, get_position_time_ex, get_time_params};
 
     let raw = load_core_fixture("song_timing");
-    let fixture: SongTimingFixture = serde_json::from_str(&raw).expect("parse song_timing.json");
+    let fixture: SongTimingFixture =
+        serde_json::from_str(&raw).expect("parse song_timing.json");
 
     let m = make_song_timing_module();
 
@@ -722,8 +660,7 @@ fn song_timing_matches_pascal_baseline() {
             assert!(
                 got.is_none(),
                 "get_time_params({}): expected None, got {:?}",
-                case.time,
-                got
+                case.time, got
             );
         }
     }

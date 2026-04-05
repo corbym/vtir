@@ -80,14 +80,14 @@ fn samp(i: u8) -> char {
 /// Pascal `NoteToStr`.
 fn note_str(note: i8) -> &'static str {
     const NAMES: [&str; 96] = [
-        "C-1", "C#1", "D-1", "D#1", "E-1", "F-1", "F#1", "G-1", "G#1", "A-1", "A#1", "B-1", "C-2",
-        "C#2", "D-2", "D#2", "E-2", "F-2", "F#2", "G-2", "G#2", "A-2", "A#2", "B-2", "C-3", "C#3",
-        "D-3", "D#3", "E-3", "F-3", "F#3", "G-3", "G#3", "A-3", "A#3", "B-3", "C-4", "C#4", "D-4",
-        "D#4", "E-4", "F-4", "F#4", "G-4", "G#4", "A-4", "A#4", "B-4", "C-5", "C#5", "D-5", "D#5",
-        "E-5", "F-5", "F#5", "G-5", "G#5", "A-5", "A#5", "B-5", "C-6", "C#6", "D-6", "D#6", "E-6",
-        "F-6", "F#6", "G-6", "G#6", "A-6", "A#6", "B-6", "C-7", "C#7", "D-7", "D#7", "E-7", "F-7",
-        "F#7", "G-7", "G#7", "A-7", "A#7", "B-7", "C-8", "C#8", "D-8", "D#8", "E-8", "F-8", "F#8",
-        "G-8", "G#8", "A-8", "A#8", "B-8",
+        "C-1", "C#1", "D-1", "D#1", "E-1", "F-1", "F#1", "G-1", "G#1", "A-1", "A#1", "B-1",
+        "C-2", "C#2", "D-2", "D#2", "E-2", "F-2", "F#2", "G-2", "G#2", "A-2", "A#2", "B-2",
+        "C-3", "C#3", "D-3", "D#3", "E-3", "F-3", "F#3", "G-3", "G#3", "A-3", "A#3", "B-3",
+        "C-4", "C#4", "D-4", "D#4", "E-4", "F-4", "F#4", "G-4", "G#4", "A-4", "A#4", "B-4",
+        "C-5", "C#5", "D-5", "D#5", "E-5", "F-5", "F#5", "G-5", "G#5", "A-5", "A#5", "B-5",
+        "C-6", "C#6", "D-6", "D#6", "E-6", "F-6", "F#6", "G-6", "G#6", "A-6", "A#6", "B-6",
+        "C-7", "C#7", "D-7", "D#7", "E-7", "F-7", "F#7", "G-7", "G#7", "A-7", "A#7", "B-7",
+        "C-8", "C#8", "D-8", "D#8", "E-8", "F-8", "F#8", "G-8", "G#8", "A-8", "A#8", "B-8",
     ];
     if note == NOTE_SOUND_OFF {
         return "R--";
@@ -116,11 +116,7 @@ fn write_sample_tick(tick: &SampleTick) -> String {
     } else {
         format!("-{:02X}", tick.add_to_envelope_or_noise.unsigned_abs())
     };
-    let env_acc = if tick.envelope_or_noise_accumulation {
-        '^'
-    } else {
-        '_'
-    };
+    let env_acc = if tick.envelope_or_noise_accumulation { '^' } else { '_' };
 
     let amp = format!("{:X}", tick.amplitude & 0x0F);
     let slide = if !tick.amplitude_sliding {
@@ -131,10 +127,7 @@ fn write_sample_tick(tick: &SampleTick) -> String {
         '-'
     };
 
-    format!(
-        "{}{}{} {}{} {}{} {}{}",
-        t, n, e, ton, ton_acc, env, env_acc, amp, slide
-    )
+    format!("{}{}{} {}{} {}{} {}{}", t, n, e, ton, ton_acc, env, env_acc, amp, slide)
 }
 
 /// Serialise one pattern row (Pascal `GetPatternLineString` minus the "XX|" prefix,
@@ -171,11 +164,7 @@ pub fn write(module: &Module) -> String {
     let mut out = String::new();
 
     out.push_str("[Module]\n");
-    out.push_str(if module.vortex_module_header {
-        "VortexTrackerII=1\n"
-    } else {
-        "VortexTrackerII=0\n"
-    });
+    out.push_str(if module.vortex_module_header { "VortexTrackerII=1\n" } else { "VortexTrackerII=0\n" });
     let ver = match module.features_level {
         FeaturesLevel::Pt35 => "3.5",
         FeaturesLevel::Vt2 => "3.6",
@@ -263,11 +252,7 @@ pub fn write(module: &Module) -> String {
 fn sget_number(s: &str, max: u16) -> Option<u16> {
     let mut res: u32 = 0;
     for ch in s.chars() {
-        let ch = if ch == '.' {
-            '0'
-        } else {
-            ch.to_ascii_uppercase()
-        };
+        let ch = if ch == '.' { '0' } else { ch.to_ascii_uppercase() };
         let digit = match ch {
             '0'..='9' => ch as u32 - '0' as u32,
             'A'..='V' => ch as u32 - 'A' as u32 + 10,
@@ -294,13 +279,7 @@ fn parse_note(s: &str) -> Option<i8> {
         return None;
     }
     let bytes = s.as_bytes();
-    let d = if bytes[1] == b'#' {
-        1i8
-    } else if bytes[1] == b'-' {
-        0
-    } else {
-        return None;
-    };
+    let d = if bytes[1] == b'#' { 1i8 } else if bytes[1] == b'-' { 0 } else { return None };
     let octave = (bytes[2] as i8) - b'1' as i8;
     if !(0..=7).contains(&octave) {
         return None;
@@ -426,17 +405,9 @@ fn parse_sample_tick(s: &str) -> Result<SampleTick> {
     }
     if i < len {
         match bytes[i] {
-            b'+' => {
-                tick.amplitude_sliding = true;
-                tick.amplitude_slide_up = true;
-            }
-            b'-' => {
-                tick.amplitude_sliding = true;
-                tick.amplitude_slide_up = false;
-            }
-            _ => {
-                tick.amplitude_sliding = false;
-            }
+            b'+' => { tick.amplitude_sliding = true; tick.amplitude_slide_up = true; }
+            b'-' => { tick.amplitude_sliding = true; tick.amplitude_slide_up = false; }
+            _ => { tick.amplitude_sliding = false; }
         }
     }
 
@@ -468,12 +439,8 @@ fn parse_ornament_line(s: &str) -> Result<Ornament> {
 
         // Read a signed integer
         let mut neg = false;
-        if c == '+' {
-            chars.next();
-        } else if c == '-' {
-            neg = true;
-            chars.next();
-        }
+        if c == '+' { chars.next(); }
+        else if c == '-' { neg = true; chars.next(); }
 
         let mut digits = String::new();
         while let Some(&d) = chars.peek() {
@@ -484,22 +451,13 @@ fn parse_ornament_line(s: &str) -> Result<Ornament> {
                 break;
             }
         }
-        if digits.is_empty() {
-            break;
-        }
-        let val: i8 = digits
-            .parse::<i8>()
+        if digits.is_empty() { break; }
+        let val: i8 = digits.parse::<i8>()
             .with_context(|| format!("ornament value {:?}", digits))?;
         ensure!(length < MAX_ORN_LEN, "ornament too long");
-        orn.items[length] = if neg {
-            val.checked_neg().unwrap_or(i8::MIN)
-        } else {
-            val
-        };
+        orn.items[length] = if neg { val.checked_neg().unwrap_or(i8::MIN) } else { val };
         length += 1;
-        if length >= MAX_ORN_LEN {
-            break;
-        }
+        if length >= MAX_ORN_LEN { break; }
     }
 
     ensure!(length > 0, "empty ornament");
@@ -514,12 +472,7 @@ fn parse_pattern_row(s: &str) -> Result<PatternRow> {
 
     // The line must be exactly 48 or 49 chars long.
     // After SavePattern strips the "XX|" prefix, the line has 49 chars.
-    ensure!(
-        s.len() >= 48,
-        "pattern row too short ({}): {:?}",
-        s.len(),
-        s
-    );
+    ensure!(s.len() >= 48, "pattern row too short ({}): {:?}", s.len(), s);
 
     // Columns are 1-indexed in Pascal; here we use 0-indexed.
     // ENV: chars 0-3 (4 chars)
@@ -585,18 +538,15 @@ fn parse_pattern_row(s: &str) -> Result<PatternRow> {
         }
         // cmd_number (base+9)
         if base + 9 < s.len() {
-            ch.additional_command.number =
-                sget_number(&s[base + 9..base + 10], 15).unwrap_or(0) as u8;
+            ch.additional_command.number = sget_number(&s[base + 9..base + 10], 15).unwrap_or(0) as u8;
         }
         // cmd_delay (base+10)
         if base + 10 < s.len() {
-            ch.additional_command.delay =
-                sget_number(&s[base + 10..base + 11], 15).unwrap_or(0) as u8;
+            ch.additional_command.delay = sget_number(&s[base + 10..base + 11], 15).unwrap_or(0) as u8;
         }
         // cmd_param (base+11..base+12)
         if base + 13 <= s.len() {
-            ch.additional_command.parameter =
-                sget_number(&s[base + 11..base + 13], 255).unwrap_or(0) as u8;
+            ch.additional_command.parameter = sget_number(&s[base + 11..base + 13], 255).unwrap_or(0) as u8;
         }
     }
 
@@ -693,8 +643,7 @@ pub fn parse(text: &str) -> Result<Module> {
             if let Ok(idx) = idx_str.trim().parse::<usize>() {
                 if (1..=15).contains(&idx) {
                     // The ornament data is all on one line (non-empty lines)
-                    let data: Vec<&str> = section_lines
-                        .iter()
+                    let data: Vec<&str> = section_lines.iter()
                         .map(|l| l.trim())
                         .filter(|l| !l.is_empty())
                         .collect();
@@ -911,34 +860,9 @@ mod tests {
             envelope: 0x1234,
             noise: 5,
             channel: [
-                ChannelLine {
-                    note: 36,
-                    sample: 1,
-                    ornament: 2,
-                    volume: 15,
-                    envelope: 0,
-                    additional_command: AdditionalCommand::default(),
-                },
-                ChannelLine {
-                    note: NOTE_NONE,
-                    sample: 0,
-                    ornament: 0,
-                    volume: 0,
-                    envelope: 0,
-                    additional_command: AdditionalCommand::default(),
-                },
-                ChannelLine {
-                    note: NOTE_SOUND_OFF,
-                    sample: 3,
-                    ornament: 0,
-                    volume: 0,
-                    envelope: 0,
-                    additional_command: AdditionalCommand {
-                        number: 1,
-                        delay: 2,
-                        parameter: 15,
-                    },
-                },
+                ChannelLine { note: 36, sample: 1, ornament: 2, volume: 15, envelope: 0, additional_command: AdditionalCommand::default() },
+                ChannelLine { note: NOTE_NONE, sample: 0, ornament: 0, volume: 0, envelope: 0, additional_command: AdditionalCommand::default() },
+                ChannelLine { note: NOTE_SOUND_OFF, sample: 3, ornament: 0, volume: 0, envelope: 0, additional_command: AdditionalCommand { number: 1, delay: 2, parameter: 15 } },
             ],
         };
         let s = write_pattern_row(&row);
