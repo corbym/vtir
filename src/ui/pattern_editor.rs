@@ -617,7 +617,7 @@ impl PatternEditor {
                     // It is intentionally invisible: no frame, no width.
                     #[cfg(target_arch = "wasm32")]
                     ui.scope(|ui| {
-                        let mut style = (*ui.style()).clone();
+                        let mut style = ui.style().as_ref().clone();
                         style.visuals.text_cursor.stroke.color = egui::Color32::TRANSPARENT;
                         ui.set_style(style);
                         ui.add(
