@@ -9,7 +9,7 @@
  *     canvas-rendered egui widgets; the JS layer treats them identically)
  *
  * The scenario under test for each component is:
- *   1. User taps the component  →  input.focus() is called (keyboard appears).
+ *   1. User taps an editable component  →  input.focus() is called (keyboard appears).
  *   2. eframe immediately calls canvas.focus() to reclaim focus (would dismiss
  *      the keyboard)  →  the patch blocks it during the keep window.
  *   3. After keepMs the patch expires  →  canvas.focus() works again.
@@ -48,9 +48,9 @@ function makeDOM() {
 // ── attach() — core focus-fix behaviour ──────────────────────────────────────
 
 describe('attach() — note cell tap', () => {
-    test('tapping the canvas focuses the text-agent (keyboard appears)', () => {
+    test('tapping the canvas can focus the text-agent when focusOnTouch is enabled', () => {
         const { canvas, input } = makeDOM();
-        attach(input, canvas, { keepMs: 100 });
+        attach(input, canvas, { keepMs: 100, focusOnTouch: true });
 
         fireTouchEnd(canvas);
 
@@ -59,7 +59,7 @@ describe('attach() — note cell tap', () => {
 
     test('canvas.focus() is a no-op during the keep window (keyboard stays open)', () => {
         const { canvas, input } = makeDOM();
-        attach(input, canvas, { keepMs: 100 });
+        attach(input, canvas, { keepMs: 100, focusOnTouch: true });
 
         fireTouchEnd(canvas);       // input is now focused; keep window opens
         canvas.focus();             // eframe calls this — must be blocked
@@ -71,7 +71,7 @@ describe('attach() — note cell tap', () => {
     test('canvas.focus() works again after keepMs expires', () => {
         jest.useFakeTimers();
         const { canvas, input } = makeDOM();
-        attach(input, canvas, { keepMs: 100 });
+        attach(input, canvas, { keepMs: 100, focusOnTouch: true });
 
         fireTouchEnd(canvas);
         jest.advanceTimersByTime(101);   // keep window closed
@@ -90,7 +90,7 @@ describe('attach() — Step DragValue tap', () => {
 
     test('tapping the canvas for the Step component focuses the text-agent', () => {
         const { canvas, input } = makeDOM();
-        attach(input, canvas, { keepMs: 100 });
+        attach(input, canvas, { keepMs: 100, focusOnTouch: true });
 
         fireTouchEnd(canvas);
 
@@ -99,7 +99,7 @@ describe('attach() — Step DragValue tap', () => {
 
     test('canvas.focus() cannot dismiss the keyboard immediately after a Step tap', () => {
         const { canvas, input } = makeDOM();
-        attach(input, canvas, { keepMs: 100 });
+        attach(input, canvas, { keepMs: 100, focusOnTouch: true });
 
         fireTouchEnd(canvas);
         canvas.focus();   // eframe reclaim attempt — must be blocked
@@ -110,7 +110,7 @@ describe('attach() — Step DragValue tap', () => {
     test('keyboard can be closed (canvas.focus restored) after keepMs', () => {
         jest.useFakeTimers();
         const { canvas, input } = makeDOM();
-        attach(input, canvas, { keepMs: 100 });
+        attach(input, canvas, { keepMs: 100, focusOnTouch: true });
 
         fireTouchEnd(canvas);
         jest.advanceTimersByTime(101);
@@ -140,7 +140,7 @@ describe('regression — keyboard appears then immediately disappears', () => {
 
     test('WITH the patch canvas.focus() is blocked and input stays focused', () => {
         const { canvas, input } = makeDOM();
-        attach(input, canvas, { keepMs: 100 });
+        attach(input, canvas, { keepMs: 100, focusOnTouch: true });
 
         fireTouchEnd(canvas);  // opens keep window + focuses input
         canvas.focus();        // eframe reclaim — blocked by fix
@@ -160,7 +160,7 @@ describe('init() — canvas lookup is deferred until text-agent is inserted', ()
         document.body.innerHTML = '';   // empty DOM — no canvas yet
 
         // Call init() before the canvas is present (matches the script tag).
-        init(document.body, 'the_canvas_id', { keepMs: 100 });
+        init(document.body, 'the_canvas_id', { keepMs: 100, focusOnTouch: true });
 
         // Now add the canvas (browser parses the rest of <body>).
         const canvas = document.createElement('canvas');
@@ -182,9 +182,30 @@ describe('init() — canvas lookup is deferred until text-agent is inserted', ()
 
     test('works when the text-agent already exists at init() call time', () => {
         const { body, canvas, input } = makeDOM();
-        init(body, 'the_canvas_id', { keepMs: 100 });
+        init(body, 'the_canvas_id', { keepMs: 100, focusOnTouch: true });
 
         fireTouchEnd(canvas);
+
+        expect(document.activeElement).toBe(input);
+    });
+});
+
+describe('attach() — default mode (no global keyboard popup)', () => {
+    test('tapping canvas does not focus input by default', () => {
+        const { canvas, input } = makeDOM();
+        attach(input, canvas, { keepMs: 100 });
+
+        fireTouchEnd(canvas);
+
+        expect(document.activeElement).not.toBe(input);
+    });
+
+    test('focusing input still opens keep window and blocks immediate canvas reclaim', () => {
+        const { canvas, input } = makeDOM();
+        attach(input, canvas, { keepMs: 100 });
+
+        input.focus();
+        canvas.focus();
 
         expect(document.activeElement).toBe(input);
     });

@@ -40,12 +40,18 @@
  * @param {HTMLInputElement}  input   eframe's hidden text-agent <input>
  * @param {HTMLCanvasElement} canvas  the egui canvas element
  * @param {Object}  [options]
- * @param {number}  [options.keepMs=500]  ms to block canvas.focus() after touch
+ * @param {number}  [options.keepMs=500]  ms to block canvas.focus() after text-agent focus
+ * @param {boolean} [options.focusOnTouch=false] call input.focus() on canvas touchend
  */
 function attach(input, canvas, options) {
-    var keepMs = (options && options.keepMs != null) ? options.keepMs : 500;
-    var keep   = false;
-    var timer  = null;
+    var keepMs       = (options && options.keepMs != null) ? options.keepMs : 500;
+    var focusOnTouch = !!(options && options.focusOnTouch);
+    var keep         = false;
+    var timer        = null;
+
+    // Ensure the hidden text-agent stays visually hidden even when focused.
+    input.style.caretColor = 'transparent';
+    input.style.color = 'transparent';
 
     /* Patch canvas.focus() to a no-op while keep=true.
      * eframe calls canvas.focus() from handle_platform_output when ime=None.
@@ -56,12 +62,23 @@ function attach(input, canvas, options) {
         if (!keep) { _origFocus(); }
     };
 
-    canvas.addEventListener('touchend', function () {
+    function openKeepWindow() {
         keep = true;
         clearTimeout(timer);
-        input.focus();
         timer = setTimeout(function () { keep = false; }, keepMs);
-    }, { passive: true });
+    }
+
+    // Any successful focus transfer to the text-agent opens the keep window.
+    // This avoids forcing keyboard popups from arbitrary canvas taps.
+    input.addEventListener('focus', openKeepWindow);
+
+    // Optional compatibility mode: explicitly focus the text-agent on touch.
+    // Runtime keeps this disabled so keyboard opens only from editable widgets.
+    if (focusOnTouch) {
+        canvas.addEventListener('touchend', function () {
+            input.focus();
+        }, { passive: true });
+    }
 }
 
 /**
