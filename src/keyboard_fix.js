@@ -56,10 +56,10 @@ function attach(input, canvas, options) {
     input.style.top = '0';
     input.style.left = '-10000px';
     input.style.right = 'auto';
-    input.style.width = '0';
-    input.style.height = '0';
-    input.style.maxWidth = '0';
-    input.style.maxHeight = '0';
+    input.style.width = '0px';
+    input.style.height = '0px';
+    input.style.maxWidth = '0px';
+    input.style.maxHeight = '0px';
     input.style.overflow = 'hidden';
     input.style.clip = 'rect(0 0 0 0)';
     input.style.clipPath = 'inset(50%)';
