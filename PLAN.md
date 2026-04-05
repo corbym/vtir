@@ -372,6 +372,42 @@
 - [ ] Chip type (AY / YM)
 - [ ] FIR filter on/off
 
+### 5.9 Custom On-Screen Keyboard for Mobile Web — `ui/mobile_keyboard.rs` (WASM only)
+
+> **Status: OUT OF SCOPE for this PR — planned as a near-term follow-up.**
+>
+> There is no Pascal/Delphi equivalent for this feature (the original VT2 was a desktop-only
+> application with no WASM target), so the Pascal-baseline approval-test requirement does not
+> apply here.  The feature is new, WASM-specific, and fully within the Rust/egui layer.
+
+**Goal:** replace the OS virtual keyboard (QWERTY) with a tracker-aware panel anchored to the
+bottom of the screen whenever a pattern-editor cell is focused on a touch device.  This removes
+the mismatch between what the OS keyboard offers (letters, numbers) and what the tracker needs
+(note names, hex digits, special commands).
+
+**Proposed design:**
+
+- Suppress the OS keyboard by setting `inputmode="none"` on the eframe text-agent `<input>` via
+  `web-sys` / JavaScript interop, so the browser never shows QWERTY.
+- Render an `egui::Window` (or bottom panel) that appears when a cell is focused and hides when
+  focus is cleared.  The panel is `wasm32`-only (`#[cfg(target_arch = "wasm32")]`).
+- **Note cell mode** (field = `Note`): show a one-octave chromatic keyboard:
+  `C  C#  D  D#  E  F  F#  G  G#  A  A#  B`, plus octave-up/down buttons, note-off (`---`), and
+  clear (`K`).  Tapping a key calls the existing `compute_note` / `note_key_result` logic directly
+  (no synthetic `Event::Key` needed).
+- **Hex cell mode** (fields = Sample, Ornament, Volume, Envelope, Effect): show a 4×4 hex pad
+  `0–9 A–F` plus clear.  Calls `hex_digit_entry` directly.
+- **Step / DragValue mode**: the OS numeric keyboard is appropriate here; do not suppress it.
+- Entry logic lives in `vti-core/src/editor.rs` (already UI-free) so the on-screen buttons reuse
+  exactly the same path as hardware key presses — no duplication.
+
+**Acceptance criteria (to be confirmed when implemented):**
+- [ ] Tapping a note cell shows the custom panel; OS QWERTY does not appear.
+- [ ] Tapping a note button writes the correct note to the cell and advances the cursor by `step`.
+- [ ] Tapping the Step DragValue still shows the OS numeric keyboard.
+- [ ] The panel is absent on non-WASM (desktop native) builds.
+- [ ] Covered by Jest tests (panel visibility toggle) and Rust unit tests (button → note mapping).
+
 ### 5.8 CLI Diagnostics Tool (`src/bin/vti-cli.rs`)
 - [x] Terminal tracker viewer with keyboard navigation (rows/channels/positions)
 - [x] Headless harness mode (`--ticks N`) for deterministic parser/playback/synth diagnostics

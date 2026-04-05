@@ -52,6 +52,7 @@ This project is a **port**, not a rewrite. The goal is to replicate the behaviou
 ### Keep the Build Green
 
 - `cargo build` and `cargo test` must pass on every commit.
+- `npm test` must also pass if any `src/*.js` file has been added or changed.
 - Never push (or leave staged) code that breaks compilation or causes test failures.
 - If a change requires touching multiple crates, keep them all compiling throughout the edit.
 - CI runs on all branches and pull requests — a red build blocks everything.
@@ -180,6 +181,31 @@ On the WASM target, the browser's native file dialogs (`rfd`) are not available.
 
 These two modules are compiled in only for `cfg(target_arch = "wasm32")`.  Native code continues to use `rfd` directly.
 
+### WASM JavaScript layer — testing rules
+
+Any new WASM-specific JavaScript functionality **must** have Jest tests in `src/keyboard_fix.test.js`
+(or a new `src/*.test.js` file if the feature is distinct).
+
+**Rules for Jest tests:**
+
+- **Behaviour only, not values.** Test that the keyboard appears (input is `activeElement`),
+  that canvas.focus() is blocked, that focus is restored — not what the user typed or any
+  field contents.
+- **One test per distinct component type.** A "note cell" and a "Step DragValue" are two
+  distinct types even though both fire `touchend` on the same canvas.  Do not write a separate
+  test for every individual note cell, every DragValue, etc.  Before adding a new test, check
+  whether an existing test already covers the same interaction type.
+- **Light touch.** Each scenario is: tap → keyboard appears → eframe tries to dismiss →
+  blocked → (optionally) keep window expires → keyboard can close.  Nothing more.
+- Tests live in `src/*.test.js` and are run via `npm test` (Jest + jsdom).
+- `npm test` is part of CI (`build.yml` job `test-js`) and must stay green on every commit.
+- **jsdom canvas focus:** `<canvas>` elements are not focusable in jsdom by default.
+  Always set `tabIndex=0` (or `canvas.tabIndex = 0`) on canvas elements in test DOM setup,
+  otherwise `canvas.focus()` is a silent no-op and assertions about `activeElement` will be wrong.
+- **MutationObserver tests:** use `async/await` + `await Promise.resolve()` to yield to the
+  microtask queue.  Do **not** use the `done` callback pattern with `setTimeout` — errors
+  thrown inside `setTimeout` are not caught by Jest and cause a timeout instead of a failure.
+
 ### Error dialog
 
 `VortexTrackerApp` has an `error_dialog: Option<String>` field. When set to `Some(message)`, the `update()` loop renders a modal `egui::Window` with that message. Use this for all load/parse failures — it matches the Delphi `MessageBox(MB_ICONEXCLAMATION)` pattern from the original.
@@ -241,7 +267,8 @@ Before starting any new task:
 4. [ ] If porting a Pascal function that produces computed output, **add a Pascal baseline fixture** first (see §Pascal Approval Tests above).
 5. [ ] Implement the minimum code to make the test pass.
 6. [ ] Run `cargo test -p vti-core -p vti-ay -p vti-audio` — all tests must be green.
-7. [ ] Run `cargo build` — must compile cleanly.
+7. [ ] If you added or changed WASM JS (`src/*.js`): run `npm test` — all Jest tests must be green.
+8. [ ] Run `cargo build` — must compile cleanly.
 8. [ ] Commit only green, passing code.
 9. [ ] Update `PLAN.md` to tick off completed items and add any new ones discovered.
 10. [ ] Update `README.md` "What works today" / "Still in progress" sections to match `PLAN.md`.
