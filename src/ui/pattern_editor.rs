@@ -63,9 +63,16 @@ impl PatternEditor {
                 self.current_pattern = p;
                 self.cursor.row = 0;
             }
-            ui.label(format!("Octave: {}", self.octave));
-            if ui.small_button("+").clicked() && self.octave < 8 { self.octave += 1; }
-            if ui.small_button("-").clicked() && self.octave > 1 { self.octave -= 1; }
+            ui.label("Octave:");
+            for oct in 1u8..=8 {
+                let is_active = self.octave == oct;
+                let btn = egui::Button::new(oct.to_string())
+                    .selected(is_active)
+                    .small();
+                if ui.add(btn).clicked() {
+                    self.octave = oct;
+                }
+            }
         });
 
         if module.patterns[pat_idx].is_none() {
@@ -199,13 +206,27 @@ impl PatternEditor {
             });
 
         // ── Keyboard input (TODO: full note entry — PLAN.md §5) ──────────
-        ui.input(|i| {
+        // Alt+1..8: direct octave selection, mirroring Pascal OctaveActionExecute (SCA_Octave1..8).
+        const OCTAVE_DIGIT_KEYS: [egui::Key; 8] = [
+            egui::Key::Num1, egui::Key::Num2, egui::Key::Num3, egui::Key::Num4,
+            egui::Key::Num5, egui::Key::Num6, egui::Key::Num7, egui::Key::Num8,
+        ];
+        let new_octave = ui.input(|i| {
             if i.key_pressed(egui::Key::ArrowDown) && self.cursor.row + 1 < pat_len {
                 self.cursor.row += 1;
             }
             if i.key_pressed(egui::Key::ArrowUp) && self.cursor.row > 0 {
                 self.cursor.row -= 1;
             }
+            for (idx, key) in OCTAVE_DIGIT_KEYS.iter().enumerate() {
+                if i.modifiers.alt && i.key_pressed(*key) {
+                    return Some(idx as u8 + 1);
+                }
+            }
+            None
         });
+        if let Some(oct) = new_octave {
+            self.octave = oct;
+        }
     }
 }
