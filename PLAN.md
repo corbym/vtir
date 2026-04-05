@@ -328,8 +328,13 @@
 - [x] Colour-coded cells (note off = red, empty = dark grey)
 - [x] Playback cursor follow — highlighted playing row (cyan-green), auto-scrolls to keep it centred, auto-switches to the playing pattern (`RedrawPlWindow` equivalent)
 - [x] Octave buttons 1–8 (highlighted active), Alt+1..8 keyboard shortcuts — mirrors Pascal `OctaveActionExecute` / `SCA_Octave1..8`
-- [ ] Full keyboard note entry (piano key mapping, with octave)
-- [ ] Hex digit entry for sample/ornament/volume/effect fields
+- [x] Full keyboard note entry — two-row piano layout (z=C, s=C#, x=D … mirroring `NoteKeysSetDefault`); `A`/`1` = note-off; `K`/Backspace/Delete = clear cell; Shift+key = octave+1
+- [x] Hex digit entry — shift-insert on Sample (0–31) / Ornament / Volume / Envelope / Effect (0–15) fields; `vti_core::editor::hex_digit_entry`
+- [x] Left/Right arrow field navigation — cycles Note→Sample→Ornament→Volume→Envelope→Effect across all three channels; Tab/Shift+Tab jump channel
+- [x] All cells clickable — click sets cursor to the exact (row, channel, field)
+- [x] Cursor cell highlighted — bright cyan on the active (row, channel, field)
+- [x] Configurable auto-advance step size — DragValue `Step:` (−64..+64, default 1, 0=disabled) mirrors Pascal `UDAutoStep`; cursor scrolls to follow after each entry
+- [x] Pure editor logic in `crates/vti-core/src/editor.rs` — `piano_key_to_semitone_offset`, `compute_note`, `note_key_result`, `hex_digit_entry`; 21 unit tests + CLI smoke tests
 - [ ] Insert / delete row
 - [ ] Copy / paste row or block
 - [ ] Transpose selection (semitone / octave)
