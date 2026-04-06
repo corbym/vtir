@@ -163,6 +163,16 @@ describe('regression — keyboard appears then immediately disappears', () => {
 
         expect(document.activeElement).toBe(input);
     });
+
+    test('focusin on hidden text-agent opens keep window even without direct focus listener firing', () => {
+        const { canvas, input } = makeDOM();
+        attach(input, canvas, { keepMs: 100, focusOnTouch: false });
+
+        input.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+
+        canvas.focus();
+        expect(document.activeElement).not.toBe(canvas);
+    });
 });
 
 // ── init() — deferred canvas lookup (the real browser load order) ─────────────
