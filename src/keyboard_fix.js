@@ -167,45 +167,65 @@ function findTextAgent(body) {
  * @param {Object}      [options] forwarded to attach()
  */
 function init(body, canvasId, options) {
+    var attached = false;
+    var mo = null;
+
     /* Deferred canvas lookup: called only after the text-agent appears.
      * By that time WASM has initialised and the canvas is in the DOM. */
     function doAttach(input) {
+        if (attached) { return; }
         var doc    = body.ownerDocument || document;
         var canvas = doc.getElementById(canvasId);
         if (!canvas) { return; }
         attach(input, canvas, options);
+        attached = true;
+        if (mo) { mo.disconnect(); }
     }
 
     /* Text-agent may already exist (safe fallback). */
     var existing = findTextAgent(body);
     if (existing) { doAttach(existing); return; }
 
-    /* Watch for eframe to append/update the text-agent in <body>. */
-    var mo = new MutationObserver(function (list) {
+    function tryAttach(candidateRoot) {
+        if (attached) { return; }
+        var candidate = findTextAgent(candidateRoot || body);
+        if (candidate) {
+            doAttach(candidate);
+        }
+    }
+
+    /* Watch for eframe to append/update/style the text-agent in <body>. */
+    mo = new MutationObserver(function (list) {
         for (var i = 0; i < list.length; i++) {
-            var nodes = list[i].addedNodes;
-            for (var j = 0; j < nodes.length; j++) {
-                var n = nodes[j];
-                if (n.nodeName === 'INPUT' && n.type === 'text') {
-                    var candidate = isTextAgentInput(n) ? n : findTextAgent(body);
-                    if (candidate) {
-                        mo.disconnect();
-                        doAttach(candidate);
+            var m = list[i];
+            if (m.type === 'attributes') {
+                var target = m.target;
+                if (target && target.nodeName === 'INPUT' && target.type === 'text') {
+                    if (isTextAgentInput(target)) {
+                        doAttach(target);
                         return;
                     }
                 }
-                if (n.querySelector) {
-                    var nested = findTextAgent(n);
-                    if (nested) {
-                        mo.disconnect();
-                        doAttach(nested);
-                        return;
+            } else {
+                var nodes = m.addedNodes;
+                for (var j = 0; j < nodes.length; j++) {
+                    var n = nodes[j];
+                    if (n.nodeName === 'INPUT' && n.type === 'text') {
+                        if (isTextAgentInput(n)) {
+                            doAttach(n);
+                            return;
+                        }
+                        tryAttach(body);
+                    }
+                    if (n.querySelector) {
+                        tryAttach(n);
+                        if (attached) { return; }
                     }
                 }
             }
         }
     });
-    mo.observe(body, { childList: true, subtree: true });
+    mo.observe(body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
 }
 
 /* -- Browser runtime entry point ----------------------------------------- */

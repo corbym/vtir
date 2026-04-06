@@ -265,6 +265,29 @@ describe('init() — canvas lookup is deferred until text-agent is inserted', ()
         expect(document.activeElement).toBe(textAgent);
         expect(document.activeElement).not.toBe(visible);
     });
+
+    test('still binds after late style mutation on existing text input', async () => {
+        document.body.innerHTML = '<canvas id="the_canvas_id" tabindex="0"></canvas><input type="text" id="visible_input" />';
+        const canvas = document.getElementById('the_canvas_id');
+        const visible = document.getElementById('visible_input');
+
+        init(document.body, 'the_canvas_id', { keepMs: 100, focusOnTouch: true });
+
+        const textAgent = document.createElement('input');
+        textAgent.type = 'text';
+        // Not hidden yet when inserted (can happen during startup races).
+        document.body.appendChild(textAgent);
+
+        // Later style mutation should now be observed and bound.
+        applyEarlyTextAgentStyles(textAgent);
+        await Promise.resolve();
+
+        visible.focus();
+        expect(document.activeElement).toBe(visible);
+
+        fireTouchEnd(canvas);
+        expect(document.activeElement).toBe(textAgent);
+    });
 });
 
 describe('attach() — default mode (no global keyboard popup)', () => {
