@@ -48,7 +48,6 @@ function attach(input, canvas, options) {
     var focusOnTouch = !!(options && options.focusOnTouch);
     var keep         = false;
     var timer        = null;
-    var doc          = input.ownerDocument || document;
 
     // Ensure the hidden text-agent stays visually hidden even when focused.
     // Some browsers still paint a caret/focus ring unless we clear multiple
@@ -96,12 +95,7 @@ function attach(input, canvas, options) {
     // Any successful focus transfer to the text-agent opens the keep window.
     // This avoids forcing keyboard popups from arbitrary canvas taps.
     input.addEventListener('focus', openKeepWindow);
-    doc.addEventListener('focusin', function (evt) {
-        var target = evt && evt.target;
-        if (isTextAgentInput(target)) {
-            openKeepWindow();
-        }
-    }, true);
+    input.addEventListener('focusin', openKeepWindow);
 
     // Optional compatibility mode: explicitly focus the text-agent on touch.
     // Runtime keeps this disabled so keyboard opens only from editable widgets.

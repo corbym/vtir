@@ -169,9 +169,11 @@ describe('regression — keyboard appears then immediately disappears', () => {
         attach(input, canvas, { keepMs: 100, focusOnTouch: false });
 
         input.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+        input.focus();
 
         canvas.focus();
         expect(document.activeElement).not.toBe(canvas);
+        expect(document.activeElement).toBe(input);
     });
 });
 
