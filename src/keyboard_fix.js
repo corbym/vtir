@@ -113,10 +113,16 @@ function attach(input, canvas, options) {
  * We also accept the post-attach style variants this file applies.
  */
 function isTextAgentInput(input) {
-    if (!input || input.nodeName !== 'INPUT' || input.type !== 'text') {
+    if (!input || input.nodeName !== 'INPUT') {
         return false;
     }
-    var style = input.style || {};
+    if (input.type !== 'text') {
+        return false;
+    }
+    if (!input.style) {
+        return false;
+    }
+    var style = input.style;
     var positionOk = style.position === 'absolute' || style.position === 'fixed';
     var opacityOk = style.opacity === '0';
     var widthOk = style.width === '1px' || style.width === '0px';
