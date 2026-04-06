@@ -145,6 +145,14 @@ pub struct PatternEditor {
     /// elsewhere does not immediately reopen it.
     #[cfg(target_arch = "wasm32")]
     keyboard_anchor_active: bool,
+    /// Short anti-race guard after anchor activation.
+    ///
+    /// eframe applies `request_focus` at frame boundaries. During the first
+    /// frame(s) after a tap, pointer state can still report pressed while focus
+    /// has not yet switched to the anchor, which would otherwise immediately
+    /// deactivate it.
+    #[cfg(target_arch = "wasm32")]
+    keyboard_anchor_guard_frames: u8,
 }
 
 impl Default for PatternEditor {
@@ -159,6 +167,8 @@ impl Default for PatternEditor {
             keyboard_anchor: String::new(),
             #[cfg(target_arch = "wasm32")]
             keyboard_anchor_active: false,
+            #[cfg(target_arch = "wasm32")]
+            keyboard_anchor_guard_frames: 0,
         }
     }
 }
@@ -208,7 +218,8 @@ impl PatternEditor {
                     .get_property_value("height")
                     .ok()
                     .and_then(|v| v.replace("px", "").parse::<f32>().ok());
-                let tiny_box = matches!((width, height), (Some(w), Some(h)) if w <= 1.0 && h <= 1.0);
+                let tiny_box =
+                    matches!((width, height), (Some(w), Some(h)) if w <= 1.0 && h <= 1.0);
                 let hidden_opacity = style
                     .get_property_value("opacity")
                     .ok()
@@ -231,6 +242,7 @@ impl PatternEditor {
     #[cfg(target_arch = "wasm32")]
     fn activate_keyboard_anchor(&mut self, ui: &egui::Ui) {
         self.keyboard_anchor_active = true;
+        self.keyboard_anchor_guard_frames = 2;
         ui.ctx()
             .memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
         Self::focus_text_agent_dom();
@@ -565,7 +577,11 @@ impl PatternEditor {
             let kbd_id = Self::kbd_anchor_id();
             let pointer_pressed = ui.ctx().input(|i| i.pointer.any_pressed());
             let focused_is_anchor = ui.ctx().memory(|m| m.focused() == Some(kbd_id));
-            if pointer_pressed && !focused_is_anchor && !activated_anchor_this_frame {
+            if pointer_pressed
+                && !focused_is_anchor
+                && !activated_anchor_this_frame
+                && self.keyboard_anchor_guard_frames == 0
+            {
                 self.keyboard_anchor_active = false;
                 ui.ctx().memory_mut(|m| m.surrender_focus(kbd_id));
             }
@@ -579,6 +595,9 @@ impl PatternEditor {
             // Drain any characters the TextEdit accumulated from Text events
             // this frame so the anchor always looks empty (hint: "⌨").
             self.keyboard_anchor.clear();
+            if self.keyboard_anchor_guard_frames > 0 {
+                self.keyboard_anchor_guard_frames -= 1;
+            }
         }
     }
 

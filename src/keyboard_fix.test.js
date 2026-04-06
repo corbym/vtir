@@ -175,6 +175,19 @@ describe('regression — keyboard appears then immediately disappears', () => {
         expect(document.activeElement).not.toBe(canvas);
         expect(document.activeElement).toBe(input);
     });
+
+    test('first touch keeps keyboard focused during short wait before reclaim attempt', () => {
+        jest.useFakeTimers();
+        const { canvas, input } = makeDOM();
+        attach(input, canvas, { keepMs: 500, focusOnTouch: true });
+
+        fireTouchEnd(canvas);         // first press on invisible-input path
+        jest.advanceTimersByTime(250); // user pauses before next interaction
+        canvas.focus();               // reclaim attempt must still be blocked
+
+        expect(document.activeElement).toBe(input);
+        jest.useRealTimers();
+    });
 });
 
 // ── init() — deferred canvas lookup (the real browser load order) ─────────────
