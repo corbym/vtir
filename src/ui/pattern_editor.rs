@@ -183,15 +183,48 @@ impl PatternEditor {
     /// canvas `touchend` event.  This Rust function serves as a belt-and-
     /// suspenders complement for browsers that are more permissive.
     ///
-    /// The selector `"input[type=text]"` mirrors the one in `index.html`;
-    /// both must be updated if eframe changes how it creates the text agent.
+    /// We select the hidden text-agent input (positioned absolute/fixed and
+    /// either tiny, transparent, or off-screen), scanning from newest to
+    /// oldest so we avoid focusing visible text fields.
     #[cfg(target_arch = "wasm32")]
     fn focus_text_agent_dom() {
         use wasm_bindgen::JsCast as _;
-        let _ = (|| -> Option<()> {
+        let _ = (|| -> Option<bool> {
             let doc = web_sys::window()?.document()?;
-            let el = doc.query_selector("input[type=text]").ok()??;
-            el.unchecked_ref::<web_sys::HtmlElement>().focus().ok()
+            let inputs = doc.query_selector_all("input[type=text]").ok()?;
+            for i in (0..inputs.length()).rev() {
+                let node = inputs.get(i)?;
+                let el: web_sys::HtmlElement = node.dyn_into().ok()?;
+                let style = el.style();
+                let position = style.get_property_value("position").ok()?;
+                if position != "absolute" && position != "fixed" {
+                    continue;
+                }
+                let width = style
+                    .get_property_value("width")
+                    .ok()
+                    .and_then(|v| v.replace("px", "").parse::<f32>().ok());
+                let height = style
+                    .get_property_value("height")
+                    .ok()
+                    .and_then(|v| v.replace("px", "").parse::<f32>().ok());
+                let tiny_box = matches!((width, height), (Some(w), Some(h)) if w <= 1.0 && h <= 1.0);
+                let hidden_opacity = style
+                    .get_property_value("opacity")
+                    .ok()
+                    .and_then(|v| v.parse::<f32>().ok())
+                    == Some(0.0);
+                let offscreen_left = style
+                    .get_property_value("left")
+                    .ok()
+                    .and_then(|v| v.replace("px", "").parse::<f32>().ok())
+                    .is_some_and(|v| v < 0.0);
+                if tiny_box || hidden_opacity || offscreen_left {
+                    el.focus().ok()?;
+                    return Some(true);
+                }
+            }
+            None
         })();
     }
 
