@@ -182,10 +182,6 @@ function init(body, canvasId, options) {
         if (mo) { mo.disconnect(); }
     }
 
-    /* Text-agent may already exist (safe fallback). */
-    var existing = findTextAgent(body);
-    if (existing) { doAttach(existing); return; }
-
     function tryAttach(candidateRoot) {
         if (attached) { return; }
         var candidate = findTextAgent(candidateRoot || body);
@@ -193,6 +189,12 @@ function init(body, canvasId, options) {
             doAttach(candidate);
         }
     }
+
+    /* Text-agent may already exist (safe fallback).
+     * Do not return if canvas is not yet present; continue observing so we can
+     * attach later when the canvas appears (script-before-canvas load order). */
+    tryAttach(body);
+    if (attached) { return; }
 
     /* Watch for eframe to append/update/style the text-agent in <body>. */
     mo = new MutationObserver(function (list) {
@@ -221,6 +223,10 @@ function init(body, canvasId, options) {
                         tryAttach(n);
                         if (attached) { return; }
                     }
+                    // If canvas appears after an already-existing text-agent,
+                    // re-check the full body so doAttach can now succeed.
+                    tryAttach(body);
+                    if (attached) { return; }
                 }
             }
         }

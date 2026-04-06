@@ -197,6 +197,27 @@ describe('init() — canvas lookup is deferred until text-agent is inserted', ()
         expect(document.activeElement).toBe(input);
     });
 
+    test('still attaches when hidden text-agent exists before canvas is parsed', async () => {
+        // Simulate script running before canvas, while eframe text-agent already exists.
+        document.body.innerHTML = '';
+        const input = document.createElement('input');
+        input.type = 'text';
+        applyTextAgentStyles(input);
+        document.body.appendChild(input);
+
+        init(document.body, 'the_canvas_id', { keepMs: 100, focusOnTouch: true });
+
+        const canvas = document.createElement('canvas');
+        canvas.id = 'the_canvas_id';
+        canvas.tabIndex = 0;
+        document.body.appendChild(canvas);
+
+        await Promise.resolve();
+
+        fireTouchEnd(canvas);
+        expect(document.activeElement).toBe(input);
+    });
+
     test('works when the text-agent already exists at init() call time', () => {
         const { body, canvas, input } = makeDOM();
         applyTextAgentStyles(input);
