@@ -106,6 +106,36 @@ function attach(input, canvas, options) {
 }
 
 /**
+ * Return true if an input looks like eframe's hidden text-agent.
+ *
+ * eframe creates it with inline styles:
+ *   position:absolute; top:0; left:0; width:1px; height:1px; opacity:0
+ * We also accept the post-attach style variants this file applies.
+ */
+function isTextAgentInput(input) {
+    if (!input || input.nodeName !== 'INPUT' || input.type !== 'text') {
+        return false;
+    }
+    var style = input.style || {};
+    var positionOk = style.position === 'absolute' || style.position === 'fixed';
+    var opacityOk = style.opacity === '0';
+    var widthOk = style.width === '1px' || style.width === '0px';
+    var heightOk = style.height === '1px' || style.height === '0px';
+    return positionOk && opacityOk && widthOk && heightOk;
+}
+
+/** Find the most recent hidden text-agent input in <body>. */
+function findTextAgent(body) {
+    var inputs = body.querySelectorAll('input[type=text]');
+    for (var i = inputs.length - 1; i >= 0; i--) {
+        if (isTextAgentInput(inputs[i])) {
+            return inputs[i];
+        }
+    }
+    return null;
+}
+
+/**
  * Find the canvas and text-agent input in the given document body and call
  * attach().  Safe to call before WASM initialisation: a MutationObserver
  * watches for the input to be inserted, and the canvas lookup is deferred
@@ -126,7 +156,7 @@ function init(body, canvasId, options) {
     }
 
     /* Text-agent may already exist (safe fallback). */
-    var existing = body.querySelector('input[type=text]');
+    var existing = findTextAgent(body);
     if (existing) { doAttach(existing); return; }
 
     /* Watch for eframe to append the text-agent to <body>. */
@@ -135,7 +165,7 @@ function init(body, canvasId, options) {
             var nodes = list[i].addedNodes;
             for (var j = 0; j < nodes.length; j++) {
                 var n = nodes[j];
-                if (n.nodeName === 'INPUT' && n.type === 'text') {
+                if (isTextAgentInput(n)) {
                     mo.disconnect();
                     doAttach(n);
                     return;

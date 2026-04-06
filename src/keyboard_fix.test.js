@@ -171,6 +171,12 @@ describe('init() — canvas lookup is deferred until text-agent is inserted', ()
         // WASM initialises and appends the text-agent <input>.
         const input = document.createElement('input');
         input.type = 'text';
+        input.style.position = 'absolute';
+        input.style.top = '0';
+        input.style.left = '0';
+        input.style.width = '1px';
+        input.style.height = '1px';
+        input.style.opacity = '0';
         document.body.appendChild(input);
 
         // MutationObserver callbacks run as microtasks; yield before asserting.
@@ -182,11 +188,41 @@ describe('init() — canvas lookup is deferred until text-agent is inserted', ()
 
     test('works when the text-agent already exists at init() call time', () => {
         const { body, canvas, input } = makeDOM();
+        input.style.position = 'absolute';
+        input.style.top = '0';
+        input.style.left = '0';
+        input.style.width = '1px';
+        input.style.height = '1px';
+        input.style.opacity = '0';
         init(body, 'the_canvas_id', { keepMs: 100, focusOnTouch: true });
 
         fireTouchEnd(canvas);
 
         expect(document.activeElement).toBe(input);
+    });
+
+    test('ignores visible text inputs and binds to hidden text-agent appended later', async () => {
+        document.body.innerHTML = '<canvas id="the_canvas_id" tabindex="0"></canvas><input type="text" id="visible_input" />';
+        const canvas = document.getElementById('the_canvas_id');
+        const visible = document.getElementById('visible_input');
+
+        init(document.body, 'the_canvas_id', { keepMs: 100, focusOnTouch: true });
+
+        const textAgent = document.createElement('input');
+        textAgent.type = 'text';
+        textAgent.style.position = 'absolute';
+        textAgent.style.top = '0';
+        textAgent.style.left = '0';
+        textAgent.style.width = '1px';
+        textAgent.style.height = '1px';
+        textAgent.style.opacity = '0';
+        document.body.appendChild(textAgent);
+
+        await Promise.resolve();
+
+        fireTouchEnd(canvas);
+        expect(document.activeElement).toBe(textAgent);
+        expect(document.activeElement).not.toBe(visible);
     });
 });
 
