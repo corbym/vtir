@@ -125,12 +125,12 @@ function isTextAgentInput(input) {
     var style = input.style;
     var positionOk = style.position === 'absolute' || style.position === 'fixed';
 
-    function pxAtMostOne(v) {
+    function isNumericAtMostOne(v) {
         var n = parseFloat(v || '');
         return !isNaN(n) && n >= 0 && n <= 1;
     }
 
-    var tinyBox = pxAtMostOne(style.width) && pxAtMostOne(style.height);
+    var tinyBox = isNumericAtMostOne(style.width) && isNumericAtMostOne(style.height);
     var hiddenOpacity = parseFloat(style.opacity || '') === 0;
     var offscreenLeft = parseFloat(style.left || '') < 0;
 
