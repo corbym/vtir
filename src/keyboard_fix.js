@@ -124,7 +124,13 @@ function isTextAgentInput(input) {
     return positionOk && opacityOk && widthOk && heightOk;
 }
 
-/** Find the most recent hidden text-agent input in <body>. */
+/**
+ * Find the most recent hidden text-agent input in <body>.
+ *
+ * We scan from the end because dynamic UIs can append additional inputs over
+ * time. Using the latest matching hidden input keeps us bound to the current
+ * eframe text-agent instead of an older/stale node or unrelated visible input.
+ */
 function findTextAgent(body) {
     var inputs = body.querySelectorAll('input[type=text]');
     for (var i = inputs.length - 1; i >= 0; i--) {

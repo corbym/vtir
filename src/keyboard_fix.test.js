@@ -45,6 +45,15 @@ function makeDOM() {
     return { body: document.body, canvas, input };
 }
 
+function applyTextAgentStyles(input) {
+    input.style.position = 'absolute';
+    input.style.top = '0';
+    input.style.left = '0';
+    input.style.width = '1px';
+    input.style.height = '1px';
+    input.style.opacity = '0';
+}
+
 // ── attach() — core focus-fix behaviour ──────────────────────────────────────
 
 describe('attach() — note cell tap', () => {
@@ -171,12 +180,7 @@ describe('init() — canvas lookup is deferred until text-agent is inserted', ()
         // WASM initialises and appends the text-agent <input>.
         const input = document.createElement('input');
         input.type = 'text';
-        input.style.position = 'absolute';
-        input.style.top = '0';
-        input.style.left = '0';
-        input.style.width = '1px';
-        input.style.height = '1px';
-        input.style.opacity = '0';
+        applyTextAgentStyles(input);
         document.body.appendChild(input);
 
         // MutationObserver callbacks run as microtasks; yield before asserting.
@@ -188,12 +192,7 @@ describe('init() — canvas lookup is deferred until text-agent is inserted', ()
 
     test('works when the text-agent already exists at init() call time', () => {
         const { body, canvas, input } = makeDOM();
-        input.style.position = 'absolute';
-        input.style.top = '0';
-        input.style.left = '0';
-        input.style.width = '1px';
-        input.style.height = '1px';
-        input.style.opacity = '0';
+        applyTextAgentStyles(input);
         init(body, 'the_canvas_id', { keepMs: 100, focusOnTouch: true });
 
         fireTouchEnd(canvas);
@@ -210,12 +209,7 @@ describe('init() — canvas lookup is deferred until text-agent is inserted', ()
 
         const textAgent = document.createElement('input');
         textAgent.type = 'text';
-        textAgent.style.position = 'absolute';
-        textAgent.style.top = '0';
-        textAgent.style.left = '0';
-        textAgent.style.width = '1px';
-        textAgent.style.height = '1px';
-        textAgent.style.opacity = '0';
+        applyTextAgentStyles(textAgent);
         document.body.appendChild(textAgent);
 
         await Promise.resolve();
