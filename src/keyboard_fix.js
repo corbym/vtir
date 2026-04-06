@@ -124,10 +124,19 @@ function isTextAgentInput(input) {
     }
     var style = input.style;
     var positionOk = style.position === 'absolute' || style.position === 'fixed';
-    var opacityOk = style.opacity === '0';
-    var widthOk = style.width === '1px' || style.width === '0px';
-    var heightOk = style.height === '1px' || style.height === '0px';
-    return positionOk && opacityOk && widthOk && heightOk;
+
+    function pxAtMostOne(v) {
+        var n = parseFloat(v || '');
+        return !isNaN(n) && n >= 0 && n <= 1;
+    }
+
+    var tinyBox = pxAtMostOne(style.width) && pxAtMostOne(style.height);
+    var hiddenOpacity = parseFloat(style.opacity || '') === 0;
+    var offscreenLeft = parseFloat(style.left || '') < 0;
+
+    // Match eframe's default hidden input style and our post-attach style.
+    // Keep permissive enough to survive style-order differences on refresh.
+    return positionOk && (tinyBox || hiddenOpacity || offscreenLeft);
 }
 
 /**
@@ -171,21 +180,32 @@ function init(body, canvasId, options) {
     var existing = findTextAgent(body);
     if (existing) { doAttach(existing); return; }
 
-    /* Watch for eframe to append the text-agent to <body>. */
+    /* Watch for eframe to append/update the text-agent in <body>. */
     var mo = new MutationObserver(function (list) {
         for (var i = 0; i < list.length; i++) {
             var nodes = list[i].addedNodes;
             for (var j = 0; j < nodes.length; j++) {
                 var n = nodes[j];
-                if (isTextAgentInput(n)) {
-                    mo.disconnect();
-                    doAttach(n);
-                    return;
+                if (n.nodeName === 'INPUT' && n.type === 'text') {
+                    var candidate = isTextAgentInput(n) ? n : findTextAgent(body);
+                    if (candidate) {
+                        mo.disconnect();
+                        doAttach(candidate);
+                        return;
+                    }
+                }
+                if (n.querySelector) {
+                    var nested = findTextAgent(n);
+                    if (nested) {
+                        mo.disconnect();
+                        doAttach(nested);
+                        return;
+                    }
                 }
             }
         }
     });
-    mo.observe(body, { childList: true });
+    mo.observe(body, { childList: true, subtree: true });
 }
 
 /* -- Browser runtime entry point ----------------------------------------- */

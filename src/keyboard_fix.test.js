@@ -54,6 +54,13 @@ function applyTextAgentStyles(input) {
     input.style.opacity = '0';
 }
 
+function applyEarlyTextAgentStyles(input) {
+    // Simulate refresh timing where only part of the hidden-agent style
+    // has been applied when MutationObserver fires.
+    input.style.position = 'absolute';
+    input.style.opacity = '0';
+}
+
 // ── attach() — core focus-fix behaviour ──────────────────────────────────────
 
 describe('attach() — note cell tap', () => {
@@ -211,6 +218,46 @@ describe('init() — canvas lookup is deferred until text-agent is inserted', ()
         textAgent.type = 'text';
         applyTextAgentStyles(textAgent);
         document.body.appendChild(textAgent);
+
+        await Promise.resolve();
+
+        fireTouchEnd(canvas);
+        expect(document.activeElement).toBe(textAgent);
+        expect(document.activeElement).not.toBe(visible);
+    });
+
+    test('binds when hidden text-agent is detected from partial early styles', async () => {
+        document.body.innerHTML = '<canvas id="the_canvas_id" tabindex="0"></canvas><input type="text" id="visible_input" />';
+        const canvas = document.getElementById('the_canvas_id');
+        const visible = document.getElementById('visible_input');
+
+        init(document.body, 'the_canvas_id', { keepMs: 100, focusOnTouch: true });
+
+        const textAgent = document.createElement('input');
+        textAgent.type = 'text';
+        applyEarlyTextAgentStyles(textAgent);
+        document.body.appendChild(textAgent);
+
+        await Promise.resolve();
+
+        fireTouchEnd(canvas);
+        expect(document.activeElement).toBe(textAgent);
+        expect(document.activeElement).not.toBe(visible);
+    });
+
+    test('finds hidden text-agent when appended inside a nested container', async () => {
+        document.body.innerHTML = '<canvas id="the_canvas_id" tabindex="0"></canvas><input type="text" id="visible_input" />';
+        const canvas = document.getElementById('the_canvas_id');
+        const visible = document.getElementById('visible_input');
+
+        init(document.body, 'the_canvas_id', { keepMs: 100, focusOnTouch: true });
+
+        const wrapper = document.createElement('div');
+        const textAgent = document.createElement('input');
+        textAgent.type = 'text';
+        applyEarlyTextAgentStyles(textAgent);
+        wrapper.appendChild(textAgent);
+        document.body.appendChild(wrapper);
 
         await Promise.resolve();
 
