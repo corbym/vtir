@@ -242,6 +242,8 @@ impl PatternEditor {
     #[cfg(target_arch = "wasm32")]
     fn activate_keyboard_anchor(&mut self, ui: &egui::Ui) {
         self.keyboard_anchor_active = true;
+        // Two frames is empirically enough for egui `request_focus` to settle
+        // before pointer-state based deactivation is allowed again.
         self.keyboard_anchor_guard_frames = 2;
         ui.ctx()
             .memory_mut(|m| m.request_focus(Self::kbd_anchor_id()));
@@ -580,6 +582,8 @@ impl PatternEditor {
             if pointer_pressed
                 && !focused_is_anchor
                 && !activated_anchor_this_frame
+                // Avoid immediate self-cancel while `request_focus` is still
+                // propagating across frame boundaries on the first tap.
                 && self.keyboard_anchor_guard_frames == 0
             {
                 self.keyboard_anchor_active = false;
