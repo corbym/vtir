@@ -645,6 +645,30 @@ fn render_frame_quality_phase_continuous_across_frames() {
     );
 }
 
+#[test]
+fn render_frame_quality_two_chips_produce_more_signal() {
+    let cfg = AyConfig { is_filt: false, ..AyConfig::default() };
+    let mut s1 = Synthesizer::new(cfg.clone(), 1, ChipType::AY);
+    let mut s2 = Synthesizer::new(cfg, 2, ChipType::AY);
+
+    let regs = AyRegisters {
+        ton_a: 120,
+        mixer: 0b11_111_110,
+        amplitude_a: 15,
+        ..AyRegisters::default()
+    };
+    s1.apply_registers(0, &regs);
+    s2.apply_registers(0, &regs);
+    s2.apply_registers(1, &regs);
+
+    s1.render_frame_quality();
+    s2.render_frame_quality();
+
+    let sum1: i64 = s1.output_buf.iter().map(|s| s.left.abs() as i64).sum();
+    let sum2: i64 = s2.output_buf.iter().map(|s| s.left.abs() as i64).sum();
+    assert!(sum2 >= sum1, "two chips in quality mode should be at least as loud as one");
+}
+
 // ─── Bug regression: sample-rate / audio-player mismatch ─────────────────────
 
 /// The AudioPlayer must be opened at SAMPLE_RATE_DEF (48 kHz) so that the

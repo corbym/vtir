@@ -111,7 +111,7 @@ LOAD "" CODE
 > **How to type this on a Spectrum keyboard:**
 > - `LOAD` — press **J** (the word `LOAD` appears automatically in BASIC).
 > - `""` — press **SYMBOL SHIFT + P** twice (produces `"`).
-> - `CODE` — press **SYMBOL SHIFT + I** (the keyword `CODE` appears).
+> - `CODE` — use the **keyword printed on the Spectrum keyboard legend / emulator on-screen keyboard**.  (Keyword positions are easy to misremember; if you are in an emulator, the simplest option is often to type the full command from your host keyboard.)
 > - Press **ENTER**.
 
 The emulator will now search the virtual tape for the first header block.
@@ -186,6 +186,11 @@ The standard technique in ZX Spectrum BASIC is:
 30  OUT 254, 0
 40  GOTO 40
 ```
+
+> **How to type the keywords in the listing above:**
+> - `RANDOMIZE`, `POKE`, and `GOTO` are ordinary Spectrum BASIC keywords and can be entered in normal keyword mode.
+> - `USR` and `OUT` are best entered using the **keyboard legend / emulator on-screen keyboard**, because the exact key positions are easy to misremember.
+> - In an emulator, the easiest option is usually to type the full line from your host keyboard instead of trying to enter each Spectrum keyword manually.
 
 However, the *cleanest* self-contained approach is to write a short machine-
 code trampoline that redirects the interrupt.  A minimal example that works

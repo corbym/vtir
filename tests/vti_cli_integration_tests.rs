@@ -43,3 +43,26 @@ fn vti_cli_without_arguments_fails_with_usage() {
     assert!(stderr.contains("Usage: vti-cli"), "stderr: {stderr}");
 }
 
+#[cfg(feature = "cli")]
+#[test]
+fn vti_cli_headless_turbosound_reports_two_chips() {
+    let bin = env!("CARGO_BIN_EXE_vti-cli");
+    let fixture = format!(
+        "{}/crates/vti-core/tests/fixtures/tunes/ADDAMS2.ay",
+        env!("CARGO_MANIFEST_DIR")
+    );
+
+    let output = Command::new(bin)
+        .arg(&fixture)
+        .arg("--ts2")
+        .arg(&fixture)
+        .arg("--ticks")
+        .arg("256")
+        .output()
+        .expect("failed to run vti-cli");
+
+    assert!(output.status.success(), "vti-cli failed: {}", String::from_utf8_lossy(&output.stderr));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("chips=2"), "stdout: {stdout}");
+}
+

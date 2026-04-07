@@ -41,7 +41,7 @@ pub struct VortexTrackerApp {
     // Audio engine
     audio: Option<AudioPlayer>,
     synth: Synthesizer,
-    play_vars: PlayVars,
+    play_vars: Vec<PlayVars>,
     /// Samples to render per 50 Hz interrupt tick.
     samples_per_tick: u32,
     /// `ctx.input(|i| i.time)` at the last engine tick.
@@ -224,7 +224,7 @@ impl VortexTrackerApp {
         // Audio / synthesis setup
         let cfg = AyConfig::default();
         let samples_per_tick = cfg.sample_tiks_in_interrupt();
-        let synth = Synthesizer::new(cfg, 1, ChipType::AY);
+        let synth = Synthesizer::new(cfg, modules.len().clamp(1, 2), ChipType::AY);
 
         let mut play_vars = PlayVars::default();
         init_tracker_parameters(&mut modules[0], &mut play_vars, true);
@@ -249,7 +249,7 @@ impl VortexTrackerApp {
             play_mode: PlayMode::default(),
             audio,
             synth,
-            play_vars,
+            play_vars: vec![play_vars],
             samples_per_tick,
             last_tick_time: 0.0,
             status: "Ready".to_string(),
@@ -338,7 +338,8 @@ impl VortexTrackerApp {
                         self.modules = vec![module];
                         self.active_module = 0;
                         self.current_filename = Some(filename.to_string());
-                        self.reset_playback();
+                        self.reset_playback_for_all_modules();
+                        self.rebuild_synth_for_modules();
                         self.status = format!("Loaded: {}", filename);
                     }
                     Err(e) => {
@@ -587,12 +588,32 @@ impl VortexTrackerApp {
         }
     }
 
+    fn rebuild_synth_for_modules(&mut self) {
+        let chips = self.modules.len().clamp(1, 2);
+        self.synth = Synthesizer::new(AyConfig::default(), chips, ChipType::AY);
+    }
+
+    fn reset_playback_for_all_modules(&mut self) {
+        self.play_vars = vec![PlayVars::default(); self.modules.len()];
+        for i in 0..self.modules.len() {
+            init_tracker_parameters(&mut self.modules[i], &mut self.play_vars[i], true);
+            self.play_vars[i].delay = self.modules[i].initial_delay as i8;
+            self.play_vars[i].current_position = 0;
+            self.play_vars[i].current_pattern = if self.modules[i].positions.length > 0 {
+                self.modules[i].positions.value[0] as i32
+            } else {
+                0
+            };
+        }
+        self.active_module = self.active_module.min(self.modules.len().saturating_sub(1));
+    }
+
     /// Re-initialise playback state so the next Play starts from the beginning.
     fn reset_playback(&mut self) {
-        init_tracker_parameters(&mut self.modules[self.active_module], &mut self.play_vars, true);
-        self.play_vars.delay = self.modules[self.active_module].initial_delay as i8;
-        self.play_vars.current_position = 0;
-        self.play_vars.current_pattern =
+        init_tracker_parameters(&mut self.modules[self.active_module], &mut self.play_vars[self.active_module], true);
+        self.play_vars[self.active_module].delay = self.modules[self.active_module].initial_delay as i8;
+        self.play_vars[self.active_module].current_position = 0;
+        self.play_vars[self.active_module].current_pattern =
             if self.modules[self.active_module].positions.length > 0 {
                 self.modules[self.active_module].positions.value[0] as i32
             } else {
@@ -614,7 +635,8 @@ impl VortexTrackerApp {
                     self.modules = vec![module];
                     self.active_module = 0;
                     self.current_filename = Some(pf.name.clone());
-                    self.reset_playback();
+                    self.reset_playback_for_all_modules();
+                    self.rebuild_synth_for_modules();
                     self.status = format!("Loaded: {}", pf.name);
                 }
                 Err(e) => {
@@ -633,27 +655,43 @@ impl VortexTrackerApp {
 
     /// Render one 50 Hz tracker tick: advance the engine, synthesise samples, push to audio.
     fn tick_audio(&mut self) {
-        let mut ay_regs = vti_core::AyRegisters::default();
-
-        let result = {
-            let module = &mut self.modules[self.active_module];
-            let vars   = &mut self.play_vars;
-            let mut engine = Engine { module, vars };
-            match self.play_mode {
-                PlayMode::Module  => engine.module_play_current_line(&mut ay_regs),
-                PlayMode::Pattern => engine.pattern_play_current_line(&mut ay_regs),
-                PlayMode::Line    => {
-                    engine.pattern_play_only_current_line(&mut ay_regs);
-                    PlayResult::Updated
+        let chip_count = self.modules.len().min(2);
+        for chip_idx in 0..chip_count {
+            let mut ay_regs = vti_core::AyRegisters::default();
+            let result = {
+                let module = &mut self.modules[chip_idx];
+                let vars = &mut self.play_vars[chip_idx];
+                let mut engine = Engine { module, vars };
+                let mode = if chip_idx == self.active_module {
+                    self.play_mode
+                } else {
+                    PlayMode::Module
+                };
+                match mode {
+                    PlayMode::Module => engine.module_play_current_line(&mut ay_regs),
+                    PlayMode::Pattern => engine.pattern_play_current_line(&mut ay_regs),
+                    PlayMode::Line => {
+                        engine.pattern_play_only_current_line(&mut ay_regs);
+                        PlayResult::Updated
+                    }
                 }
-            }
-        };
+            };
 
-        if result == PlayResult::ModuleLoop && self.play_mode == PlayMode::Module {
-            // Module looped — keep playing (normal loop behaviour)
+            if chip_idx == self.active_module
+                && result == PlayResult::ModuleLoop
+                && self.play_mode == PlayMode::Module
+            {
+                // Module looped — keep playing (normal loop behaviour)
+            }
+
+            self.synth.apply_registers(chip_idx, &ay_regs);
         }
 
-        self.synth.apply_registers(0, &ay_regs);
+        for chip_idx in chip_count..2 {
+            self.synth
+                .apply_registers(chip_idx, &vti_core::AyRegisters::default());
+        }
+
         // Quality mode: run chip at correct AY clock rate with Bresenham upsampler.
         // Performance mode (future): render_frame(samples_per_tick).
         self.synth.render_frame_quality();
@@ -738,7 +776,8 @@ impl eframe::App for VortexTrackerApp {
                         self.active_module = 0;
                         self.playback_state = PlaybackState::Stopped;
                         self.current_filename = None;
-                        self.reset_playback();
+                        self.reset_playback_for_all_modules();
+                        self.rebuild_synth_for_modules();
                         self.status = "New module created".to_string();
                         ui.close_menu();
                     }
@@ -784,7 +823,7 @@ impl eframe::App for VortexTrackerApp {
             match (prev_state, self.playback_state) {
                 // Stopped → Playing: reset position and start audio from the beginning.
                 (PlaybackState::Stopped, PlaybackState::Playing) => {
-                    self.reset_playback();
+                    self.reset_playback_for_all_modules();
                     self.last_tick_time = 0.0;
                     // Open the audio device on first Play press (satisfies the browser
                     // autoplay policy on WASM; harmless no-op on subsequent presses).
@@ -808,11 +847,14 @@ impl eframe::App for VortexTrackerApp {
                 // Playing → Paused: freeze at current position; silence the AY chip
                 // so no stale tone leaks through the audio buffer while paused.
                 (PlaybackState::Playing, PlaybackState::Paused) => {
-                    self.synth.apply_registers(0, &vti_core::AyRegisters::default());
+                    let silence = vti_core::AyRegisters::default();
+                    for chip_idx in 0..self.modules.len().min(2) {
+                        self.synth.apply_registers(chip_idx, &silence);
+                    }
                 }
                 // Any → Stopped: reset position so next Play starts from the beginning.
                 (_, PlaybackState::Stopped) => {
-                    self.reset_playback();
+                    self.reset_playback_for_all_modules();
                     self.last_tick_time = 0.0;
                 }
                 // All other transitions are no-ops (e.g. Stopped→Stopped).
@@ -827,8 +869,9 @@ impl eframe::App for VortexTrackerApp {
                 if self.playback_state != PlaybackState::Stopped {
                     let module = &self.modules[self.active_module];
                     let total_ticks = get_module_time(module);
-                    let pos = self.play_vars.current_position;
-                    let line = self.play_vars.current_line.saturating_sub(1);
+                    let vars = &self.play_vars[self.active_module];
+                    let pos = vars.current_position;
+                    let line = vars.current_line.saturating_sub(1);
                     let (pos_ticks, pos_delay) = get_position_time(module, pos);
                     let row_ticks = get_position_time_ex(module, pos, pos_delay, line);
                     let elapsed = pos_ticks + row_ticks;
@@ -878,13 +921,9 @@ impl eframe::App for VortexTrackerApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             let module = &mut self.modules[self.active_module];
             let play_pos = if self.playback_state != PlaybackState::Stopped {
-                // `current_line` is always one ahead of the row being rendered:
-                // `pattern_play_current_line` interprets a row then increments the
-                // pointer before returning (mirrors the Pascal `Pattern_PlayCurrentLine`
-                // convention, which is why `umredrawtracks` applies `line - 1` when
-                // unpacking the position from the posted Windows message).
-                let display_line = self.play_vars.current_line.saturating_sub(1);
-                Some((self.play_vars.current_pattern, display_line))
+                let vars = &self.play_vars[self.active_module];
+                let display_line = vars.current_line.saturating_sub(1);
+                Some((vars.current_pattern, display_line))
             } else {
                 None
             };

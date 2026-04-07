@@ -152,19 +152,41 @@ cargo run --release
 cargo build --bin vti-cli
 
 # Run CLI directly from build output (debug)
-target/debug/vti-cli crates/vti-core/tests/fixtures/tunes/ADDAMS2.ay
+target/debug/vti-cli crates/vti-core/tests/fixtures/tunes/madness_descent.pt3
 
 # Run CLI via helper script (uses release/debug binary if present, else cargo run)
-./scripts/vti-cli crates/vti-core/tests/fixtures/tunes/ADDAMS2.ay
+./scripts/vti-cli crates/vti-core/tests/fixtures/tunes/madness_descent.pt3
 
 # Start interactive mode with playback enabled immediately
-./scripts/vti-cli crates/vti-core/tests/fixtures/tunes/ADDAMS2.ay --play=true
+./scripts/vti-cli crates/vti-core/tests/fixtures/tunes/madness_descent.pt3 --play=true
 
 # Headless diagnostics (no real audio device needed)
-./scripts/vti-cli crates/vti-core/tests/fixtures/tunes/ADDAMS2.ay --ticks 512
+./scripts/vti-cli crates/vti-core/tests/fixtures/tunes/madness_descent.pt3 --ticks 512
 ```
 
 `vti-cli` starts with playback off by default. Use `--play`, `--play=true`, or `--play=false` to control startup playback. Keyboard controls: arrows move row/channel, `PageUp`/`PageDown` move positions, `Space` play/pause, `s` step one tick, `f` toggle follow-playhead, `Home`/`End` jump top/bottom, `q` quit.
+
+### TurboSound quick start (true 2-chip mode)
+
+TurboSound playback is currently exposed via the CLI by loading a primary module
+(chip 1) plus a second module via `--ts2` (chip 2).
+
+```sh
+# Interactive 2-chip playback
+cargo run --features cli --bin vti-cli -- \
+  crates/vti-core/tests/fixtures/tunes/madness_descent.pt3 \
+  --ts2 crates/vti-core/tests/fixtures/tunes/Space\ Crusade\ Loader.pt3 \
+  --play=true
+
+# Headless diagnostics (prints chips=2 when TurboSound is active)
+cargo run --features cli --bin vti-cli -- \
+  crates/vti-core/tests/fixtures/tunes/madness_descent.pt3 \
+  --ts2 crates/vti-core/tests/fixtures/tunes/Space\ Crusade\ Loader.pt3 \
+  --ticks 512
+```
+
+In interactive mode, confirm TurboSound is active by checking for `turbosound=on`
+and a `regs2:` line in the header.
 
 ### Running the tests
 

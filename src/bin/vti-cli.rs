@@ -43,6 +43,7 @@ enum Command {
 #[derive(Debug)]
 struct CliArgs {
     module_path: PathBuf,
+    ts2_module_path: Option<PathBuf>,
     ticks: Option<usize>,
     play: bool,
 }
@@ -50,6 +51,7 @@ struct CliArgs {
 impl CliArgs {
     fn parse() -> Result<Self> {
         let mut module_path: Option<PathBuf> = None;
+        let mut ts2_module_path: Option<PathBuf> = None;
         let mut ticks: Option<usize> = None;
         let mut play = false;
 
@@ -67,6 +69,12 @@ impl CliArgs {
                     let parsed = v.parse::<usize>()
                         .with_context(|| format!("invalid --ticks value: {v}"))?;
                     ticks = Some(parsed);
+                }
+                "--ts2" => {
+                    let Some(v) = args.next() else {
+                        bail!("--ts2 expects a module file path");
+                    };
+                    ts2_module_path = Some(PathBuf::from(v));
                 }
                 "--play" => {
                     play = true;
@@ -96,7 +104,7 @@ impl CliArgs {
             bail!("missing module file path");
         };
 
-        Ok(Self { module_path, ticks, play })
+        Ok(Self { module_path, ts2_module_path, ticks, play })
     }
 }
 
@@ -112,6 +120,9 @@ struct CliTracker {
     file_name: String,
     module: Module,
     vars: PlayVars,
+    ts2_file_name: Option<String>,
+    ts2_module: Option<Module>,
+    ts2_vars: Option<PlayVars>,
     synth: Synthesizer,
     samples_per_tick: u32,
     selected_position: usize,
@@ -125,11 +136,12 @@ struct CliTracker {
     last_pcm_nonzero: usize,
     total_pcm_nonzero: usize,
     last_regs: AyRegisters,
+    last_regs_ts2: Option<AyRegisters>,
     last_drawn_lines: u16,
 }
 
 impl CliTracker {
-    fn load(path: &Path, start_playing: bool) -> Result<Self> {
+    fn load(path: &Path, ts2_path: Option<&Path>, start_playing: bool) -> Result<Self> {
         let bytes = std::fs::read(path)
             .with_context(|| format!("cannot read file: {}", path.display()))?;
         let file_name = path
@@ -150,10 +162,34 @@ impl CliTracker {
             vars.current_pattern = module.positions.value[0] as i32;
         }
 
+        let (ts2_file_name, ts2_module, ts2_vars) = if let Some(p2) = ts2_path {
+            let bytes2 = std::fs::read(p2)
+                .with_context(|| format!("cannot read file: {}", p2.display()))?;
+            let file_name2 = p2
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("module2")
+                .to_string();
+            let mut module2 = formats::load(&bytes2, &file_name2)
+                .with_context(|| format!("cannot parse {}", p2.display()))?;
+            let mut vars2 = PlayVars::default();
+            init_tracker_parameters(&mut module2, &mut vars2, true);
+            vars2.delay = module2.initial_delay as i8;
+            vars2.delay_counter = 1;
+            if module2.positions.length > 0 {
+                vars2.current_position = 0;
+                vars2.current_pattern = module2.positions.value[0] as i32;
+            }
+            (Some(file_name2), Some(module2), Some(vars2))
+        } else {
+            (None, None, None)
+        };
+
         let cfg = AyConfig::default();
         let sample_rate = cfg.sample_rate;
         let samples_per_tick = cfg.ay_tiks_in_interrupt();
-        let synth = Synthesizer::new(cfg, 1, ChipType::AY);
+        let num_chips = if ts2_module.is_some() { 2 } else { 1 };
+        let synth = Synthesizer::new(cfg, num_chips, ChipType::AY);
 
         let (audio, audio_error) = match AudioPlayer::start(sample_rate) {
             Ok(player) => (Some(player), None),
@@ -164,6 +200,9 @@ impl CliTracker {
             file_name,
             module,
             vars,
+            ts2_file_name,
+            ts2_module,
+            ts2_vars,
             synth,
             samples_per_tick,
             selected_position: 0,
@@ -177,6 +216,7 @@ impl CliTracker {
             last_pcm_nonzero: 0,
             total_pcm_nonzero: 0,
             last_regs: AyRegisters::default(),
+            last_regs_ts2: None,
             last_drawn_lines: 0,
         })
     }
@@ -238,6 +278,18 @@ impl CliTracker {
             let _ = engine.module_play_current_line(&mut regs);
         }
         self.last_regs = regs.clone();
+
+        let mut regs_ts2 = None;
+        if let (Some(module2), Some(vars2)) = (&mut self.ts2_module, &mut self.ts2_vars) {
+            let mut chip2_regs = AyRegisters::default();
+            {
+                let mut engine = Engine { module: module2, vars: vars2 };
+                let _ = engine.module_play_current_line(&mut chip2_regs);
+            }
+            self.synth.apply_registers(1, &chip2_regs);
+            regs_ts2 = Some(chip2_regs);
+        }
+        self.last_regs_ts2 = regs_ts2.clone();
 
         self.synth.apply_registers(0, &regs);
         self.synth.render_frame(self.samples_per_tick);
@@ -309,6 +361,11 @@ impl CliTracker {
 
         let mut lines = Vec::new();
         lines.push(format!("VTI CLI  file={}  title={}  author={}", self.file_name, self.module.title, self.module.author));
+        if let (Some(ts2_name), Some(ts2_module)) = (&self.ts2_file_name, &self.ts2_module) {
+            lines.push(format!("turbosound=on  chip2_file={}  chip2_title={}  chip2_author={}", ts2_name, ts2_module.title, ts2_module.author));
+        } else {
+            lines.push("turbosound=off".to_string());
+        }
         lines.push(format!("play={}  follow={}  tick={}  pos={}/{}  pat={}  row={}  ch={}  time={}/{}",
             if self.playing { "on" } else { "off" },
             if self.follow_playhead { "on" } else { "off" },
@@ -339,6 +396,10 @@ impl CliTracker {
             self.last_regs.env_type,
             self.last_pcm_nonzero,
         ));
+        if let Some(r2) = &self.last_regs_ts2 {
+            lines.push(format!("regs2: A={:02X} B={:02X} C={:02X} mix={:02X} noise={:02X} env={:04X}/{:02X}",
+                r2.amplitude_a, r2.amplitude_b, r2.amplitude_c, r2.mixer, r2.noise, r2.envelope, r2.env_type));
+        }
         lines.push("keys: arrows move  PgUp/PgDn position  Space play/pause  s step  f follow  Home/End  q quit".to_string());
         lines.push(String::new());
 
@@ -481,7 +542,7 @@ fn run_interactive(mut tracker: CliTracker) -> Result<()> {
 }
 
 fn print_usage() {
-    eprintln!("Usage: vti-cli <module-file> [--ticks N] [--play[=true|false]]");
+    eprintln!("Usage: vti-cli <module-file> [--ts2 <module-file>] [--ticks N] [--play[=true|false]]");
     eprintln!("  no --ticks: interactive keyboard tracker view");
     eprintln!("  --ticks N: headless playback harness for N ticks (for diagnostics/tests)");
     eprintln!("  --play: start interactive mode with playback enabled (default: off)");
@@ -490,13 +551,14 @@ fn print_usage() {
 fn main() -> Result<()> {
     env_logger::init();
     let args = CliArgs::parse()?;
-    let mut tracker = CliTracker::load(&args.module_path, args.play)?;
+    let mut tracker = CliTracker::load(&args.module_path, args.ts2_module_path.as_deref(), args.play)?;
 
     if let Some(ticks) = args.ticks {
         tracker.run_headless_ticks(ticks);
         println!(
-            "ticks={} pcm_nonzero_last_tick={} pcm_nonzero_total={} total_ticks={} pos={} line={}",
+            "ticks={} chips={} pcm_nonzero_last_tick={} pcm_nonzero_total={} total_ticks={} pos={} line={}",
             ticks,
+            if tracker.ts2_module.is_some() { 2 } else { 1 },
             tracker.last_pcm_nonzero,
             tracker.total_pcm_nonzero,
             tracker.tick_count,
@@ -561,6 +623,9 @@ mod tests {
             file_name: "test.pt3".to_string(),
             module,
             vars,
+            ts2_file_name: None,
+            ts2_module: None,
+            ts2_vars: None,
             synth,
             samples_per_tick,
             selected_position: 0,
@@ -574,8 +639,27 @@ mod tests {
             last_pcm_nonzero: 0,
             total_pcm_nonzero: 0,
             last_regs: AyRegisters::default(),
+            last_regs_ts2: None,
             last_drawn_lines: 0,
         }
+    }
+
+    fn tracker_for_turbosound_test() -> CliTracker {
+        let mut t = tracker_for_test();
+        let mut module2 = make_test_module();
+        module2.patterns[0].as_mut().expect("pattern").items[0].channel[0].note = 52;
+        let mut vars2 = PlayVars::default();
+        init_tracker_parameters(&mut module2, &mut vars2, true);
+        vars2.delay = module2.initial_delay as i8;
+        vars2.delay_counter = 1;
+        vars2.current_pattern = module2.positions.value[0] as i32;
+
+        let cfg = AyConfig::default();
+        t.synth = Synthesizer::new(cfg, 2, ChipType::AY);
+        t.ts2_file_name = Some("test2.pt3".to_string());
+        t.ts2_module = Some(module2);
+        t.ts2_vars = Some(vars2);
+        t
     }
 
     #[test]
@@ -610,6 +694,17 @@ mod tests {
         t.apply_command(Command::Step);
         assert_eq!(t.tick_count, 1);
         assert!(t.last_pcm_nonzero > 0, "expected non-zero PCM from test module step");
+    }
+
+    #[test]
+    fn turbosound_step_generates_second_chip_registers() {
+        let mut t = tracker_for_turbosound_test();
+        t.apply_command(Command::Step);
+        let regs2 = t.last_regs_ts2.expect("second-chip registers should be present");
+        assert!(
+            regs2.amplitude_a > 0 || regs2.amplitude_b > 0 || regs2.amplitude_c > 0,
+            "second chip should have audible amplitude after one tick"
+        );
     }
 
     #[test]
