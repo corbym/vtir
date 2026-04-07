@@ -29,6 +29,8 @@ enum Command {
     Quit,
     TogglePlay,
     Step,
+    SelectChip1,
+    SelectChip2,
     MoveUp,
     MoveDown,
     MoveLeft,
@@ -46,6 +48,7 @@ struct CliArgs {
     ts2_module_path: Option<PathBuf>,
     ticks: Option<usize>,
     play: bool,
+    active_chip: usize,
 }
 
 impl CliArgs {
@@ -54,6 +57,7 @@ impl CliArgs {
         let mut ts2_module_path: Option<PathBuf> = None;
         let mut ticks: Option<usize> = None;
         let mut play = false;
+        let mut active_chip = 0;
 
         let mut args = env::args().skip(1);
         while let Some(arg) = args.next() {
@@ -78,6 +82,12 @@ impl CliArgs {
                 }
                 "--play" => {
                     play = true;
+                }
+                "--active-chip" => {
+                    let Some(v) = args.next() else {
+                        bail!("--active-chip expects 1 or 2");
+                    };
+                    active_chip = parse_chip_flag(&v)?;
                 }
                 "--no-play" => {
                     play = false;
@@ -104,7 +114,7 @@ impl CliArgs {
             bail!("missing module file path");
         };
 
-        Ok(Self { module_path, ts2_module_path, ticks, play })
+        Ok(Self { module_path, ts2_module_path, ticks, play, active_chip })
     }
 }
 
@@ -113,6 +123,14 @@ fn parse_bool_flag(s: &str) -> Result<bool> {
         "1" | "true" | "yes" | "on" => Ok(true),
         "0" | "false" | "no" | "off" => Ok(false),
         _ => bail!("expected true/false"),
+    }
+}
+
+fn parse_chip_flag(s: &str) -> Result<usize> {
+    match s {
+        "1" => Ok(0),
+        "2" => Ok(1),
+        _ => bail!("expected 1 or 2"),
     }
 }
 
@@ -128,6 +146,7 @@ struct CliTracker {
     selected_position: usize,
     selected_row: usize,
     selected_channel: usize,
+    active_chip: usize,
     follow_playhead: bool,
     playing: bool,
     audio: Option<AudioPlayer>,
@@ -141,7 +160,7 @@ struct CliTracker {
 }
 
 impl CliTracker {
-    fn load(path: &Path, ts2_path: Option<&Path>, start_playing: bool) -> Result<Self> {
+    fn load(path: &Path, ts2_path: Option<&Path>, start_playing: bool, active_chip: usize) -> Result<Self> {
         let bytes = std::fs::read(path)
             .with_context(|| format!("cannot read file: {}", path.display()))?;
         let file_name = path
@@ -189,6 +208,9 @@ impl CliTracker {
         let sample_rate = cfg.sample_rate;
         let samples_per_tick = cfg.ay_tiks_in_interrupt();
         let num_chips = if ts2_module.is_some() { 2 } else { 1 };
+        if active_chip == 1 && ts2_module.is_none() {
+            bail!("--active-chip 2 requires --ts2 <module-file>");
+        }
         let synth = Synthesizer::new(cfg, num_chips, ChipType::AY);
 
         let (audio, audio_error) = match AudioPlayer::start(sample_rate) {
@@ -208,6 +230,7 @@ impl CliTracker {
             selected_position: 0,
             selected_row: 0,
             selected_channel: 0,
+            active_chip,
             follow_playhead: true,
             playing: start_playing,
             audio,
@@ -234,6 +257,8 @@ impl CliTracker {
                 self.playing = !self.playing;
             }
             Command::Step => self.tick_once(),
+            Command::SelectChip1 => self.set_active_chip(0),
+            Command::SelectChip2 => self.set_active_chip(1),
             Command::MoveUp => {
                 if self.selected_row > 0 {
                     self.selected_row -= 1;
@@ -266,6 +291,54 @@ impl CliTracker {
             Command::ToggleFollow => self.follow_playhead = !self.follow_playhead,
         }
         false
+    }
+
+    fn chip_count(&self) -> usize {
+        if self.ts2_module.is_some() { 2 } else { 1 }
+    }
+
+    fn active_module_ref(&self) -> &Module {
+        if self.active_chip == 1 {
+            self.ts2_module.as_ref().expect("active chip 2 requires second module")
+        } else {
+            &self.module
+        }
+    }
+
+    fn active_vars_ref(&self) -> &PlayVars {
+        if self.active_chip == 1 {
+            self.ts2_vars.as_ref().expect("active chip 2 requires second vars")
+        } else {
+            &self.vars
+        }
+    }
+
+    fn set_active_chip(&mut self, chip_idx: usize) {
+        if chip_idx >= self.chip_count() {
+            return;
+        }
+        self.active_chip = chip_idx;
+        if self.follow_playhead {
+            self.follow_active_playhead();
+        } else {
+            self.clamp_cursor();
+        }
+    }
+
+    fn follow_active_playhead(&mut self) {
+        let (current_position, current_line, max_position) = {
+            let vars = self.active_vars_ref();
+            let module = self.active_module_ref();
+            (
+                vars.current_position,
+                vars.current_line,
+                module.positions.length.saturating_sub(1),
+            )
+        };
+        self.selected_position = current_position.min(max_position);
+        self.selected_row = current_line.saturating_sub(1);
+        self.selected_channel = 0;
+        self.clamp_cursor();
     }
 
     fn tick_once(&mut self) {
@@ -306,33 +379,29 @@ impl CliTracker {
         self.tick_count += 1;
 
         if self.follow_playhead {
-            self.selected_position = self
-                .vars
-                .current_position
-                .min(self.module.positions.length.saturating_sub(1));
-            self.selected_row = self.vars.current_line.saturating_sub(1);
-            self.selected_channel = 0;
-            self.clamp_cursor();
+            self.follow_active_playhead();
         }
     }
 
     fn jump_to_position(&mut self, requested: usize) {
-        let max_pos = self.module.positions.length.saturating_sub(1);
+        let max_pos = self.active_module_ref().positions.length.saturating_sub(1);
         self.selected_position = requested.min(max_pos);
         self.selected_row = 0;
         self.clamp_cursor();
     }
 
     fn current_pattern_index(&self) -> usize {
-        if self.module.positions.length == 0 {
+        let module = self.active_module_ref();
+        if module.positions.length == 0 {
             return 0;
         }
-        self.module.positions.value[self.selected_position]
+        module.positions.value[self.selected_position]
     }
 
     fn current_pattern_length(&self) -> usize {
+        let module = self.active_module_ref();
         let pat_idx = self.current_pattern_index();
-        self.module.patterns[pat_idx]
+        module.patterns[pat_idx]
             .as_deref()
             .map(|p| p.length)
             .unwrap_or(1)
@@ -346,13 +415,15 @@ impl CliTracker {
 
     fn draw(&mut self, out: &mut impl Write) -> Result<()> {
         let (term_w, term_h) = terminal::size().unwrap_or((120, 30));
+        let active_module = self.active_module_ref();
+        let active_vars = self.active_vars_ref();
 
         // Compute timing for the header line.
-        let total_ticks = get_module_time(&self.module);
-        let play_pos  = if self.playing { self.vars.current_position } else { self.selected_position };
-        let play_line = if self.playing { self.vars.current_line.saturating_sub(1) } else { self.selected_row };
-        let (pos_ticks, pos_delay) = get_position_time(&self.module, play_pos);
-        let row_ticks = get_position_time_ex(&self.module, play_pos, pos_delay, play_line);
+        let total_ticks = get_module_time(active_module);
+        let play_pos  = if self.playing { active_vars.current_position } else { self.selected_position };
+        let play_line = if self.playing { active_vars.current_line.saturating_sub(1) } else { self.selected_row };
+        let (pos_ticks, pos_delay) = get_position_time(active_module, play_pos);
+        let row_ticks = get_position_time_ex(active_module, play_pos, pos_delay, play_line);
         let elapsed = pos_ticks + row_ticks;
         let fmt_ticks = |t: u32| -> String {
             let secs = t / 50;
@@ -366,12 +437,14 @@ impl CliTracker {
         } else {
             lines.push("turbosound=off".to_string());
         }
-        lines.push(format!("play={}  follow={}  tick={}  pos={}/{}  pat={}  row={}  ch={}  time={}/{}",
+        lines.push(format!("play={}  follow={}  active_chip={}/{}  tick={}  pos={}/{}  pat={}  row={}  ch={}  time={}/{}",
             if self.playing { "on" } else { "off" },
             if self.follow_playhead { "on" } else { "off" },
+            self.active_chip + 1,
+            self.chip_count(),
             self.tick_count,
             self.selected_position,
-            self.module.positions.length.saturating_sub(1),
+            active_module.positions.length.saturating_sub(1),
             self.current_pattern_index(),
             self.selected_row,
             self.selected_channel,
@@ -400,19 +473,19 @@ impl CliTracker {
             lines.push(format!("regs2: A={:02X} B={:02X} C={:02X} mix={:02X} noise={:02X} env={:04X}/{:02X}",
                 r2.amplitude_a, r2.amplitude_b, r2.amplitude_c, r2.mixer, r2.noise, r2.envelope, r2.env_type));
         }
-        lines.push("keys: arrows move  PgUp/PgDn position  Space play/pause  s step  f follow  Home/End  q quit".to_string());
+        lines.push("keys: 1/2 chip  arrows move  PgUp/PgDn position  Space play/pause  s step  f follow  Home/End  q quit".to_string());
         lines.push(String::new());
 
         let pat_idx = self.current_pattern_index();
-        let Some(pattern) = self.module.patterns[pat_idx].as_deref() else {
+        let Some(pattern) = active_module.patterns[pat_idx].as_deref() else {
             lines.push(format!("pattern {} is empty", pat_idx));
             render_lines(out, &lines, term_w, term_h, &mut self.last_drawn_lines)?;
             out.flush()?;
             return Ok(());
         };
 
-        let play_row = self.vars.current_line.saturating_sub(1);
-        let play_pos = self.vars.current_position;
+        let play_row = active_vars.current_line.saturating_sub(1);
+        let play_pos = active_vars.current_position;
 
         let first_row = self.selected_row.saturating_sub(VIEW_ROWS / 2);
         let last_row = (first_row + VIEW_ROWS).min(pattern.length);
@@ -479,6 +552,8 @@ fn command_from_key(key: KeyEvent) -> Option<Command> {
         KeyCode::Char(' ') => Some(Command::TogglePlay),
         KeyCode::Char('s') => Some(Command::Step),
         KeyCode::Char('f') => Some(Command::ToggleFollow),
+        KeyCode::Char('1') => Some(Command::SelectChip1),
+        KeyCode::Char('2') => Some(Command::SelectChip2),
         KeyCode::Up => Some(Command::MoveUp),
         KeyCode::Down => Some(Command::MoveDown),
         KeyCode::Left => Some(Command::MoveLeft),
@@ -542,28 +617,36 @@ fn run_interactive(mut tracker: CliTracker) -> Result<()> {
 }
 
 fn print_usage() {
-    eprintln!("Usage: vti-cli <module-file> [--ts2 <module-file>] [--ticks N] [--play[=true|false]]");
+    eprintln!("Usage: vti-cli <module-file> [--ts2 <module-file>] [--ticks N] [--play[=true|false]] [--active-chip 1|2]");
     eprintln!("  no --ticks: interactive keyboard tracker view");
     eprintln!("  --ticks N: headless playback harness for N ticks (for diagnostics/tests)");
     eprintln!("  --play: start interactive mode with playback enabled (default: off)");
+    eprintln!("  --active-chip 2: start the UI focused on the TurboSound second chip (requires --ts2)");
 }
 
 fn main() -> Result<()> {
     env_logger::init();
     let args = CliArgs::parse()?;
-    let mut tracker = CliTracker::load(&args.module_path, args.ts2_module_path.as_deref(), args.play)?;
+    let mut tracker = CliTracker::load(
+        &args.module_path,
+        args.ts2_module_path.as_deref(),
+        args.play,
+        args.active_chip,
+    )?;
 
     if let Some(ticks) = args.ticks {
         tracker.run_headless_ticks(ticks);
+        let active_vars = tracker.active_vars_ref();
         println!(
-            "ticks={} chips={} pcm_nonzero_last_tick={} pcm_nonzero_total={} total_ticks={} pos={} line={}",
+            "ticks={} chips={} active_chip={} pcm_nonzero_last_tick={} pcm_nonzero_total={} total_ticks={} pos={} line={}",
             ticks,
-            if tracker.ts2_module.is_some() { 2 } else { 1 },
+            tracker.chip_count(),
+            tracker.active_chip + 1,
             tracker.last_pcm_nonzero,
             tracker.total_pcm_nonzero,
             tracker.tick_count,
-            tracker.vars.current_position,
-            tracker.vars.current_line
+            active_vars.current_position,
+            active_vars.current_line
         );
         return Ok(());
     }
@@ -631,6 +714,7 @@ mod tests {
             selected_position: 0,
             selected_row: 0,
             selected_channel: 0,
+            active_chip: 0,
             follow_playhead: false,
             playing: false,
             audio: None,
@@ -666,6 +750,8 @@ mod tests {
     fn key_mapping_is_intuitive_for_core_controls() {
         assert_eq!(command_from_key(KeyEvent::from(KeyCode::Char('q'))), Some(Command::Quit));
         assert_eq!(command_from_key(KeyEvent::from(KeyCode::Char(' '))), Some(Command::TogglePlay));
+        assert_eq!(command_from_key(KeyEvent::from(KeyCode::Char('1'))), Some(Command::SelectChip1));
+        assert_eq!(command_from_key(KeyEvent::from(KeyCode::Char('2'))), Some(Command::SelectChip2));
         assert_eq!(command_from_key(KeyEvent::from(KeyCode::Up)), Some(Command::MoveUp));
         assert_eq!(command_from_key(KeyEvent::from(KeyCode::PageDown)), Some(Command::NextPosition));
     }
@@ -708,12 +794,29 @@ mod tests {
     }
 
     #[test]
+    fn selecting_chip_two_switches_active_view_when_turbosound_is_loaded() {
+        let mut t = tracker_for_turbosound_test();
+        t.apply_command(Command::SelectChip2);
+        assert_eq!(t.active_chip, 1);
+
+        t.apply_command(Command::SelectChip1);
+        assert_eq!(t.active_chip, 0);
+    }
+
+    #[test]
     fn parse_bool_flag_accepts_true_false_variants() {
         assert_eq!(parse_bool_flag("true").expect("true parse"), true);
         assert_eq!(parse_bool_flag("1").expect("1 parse"), true);
         assert_eq!(parse_bool_flag("false").expect("false parse"), false);
         assert_eq!(parse_bool_flag("0").expect("0 parse"), false);
         assert!(parse_bool_flag("maybe").is_err());
+    }
+
+    #[test]
+    fn parse_chip_flag_accepts_one_and_two() {
+        assert_eq!(parse_chip_flag("1").expect("chip 1 parse"), 0);
+        assert_eq!(parse_chip_flag("2").expect("chip 2 parse"), 1);
+        assert!(parse_chip_flag("3").is_err());
     }
 
     // ── Editor logic smoke tests ──────────────────────────────────────────

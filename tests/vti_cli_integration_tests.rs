@@ -4,7 +4,7 @@ use std::process::Command;
 fn vti_cli_headless_addams2_reports_pcm_activity() {
     let bin = env!("CARGO_BIN_EXE_vti-cli");
     let fixture = format!(
-        "{}/crates/vti-core/tests/fixtures/tunes/ADDAMS2.ay",
+        "{}/crates/vti-core/tests/fixtures/tunes/madness_descent.pt3",
         env!("CARGO_MANIFEST_DIR")
     );
 
@@ -47,15 +47,19 @@ fn vti_cli_without_arguments_fails_with_usage() {
 #[test]
 fn vti_cli_headless_turbosound_reports_two_chips() {
     let bin = env!("CARGO_BIN_EXE_vti-cli");
-    let fixture = format!(
-        "{}/crates/vti-core/tests/fixtures/tunes/ADDAMS2.ay",
+    let fixture1 = format!(
+        "{}/crates/vti-core/tests/fixtures/tunes/madness_descent.pt3",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let fixture2 = format!(
+        "{}/crates/vti-core/tests/fixtures/tunes/Space Crusade Loader.pt3",
         env!("CARGO_MANIFEST_DIR")
     );
 
     let output = Command::new(bin)
-        .arg(&fixture)
+        .arg(&fixture1)
         .arg("--ts2")
-        .arg(&fixture)
+        .arg(&fixture2)
         .arg("--ticks")
         .arg("256")
         .output()
@@ -64,5 +68,34 @@ fn vti_cli_headless_turbosound_reports_two_chips() {
     assert!(output.status.success(), "vti-cli failed: {}", String::from_utf8_lossy(&output.stderr));
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("chips=2"), "stdout: {stdout}");
+}
+
+#[cfg(feature = "cli")]
+#[test]
+fn vti_cli_headless_can_focus_turbosound_chip_two() {
+    let bin = env!("CARGO_BIN_EXE_vti-cli");
+    let fixture1 = format!(
+        "{}/crates/vti-core/tests/fixtures/tunes/madness_descent.pt3",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let fixture2 = format!(
+        "{}/crates/vti-core/tests/fixtures/tunes/Space Crusade Loader.pt3",
+        env!("CARGO_MANIFEST_DIR")
+    );
+
+    let output = Command::new(bin)
+        .arg(&fixture1)
+        .arg("--ts2")
+        .arg(&fixture2)
+        .arg("--active-chip")
+        .arg("2")
+        .arg("--ticks")
+        .arg("16")
+        .output()
+        .expect("failed to run vti-cli");
+
+    assert!(output.status.success(), "vti-cli failed: {}", String::from_utf8_lossy(&output.stderr));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("active_chip=2"), "stdout: {stdout}");
 }
 

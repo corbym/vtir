@@ -13,6 +13,8 @@ impl Toolbar {
         playback_state: &mut PlaybackState,
         play_mode: &mut PlayMode,
         status: &mut String,
+        active_module: &mut usize,
+        module_labels: &[String],
     ) {
         ui.horizontal(|ui| {
             // Transport buttons
@@ -41,6 +43,25 @@ impl Toolbar {
             ui.selectable_value(play_mode, PlayMode::Module,  "Module");
             ui.selectable_value(play_mode, PlayMode::Pattern, "Pattern");
             ui.selectable_value(play_mode, PlayMode::Line,    "Line");
+
+            ui.separator();
+
+            ui.label("Chip:");
+            for (idx, label) in module_labels.iter().enumerate() {
+                if ui
+                    .selectable_label(*active_module == idx, format!("{} {}", idx + 1, label))
+                    .clicked()
+                {
+                    *active_module = idx;
+                    if module_labels.len() > 1 {
+                        *status = format!("Editing TurboSound chip {}: {}", idx + 1, label);
+                    }
+                }
+            }
+
+            if module_labels.len() == 1 {
+                ui.weak("TurboSound off");
+            }
         });
     }
 }

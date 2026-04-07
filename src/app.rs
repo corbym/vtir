@@ -10,6 +10,7 @@ use vti_core::playback::{Engine, PlayVars, init_tracker_parameters, PlayResult,
 use vti_audio::AudioPlayer;
 use vti_ay::config::SAMPLE_RATE_DEF;
 use vti_core::formats;
+use crate::pending_file::OpenTarget;
 
 #[cfg(target_arch = "wasm32")]
 use crate::wasm_file;
@@ -54,9 +55,9 @@ pub struct VortexTrackerApp {
     /// Mirrors the Delphi `MessageBox(…, MB_ICONEXCLAMATION)` on load failure.
     pub error_dialog: Option<String>,
 
-    /// The filename of the currently loaded module (without directory path),
-    /// e.g. `"mysong.pt3"`.  `None` for a new unsaved module.
-    pub current_filename: Option<String>,
+    /// Per-chip filenames (base name only, no directory), matching `modules`.
+    /// `None` for new / unsaved modules.
+    pub module_filenames: Vec<Option<String>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -219,17 +220,35 @@ fn make_demo_module() -> Module {
 
 impl VortexTrackerApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        let mut modules = vec![make_demo_module()];
+        Self::new_with_modules(vec![make_demo_module()], vec![None])
+    }
+
+    fn new_with_modules(mut modules: Vec<Module>, mut module_filenames: Vec<Option<String>>) -> Self {
+        if modules.is_empty() {
+            modules.push(make_demo_module());
+        }
+        if module_filenames.len() != modules.len() {
+            module_filenames.resize(modules.len(), None);
+        }
 
         // Audio / synthesis setup
         let cfg = AyConfig::default();
         let samples_per_tick = cfg.sample_tiks_in_interrupt();
         let synth = Synthesizer::new(cfg, modules.len().clamp(1, 2), ChipType::AY);
-
-        let mut play_vars = PlayVars::default();
-        init_tracker_parameters(&mut modules[0], &mut play_vars, true);
-        play_vars.delay = modules[0].initial_delay as i8;
-        play_vars.current_pattern = modules[0].positions.value[0] as i32;
+        let play_vars = modules
+            .iter_mut()
+            .map(|module| {
+                let mut play_vars = PlayVars::default();
+                init_tracker_parameters(module, &mut play_vars, true);
+                play_vars.delay = module.initial_delay as i8;
+                play_vars.current_pattern = if module.positions.length > 0 {
+                    module.positions.value[0] as i32
+                } else {
+                    0
+                };
+                play_vars
+            })
+            .collect();
 
         // The AudioPlayer is opened lazily — when the user first presses Play.
         // On WASM this is required by the browser autoplay policy (AudioContext
@@ -249,21 +268,95 @@ impl VortexTrackerApp {
             play_mode: PlayMode::default(),
             audio,
             synth,
-            play_vars: vec![play_vars],
+            play_vars,
             samples_per_tick,
             last_tick_time: 0.0,
             status: "Ready".to_string(),
             error_dialog: None,
-            current_filename: None,
+            module_filenames,
         }
     }
 
-    fn active_module(&self) -> &Module {
-        &self.modules[self.active_module]
+    fn turbo_sound_enabled(&self) -> bool {
+        self.modules.len() > 1
     }
 
-    fn active_module_mut(&mut self) -> &mut Module {
-        &mut self.modules[self.active_module]
+    fn module_filename(&self, idx: usize) -> Option<&str> {
+        self.module_filenames.get(idx).and_then(|n| n.as_deref())
+    }
+
+    fn active_filename(&self) -> Option<&str> {
+        self.module_filename(self.active_module)
+    }
+
+    fn module_slot_label(&self, idx: usize) -> String {
+        if let Some(name) = self.module_filename(idx) {
+            name.to_string()
+        } else {
+            let title = self.modules[idx].title.trim();
+            if title.is_empty() {
+                format!("Chip {}", idx + 1)
+            } else {
+                title.to_string()
+            }
+        }
+    }
+
+    fn set_active_module_slot(&mut self, idx: usize) {
+        if idx >= self.modules.len() || self.active_module == idx {
+            return;
+        }
+        self.active_module = idx;
+        if self.turbo_sound_enabled() {
+            self.status = format!(
+                "Editing TurboSound chip {}: {}",
+                idx + 1,
+                self.module_slot_label(idx)
+            );
+        }
+    }
+
+    fn install_loaded_module(&mut self, target: OpenTarget, module: Module, filename: String) {
+        self.playback_state = PlaybackState::Stopped;
+        self.last_tick_time = 0.0;
+
+        match target {
+            OpenTarget::Primary => {
+                self.modules = vec![module];
+                self.module_filenames = vec![Some(filename.clone())];
+                self.active_module = 0;
+                self.status = format!("Loaded: {}", filename);
+            }
+            OpenTarget::Secondary => {
+                if self.modules.len() == 1 {
+                    self.modules.push(module);
+                    self.module_filenames.push(Some(filename.clone()));
+                } else {
+                    self.modules[1] = module;
+                    self.module_filenames[1] = Some(filename.clone());
+                }
+                self.active_module = 1;
+                self.status = format!("TurboSound chip 2 loaded: {}", filename);
+            }
+        }
+
+        self.reset_playback_for_all_modules();
+        self.rebuild_synth_for_modules();
+    }
+
+    fn disable_secondary_chip(&mut self) {
+        if !self.turbo_sound_enabled() {
+            return;
+        }
+
+        self.playback_state = PlaybackState::Stopped;
+        self.last_tick_time = 0.0;
+        self.modules.truncate(1);
+        self.module_filenames.truncate(1);
+        self.active_module = 0;
+        self.reset_playback_for_all_modules();
+        self.rebuild_synth_for_modules();
+        self.status = "TurboSound chip 2 disabled".to_string();
     }
 
     /// Set the status bar text and raise a modal error dialog with the same
@@ -295,7 +388,7 @@ impl VortexTrackerApp {
     /// On WASM this is a no-op (file access is handled separately via the
     /// browser `<input type="file">` element — see PLAN.md §8).
     #[cfg(not(target_arch = "wasm32"))]
-    fn open_file_dialog(&mut self, _ctx: &egui::Context) {
+    fn open_module_dialog(&mut self, _ctx: &egui::Context, target: OpenTarget) {
         let path = rfd::FileDialog::new()
             .add_filter(
                 "Tracker modules",
@@ -334,13 +427,7 @@ impl VortexTrackerApp {
                     .unwrap_or("file");
                 match formats::load(&bytes, filename) {
                     Ok(module) => {
-                        self.playback_state = PlaybackState::Stopped;
-                        self.modules = vec![module];
-                        self.active_module = 0;
-                        self.current_filename = Some(filename.to_string());
-                        self.reset_playback_for_all_modules();
-                        self.rebuild_synth_for_modules();
-                        self.status = format!("Loaded: {}", filename);
+                        self.install_loaded_module(target, module, filename.to_string());
                     }
                     Err(e) => {
                         self.set_error(format!("Parse error: {e}"));
@@ -351,20 +438,23 @@ impl VortexTrackerApp {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn open_file_dialog(&mut self, ctx: &egui::Context) {
+    fn open_module_dialog(&mut self, ctx: &egui::Context, target: OpenTarget) {
         if !wasm_file::open_picker_supported() {
             self.status =
                 "File open: File System Access API not supported in this browser".to_string();
             return;
         }
-        self.status = "Opening file…".to_string();
-        wasm_file::spawn_open_file(ctx.clone());
+        self.status = match target {
+            OpenTarget::Primary => "Opening file…".to_string(),
+            OpenTarget::Secondary => "Opening TurboSound chip 2…".to_string(),
+        };
+        wasm_file::spawn_open_file(ctx.clone(), target);
     }
 
-    /// Return the stem (name without extension) of `current_filename`, or
+    /// Return the stem (name without extension) of the active slot filename, or
     /// `"module"` as a fallback for new/unnamed modules.
     fn filename_stem(&self) -> String {
-        self.current_filename
+        self.active_filename()
             .as_deref()
             .and_then(|n| {
                 let p = std::path::Path::new(n);
@@ -608,18 +698,6 @@ impl VortexTrackerApp {
         self.active_module = self.active_module.min(self.modules.len().saturating_sub(1));
     }
 
-    /// Re-initialise playback state so the next Play starts from the beginning.
-    fn reset_playback(&mut self) {
-        init_tracker_parameters(&mut self.modules[self.active_module], &mut self.play_vars[self.active_module], true);
-        self.play_vars[self.active_module].delay = self.modules[self.active_module].initial_delay as i8;
-        self.play_vars[self.active_module].current_position = 0;
-        self.play_vars[self.active_module].current_pattern =
-            if self.modules[self.active_module].positions.length > 0 {
-                self.modules[self.active_module].positions.value[0] as i32
-            } else {
-                0
-            };
-    }
 
     /// Drain any pending WASM file-operation results and apply them to app state.
     ///
@@ -631,17 +709,11 @@ impl VortexTrackerApp {
         if let Some(pf) = pending_file::take_pending_open() {
             match formats::load(&pf.bytes, &pf.name) {
                 Ok(module) => {
-                    self.playback_state = PlaybackState::Stopped;
-                    self.modules = vec![module];
-                    self.active_module = 0;
-                    self.current_filename = Some(pf.name.clone());
-                    self.reset_playback_for_all_modules();
-                    self.rebuild_synth_for_modules();
-                    self.status = format!("Loaded: {}", pf.name);
+                    self.install_loaded_module(pf.target, module, pf.name);
                 }
                 Err(e) => {
-                        self.set_error(format!("Parse error: {e}"));
-                    }
+                    self.set_error(format!("Parse error: {e}"));
+                }
             }
         }
 
@@ -711,14 +783,19 @@ impl eframe::App for VortexTrackerApp {
 
         // ── Window title: show filename or module title ────────────────────
         {
-            let title = match &self.current_filename {
-                Some(name) => format!("Vortex Tracker II — {name}"),
+            let slot_prefix = if self.turbo_sound_enabled() {
+                format!("Chip {} — ", self.active_module + 1)
+            } else {
+                String::new()
+            };
+            let title = match self.active_filename() {
+                Some(name) => format!("Vortex Tracker II — {slot_prefix}{name}"),
                 None => {
                     let t = &self.modules[self.active_module].title;
                     if t.is_empty() {
                         "Vortex Tracker II".to_string()
                     } else {
-                        format!("Vortex Tracker II — {t}")
+                        format!("Vortex Tracker II — {slot_prefix}{t}")
                     }
                 }
             };
@@ -773,16 +850,17 @@ impl eframe::App for VortexTrackerApp {
                 ui.menu_button("File", |ui| {
                     if ui.button("New").clicked() {
                         self.modules = vec![Module::default()];
+                        self.module_filenames = vec![None];
                         self.active_module = 0;
                         self.playback_state = PlaybackState::Stopped;
-                        self.current_filename = None;
+                        self.last_tick_time = 0.0;
                         self.reset_playback_for_all_modules();
                         self.rebuild_synth_for_modules();
                         self.status = "New module created".to_string();
                         ui.close_menu();
                     }
                     if ui.button("Open…").clicked() {
-                        self.open_file_dialog(ctx);
+                        self.open_module_dialog(ctx, OpenTarget::Primary);
                         ui.close_menu();
                     }
                     if ui.button("Save as VTM…").clicked() {
@@ -805,6 +883,45 @@ impl eframe::App for VortexTrackerApp {
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                     }
                 });
+                ui.menu_button("Turbo Sound", |ui| {
+                    if ui.button("Load 2nd sound chip module…").clicked() {
+                        self.open_module_dialog(ctx, OpenTarget::Secondary);
+                        ui.close_menu();
+                    }
+
+                    let disable_button = ui.add_enabled(
+                        self.turbo_sound_enabled(),
+                        egui::Button::new("Disable 2nd sound chip"),
+                    );
+                    if disable_button.clicked() {
+                        self.disable_secondary_chip();
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    if ui
+                        .selectable_label(self.active_module == 0, format!("Edit chip 1 ({})", self.module_slot_label(0)))
+                        .clicked()
+                    {
+                        self.set_active_module_slot(0);
+                        ui.close_menu();
+                    }
+
+                    let chip2_text = if self.turbo_sound_enabled() {
+                        format!("Edit chip 2 ({})", self.module_slot_label(1))
+                    } else {
+                        "Edit chip 2 (disabled)".to_string()
+                    };
+                    let chip2_button = ui.add_enabled(
+                        self.turbo_sound_enabled(),
+                        egui::SelectableLabel::new(self.active_module == 1, chip2_text),
+                    );
+                    if chip2_button.clicked() {
+                        self.set_active_module_slot(1);
+                        ui.close_menu();
+                    }
+                });
                 ui.menu_button("Help", |ui| {
                     if ui.button("About").clicked() {
                         // TODO: about dialog (PLAN.md §5.1)
@@ -818,7 +935,17 @@ impl eframe::App for VortexTrackerApp {
         // ── Toolbar ────────────────────────────────────────────────────────
         egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
             let prev_state = self.playback_state;
-            self.toolbar.show(ui, &mut self.playback_state, &mut self.play_mode, &mut self.status);
+            let chip_labels: Vec<String> = (0..self.modules.len())
+                .map(|idx| self.module_slot_label(idx))
+                .collect();
+            self.toolbar.show(
+                ui,
+                &mut self.playback_state,
+                &mut self.play_mode,
+                &mut self.status,
+                &mut self.active_module,
+                &chip_labels,
+            );
 
             match (prev_state, self.playback_state) {
                 // Stopped → Playing: reset position and start audio from the beginning.
@@ -860,6 +987,8 @@ impl eframe::App for VortexTrackerApp {
                 // All other transitions are no-ops (e.g. Stopped→Stopped).
                 _ => {}
             }
+
+            self.active_module = self.active_module.min(self.modules.len().saturating_sub(1));
         });
 
         // ── Status bar ─────────────────────────────────────────────────────
@@ -880,7 +1009,9 @@ impl eframe::App for VortexTrackerApp {
                         format!("{:02}:{:02}", secs / 60, secs % 60)
                     };
                     ui.label(format!(
-                        "pos {}/{}  {}  {} / {}",
+                        "chip {}/{}  pos {}/{}  {}  {} / {}",
+                        self.active_module + 1,
+                        self.modules.len(),
                         pos,
                         module.positions.length.saturating_sub(1),
                         &self.status,
@@ -888,7 +1019,16 @@ impl eframe::App for VortexTrackerApp {
                         fmt_ticks(total_ticks),
                     ));
                 } else {
-                    ui.label(&self.status);
+                    if self.turbo_sound_enabled() {
+                        ui.label(format!(
+                            "chip {}/{}  {}",
+                            self.active_module + 1,
+                            self.modules.len(),
+                            &self.status
+                        ));
+                    } else {
+                        ui.label(&self.status);
+                    }
                 }
             });
         });
@@ -983,6 +1123,21 @@ pub(crate) fn collapse_focus_ping_pong(events: &mut Vec<egui::Event>) {
 mod tests {
     use super::*;
 
+    fn module_with_title(title: &str) -> Module {
+        let mut module = Module::default();
+        module.title = title.to_string();
+        module.positions.length = 1;
+        module.positions.value[0] = 0;
+        module
+    }
+
+    fn app_for_test() -> VortexTrackerApp {
+        VortexTrackerApp::new_with_modules(
+            vec![module_with_title("Chip One")],
+            vec![Some("chip1.pt3".to_string())],
+        )
+    }
+
     // ── collapse_focus_ping_pong unit tests ──────────────────────────────────
     // These tests exercise the Rust logic that prevents the mobile virtual
     // keyboard from immediately disappearing after a tap.  The matching
@@ -1059,5 +1214,54 @@ mod tests {
         collapse_focus_ping_pong(&mut events);
         assert_eq!(events.len(), 1, "only the genuine false should remain");
         assert!(matches!(events[0], egui::Event::WindowFocused(false)));
+    }
+
+    #[test]
+    fn installing_secondary_module_preserves_primary_and_selects_chip_two() {
+        let mut app = app_for_test();
+
+        app.install_loaded_module(
+            OpenTarget::Secondary,
+            module_with_title("Chip Two"),
+            "chip2.pt3".to_string(),
+        );
+
+        assert_eq!(app.modules.len(), 2);
+        assert_eq!(app.module_filename(0), Some("chip1.pt3"));
+        assert_eq!(app.module_filename(1), Some("chip2.pt3"));
+        assert_eq!(app.active_module, 1, "newly loaded second chip should become active");
+        assert!(app.turbo_sound_enabled());
+    }
+
+    #[test]
+    fn disabling_secondary_chip_returns_to_single_chip_mode() {
+        let mut app = app_for_test();
+        app.install_loaded_module(
+            OpenTarget::Secondary,
+            module_with_title("Chip Two"),
+            "chip2.pt3".to_string(),
+        );
+
+        app.disable_secondary_chip();
+
+        assert_eq!(app.modules.len(), 1);
+        assert_eq!(app.module_filenames.len(), 1);
+        assert_eq!(app.active_module, 0);
+        assert!(!app.turbo_sound_enabled());
+        assert_eq!(app.module_filename(0), Some("chip1.pt3"));
+    }
+
+    #[test]
+    fn filename_stem_tracks_active_chip_filename() {
+        let mut app = app_for_test();
+        app.install_loaded_module(
+            OpenTarget::Secondary,
+            module_with_title("Chip Two"),
+            "chip2.pt3".to_string(),
+        );
+
+        assert_eq!(app.filename_stem(), "chip2");
+        app.set_active_module_slot(0);
+        assert_eq!(app.filename_stem(), "chip1");
     }
 }

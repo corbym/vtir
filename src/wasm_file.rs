@@ -18,7 +18,7 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Blob, BlobPropertyBag, HtmlAnchorElement, Url};
 
-use crate::pending_file::{PendingFile, put_pending_open, put_pending_save_status};
+use crate::pending_file::{OpenTarget, PendingFile, put_pending_open, put_pending_save_status};
 
 // ── extern "C" bindings ───────────────────────────────────────────────────────
 
@@ -102,9 +102,9 @@ pub fn save_picker_supported() -> bool {
 /// The `ctx` is used to request a repaint after the async task completes so
 /// that [`crate::pending_file::take_pending_open`] is drained on the very next
 /// frame rather than waiting for the next user-input event.
-pub fn spawn_open_file(ctx: Context) {
+pub fn spawn_open_file(ctx: Context, target: OpenTarget) {
     wasm_bindgen_futures::spawn_local(async move {
-        match do_open_file().await {
+        match do_open_file(target).await {
             Ok(pf) => {
                 put_pending_open(pf);
                 ctx.request_repaint();
@@ -118,7 +118,7 @@ pub fn spawn_open_file(ctx: Context) {
     });
 }
 
-async fn do_open_file() -> Result<PendingFile, JsValue> {
+async fn do_open_file(target: OpenTarget) -> Result<PendingFile, JsValue> {
     let opts = build_open_options();
     let promise = show_open_file_picker_raw(&opts)?;
     let result = JsFuture::from(promise).await?;
@@ -135,7 +135,7 @@ async fn do_open_file() -> Result<PendingFile, JsValue> {
     let buf: ArrayBuffer = buf_val.unchecked_into();
     let bytes = Uint8Array::new(&buf).to_vec();
 
-    Ok(PendingFile { name, bytes })
+    Ok(PendingFile { name, bytes, target })
 }
 
 fn build_open_options() -> JsValue {

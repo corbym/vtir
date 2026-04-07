@@ -14,11 +14,19 @@ use std::cell::RefCell;
 // ── Data types ────────────────────────────────────────────────────────────────
 
 /// A file that was successfully read by the browser's open-file picker.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OpenTarget {
+    Primary,
+    Secondary,
+}
+
 pub struct PendingFile {
     /// The base name reported by the browser (e.g. `"song.pt3"`).
     pub name: String,
     /// Raw bytes of the file contents.
     pub bytes: Vec<u8>,
+    /// Which module slot the file should be loaded into.
+    pub target: OpenTarget,
 }
 
 // ── Thread-local channels ─────────────────────────────────────────────────────
@@ -83,10 +91,12 @@ mod tests {
         put_pending_open(PendingFile {
             name:  "test.pt3".to_string(),
             bytes: vec![0xDE, 0xAD],
+            target: OpenTarget::Primary,
         });
         let pf = take_pending_open().expect("should have a value");
         assert_eq!(pf.name, "test.pt3");
         assert_eq!(pf.bytes, vec![0xDE, 0xAD]);
+        assert_eq!(pf.target, OpenTarget::Primary);
     }
 
     #[test]
@@ -95,6 +105,7 @@ mod tests {
         put_pending_open(PendingFile {
             name:  "song.vtm".to_string(),
             bytes: vec![1, 2, 3],
+            target: OpenTarget::Primary,
         });
         let _ = take_pending_open(); // first drain
         assert!(take_pending_open().is_none(), "slot should be empty after drain");
@@ -103,10 +114,19 @@ mod tests {
     #[test]
     fn put_pending_open_overwrites_previous_value() {
         drain_open();
-        put_pending_open(PendingFile { name: "a.pt3".to_string(), bytes: vec![1] });
-        put_pending_open(PendingFile { name: "b.pt3".to_string(), bytes: vec![2] });
+        put_pending_open(PendingFile {
+            name: "a.pt3".to_string(),
+            bytes: vec![1],
+            target: OpenTarget::Primary,
+        });
+        put_pending_open(PendingFile {
+            name: "b.pt3".to_string(),
+            bytes: vec![2],
+            target: OpenTarget::Secondary,
+        });
         let pf = take_pending_open().expect("should have a value");
         assert_eq!(pf.name, "b.pt3", "second put should overwrite the first");
+        assert_eq!(pf.target, OpenTarget::Secondary);
         assert!(take_pending_open().is_none());
     }
 
@@ -165,6 +185,7 @@ mod tests {
         put_pending_open(PendingFile {
             name:  "test.vtm".to_string(),
             bytes: vtm.as_bytes().to_vec(),
+            target: OpenTarget::Primary,
         });
 
         let pf = take_pending_open().expect("should have result");
@@ -181,6 +202,7 @@ mod tests {
         put_pending_open(PendingFile {
             name:  "junk.vtm".to_string(),
             bytes: b"this is not a valid module".to_vec(),
+            target: OpenTarget::Secondary,
         });
 
         let pf = take_pending_open().expect("should have result");

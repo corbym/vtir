@@ -109,6 +109,7 @@ source. See [`PLAN.md`](PLAN.md) for a detailed, checked-off task list.
 - ✅ Song timing helpers: `get_module_time`, `get_position_time`, `get_position_time_ex`, `get_time_params` (Pascal-baseline verified)
 - ✅ Cross-platform audio output via `cpal`
 - ✅ egui-based GUI skeleton (pattern view, sample view, ornament view, toolbar) with status bar showing current position + elapsed / total time
+- ✅ TurboSound GUI slot management — `Turbo Sound` menu can load/replace the 2nd chip module, disable chip 2, and switch the active editor between chip 1 / chip 2 on native and WASM builds
 - ✅ Terminal CLI tracker diagnostics tool (`vti-cli`) — keyboard navigation + headless tick harness; header shows elapsed / total time
 - ✅ Playback cursor follow — pattern editor highlights and scrolls to the playing row in real time
 - ✅ File open (import): PT3, PT2, PT1, STC, STP, VTM text, AY (ZXAY ST11; EMUL partial — the original Pascal application had full EMUL playback via a built-in Z80 emulator; this Rust port has no Z80 emulator yet, so only EMUL files whose payload contains an embedded PT3/STP module with a recognisable header can be loaded — all other EMUL files will fail to import)
@@ -164,7 +165,7 @@ target/debug/vti-cli crates/vti-core/tests/fixtures/tunes/madness_descent.pt3
 ./scripts/vti-cli crates/vti-core/tests/fixtures/tunes/madness_descent.pt3 --ticks 512
 ```
 
-`vti-cli` starts with playback off by default. Use `--play`, `--play=true`, or `--play=false` to control startup playback. Keyboard controls: arrows move row/channel, `PageUp`/`PageDown` move positions, `Space` play/pause, `s` step one tick, `f` toggle follow-playhead, `Home`/`End` jump top/bottom, `q` quit.
+`vti-cli` starts with playback off by default. Use `--play`, `--play=true`, or `--play=false` to control startup playback. Use `--active-chip 2` to start focused on the TurboSound second chip (requires `--ts2`). Keyboard controls: `1`/`2` select chip, arrows move row/channel, `PageUp`/`PageDown` move positions, `Space` play/pause, `s` step one tick, `f` toggle follow-playhead, `Home`/`End` jump top/bottom, `q` quit.
 
 ### TurboSound quick start (true 2-chip mode)
 

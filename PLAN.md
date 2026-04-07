@@ -309,7 +309,7 @@
 - [x] `File → Save as PT3…` — rfd save dialog (native) / File System Access API (WASM) → PT3 binary output
 - [ ] `File → Open` / `File → Save` — show load/save errors and parse failures in an egui modal error dialog (currently only reported in the status bar)
 - [x] `File → Export ZX` — PT3 to .tap / .ay / .scl / Hobeta (`zx_export.rs`, ported from `ExportZX.pas`); all five output formats; ZX player binaries embedded from assets
-- [ ] Turbo Sound second-chip slot management
+- [x] Turbo Sound second-chip slot management — GUI `Turbo Sound` menu can load/replace chip 2, disable chip 2, and switch the active editor between chip 1 / chip 2; WASM picker path carries the target slot through `pending_file::OpenTarget`; CLI parity via `1` / `2` and `--active-chip 1|2`
 - [ ] Module properties dialog (title, author, delay, tone table)
 - [ ] About dialog (credits to S.V.Bulba)
 

@@ -210,6 +210,13 @@ Any new WASM-specific JavaScript functionality **must** have Jest tests in `src/
 
 `VortexTrackerApp` has an `error_dialog: Option<String>` field. When set to `Some(message)`, the `update()` loop renders a modal `egui::Window` with that message. Use this for all load/parse failures — it matches the Delphi `MessageBox(MB_ICONEXCLAMATION)` pattern from the original.
 
+### TurboSound GUI slot management
+
+- GUI TurboSound state lives in parallel vectors: `VortexTrackerApp::modules`, `play_vars`, and `module_filenames`. Index `0` is chip 1; index `1` is chip 2 when TurboSound is enabled.
+- The GUI `Turbo Sound` menu is the authoritative slot-management surface: load/replace chip 2, disable chip 2, and switch the active editor between chip 1 and chip 2.
+- On WASM, the browser open-file picker must carry the destination slot through `pending_file::OpenTarget`; otherwise chip-2 loads will incorrectly replace the primary module when the async result is drained.
+- The toolbar chip selector and the CLI chip selector (`1` / `2`, plus `--active-chip 1|2`) must stay in parity with this GUI behaviour.
+
 ---
 
 ## Playback Cursor — Key Architecture Decision
@@ -243,7 +250,7 @@ Violation of this rule causes the highlight to be one row ahead of the sound bei
 
 - A native terminal diagnostics binary now exists at `src/bin/vti-cli.rs` (`cargo run --bin vti-cli -- <module>`).
 - Use this when debugging parser/playback paths without the GUI. It renders tracker rows and AY register snapshots.
-- Keyboard contract: arrows move row/channel, `PageUp/PageDown` move positions, `Space` toggles play, `s` single-steps one tick, `f` toggles follow-playhead, `Home/End` jump row bounds, `q` quits.
+- Keyboard contract: `1` / `2` select TurboSound chip, arrows move row/channel, `PageUp/PageDown` move positions, `Space` toggles play, `s` single-steps one tick, `f` toggles follow-playhead, `Home/End` jump row bounds, `q` quits.
 - For deterministic CI/dev checks, run headless harness mode: `cargo run --bin vti-cli -- <module> --ticks <N>`. This prints PCM activity counters (`pcm_nonzero_total`) without opening an audio device.
 
 ### **MUST: Keep CLI UX in parity with GUI UX**
