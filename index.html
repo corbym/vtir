@@ -25,7 +25,7 @@
             height: 100dvh;
         }
     </style>
-<link rel="modulepreload" href="/vtir/vortex-tracker-a526e02e9c1590b4.js" crossorigin="anonymous" integrity="sha384-kEVvMbf5iryTpu1x8iIUdPVVmllqXjDomdYzTM6AxlYIQKiiCmC7Wn+KGZRsXv1A"><link rel="preload" href="/vtir/vortex-tracker-a526e02e9c1590b4_bg.wasm" crossorigin="anonymous" integrity="sha384-W0kjbsZ7j7yJhzWrvMtz2JyBZJo8xQ66/GtixYYb70EL8XHe/+37vFb0cgFASoAp" as="fetch" type="application/wasm"></head>
+<link rel="modulepreload" href="/vtir/vortex-tracker-4ee47ad6ed0353a7.js" crossorigin="anonymous" integrity="sha384-DaBJkor0E5NwdcC7pqq9DqjmPvEYKhDN0johD6L5qscWMUDcKRIkgkhmK5mhWVp7"><link rel="preload" href="/vtir/vortex-tracker-4ee47ad6ed0353a7_bg.wasm" crossorigin="anonymous" integrity="sha384-pWLqt3h7nk0TOTqjQLRgw5hJxsOKj1YtOzCX6qPOOJH70dUsZPLkHWIziGJKyukQ" as="fetch" type="application/wasm"></head>
 <body>
     <!-- Mobile virtual-keyboard fix.
          See src/keyboard_fix.js for the full explanation and test suite. -->
@@ -34,8 +34,8 @@
     <canvas id="the_canvas_id"></canvas>
 
 <script type="module">
-import init, * as bindings from '/vtir/vortex-tracker-a526e02e9c1590b4.js';
-const wasm = await init({ module_or_path: '/vtir/vortex-tracker-a526e02e9c1590b4_bg.wasm' });
+import init, * as bindings from '/vtir/vortex-tracker-4ee47ad6ed0353a7.js';
+const wasm = await init({ module_or_path: '/vtir/vortex-tracker-4ee47ad6ed0353a7_bg.wasm' });
 
 
 window.wasmBindings = bindings;
