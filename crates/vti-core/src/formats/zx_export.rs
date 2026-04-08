@@ -29,7 +29,7 @@
 //!   • Hi-byte patch : (offset, base) pairs where out[off] = (base + load_addr) >> 8
 //! ```
 
-use crate::{formats::pt3, types::Module};
+use crate::{formats::pt3, playback::get_module_time, types::Module};
 use anyhow::{bail, Result};
 
 // ── Embedded player binaries ─────────────────────────────────────────────────
@@ -141,7 +141,7 @@ pub fn export_zx(module: &Module, opts: &ZxExportOptions) -> Result<Vec<u8>> {
         ZxFormat::AyFile => {
             check_fits(zxplsz, zxdtsz, mod_size, 0)?;
             let player = apply_relocations(player_raw, opts.load_addr, opts.looping)?;
-            build_ay_file(&player, &pt3_bytes, zxplsz, zxdtsz, opts)
+            build_ay_file(&player, &pt3_bytes, zxplsz, zxdtsz, opts, module)
         }
         ZxFormat::Scl => {
             check_fits(zxplsz, zxdtsz, mod_size, 0)?;
@@ -210,15 +210,24 @@ fn apply_relocations(raw: &[u8], load_addr: u16, looping: bool) -> Result<Vec<u8
 
     // ── Section 3: high-byte patches ─────────────────────────────────────────
     // Each entry is a pair (offset, base): pl[offset] = (base + load_addr) >> 8.
+    // Terminated when the offset word >= zxplsz (same sentinel value as section 2,
+    // but applied to a two-word (offset, base) entry structure rather than a
+    // single-word entry).
+    // Pascal: `repeat i := rs.ReadWord; if i >= zxplsz then break;
+    //          pbyte(@pl[i])^ := (rs.ReadWord + ZXCompAddr) shr 8; until False`
+    // sentinel_word returns 0xFFFF when out-of-bounds, which terminates via the
+    // `off >= zxplsz` check.  The old `p + 3 >= raw.len()` guard was wrong: it
+    // fired one iteration too early, potentially skipping the last valid entry.
     loop {
-        if p + 3 >= raw.len() {
-            break;
-        }
         let off = sentinel_word(raw, p) as usize;
         if off >= zxplsz {
             break;
         }
         p += 2;
+        // Safety: if the base word is missing (malformed binary), terminate.
+        if p + 1 >= raw.len() {
+            break;
+        }
         let base = sentinel_word(raw, p);
         p += 2;
         pl[off] = ((base as u32 + load_addr as u32) >> 8) as u8;
@@ -299,6 +308,18 @@ fn build_hobeta_code(
     opts: &ZxExportOptions,
 ) -> Result<Vec<u8>> {
     let total = player.len() + zxdtsz + pt3.len();
+    // Hobeta SectLeng is a 16-bit field that stores the sector-rounded content
+    // size (sectors are 256 bytes).  The maximum representable value is 65280
+    // (= 255 * 256).  Any content larger than 65280 bytes causes the u16 cast
+    // to wrap to 0, producing a corrupt header.
+    // Pascal: `if SectLeng = 0 then begin ShowError(Mes_HobetaSizeTooBig); Exit end`
+    if total > 65280 {
+        bail!(
+            "Hobeta block size ({} bytes) is too large (max 65280): \
+             the SectLeng header field would overflow",
+            total
+        );
+    }
     let hdr = make_hobeta_hdr(&opts.name, b'C', opts.load_addr, total);
     let sect_len = ((total + 255) & !255) as usize;
 
@@ -319,6 +340,14 @@ fn build_hobeta_mem(
     mod_size: usize,
     opts: &ZxExportOptions,
 ) -> Result<Vec<u8>> {
+    // Same SectLeng overflow guard as build_hobeta_code.
+    if mod_size > 65280 {
+        bail!(
+            "Hobeta block size ({} bytes) is too large (max 65280): \
+             the SectLeng header field would overflow",
+            mod_size
+        );
+    }
     let hdr = make_hobeta_hdr(&opts.name, b'm', opts.load_addr, mod_size);
     let sect_len = ((mod_size + 255) & !255) as usize;
 
@@ -343,6 +372,7 @@ fn build_ay_file(
     zxplsz: usize,
     zxdtsz: usize,
     opts: &ZxExportOptions,
+    module: &Module,
 ) -> Result<Vec<u8>> {
     // String table that follows TPoints.
     let title = opts.title.as_bytes();
@@ -401,8 +431,10 @@ fn build_ay_file(
     out.push(1u8); // ChanB
     out.push(2u8); // ChanC
     out.push(3u8); // Noise
-    // SongLength (BE) — use 0 to let AY emulators loop indefinitely
-    out.extend_from_slice(&be16(0));
+    // SongLength (BE) — Pascal: j := CW.TotInts; if j > 65535 then 65535 else j
+    // get_module_time returns total interrupt ticks, matching TotInts exactly.
+    let song_length = get_module_time(module).min(65535) as u16;
+    out.extend_from_slice(&be16(song_length));
     // FadeLength
     out.extend_from_slice(&be16(0));
     // HiReg, LoReg (second module address for TS; 0 for single chip)
@@ -471,13 +503,30 @@ fn build_scl(
     zxdtsz: usize,
     opts: &ZxExportOptions,
 ) -> Result<Vec<u8>> {
-    let player_name = if opts.name.is_empty() { "vtplayer" } else { &opts.name };
+    let data_name = if opts.name.is_empty() { "module" } else { &opts.name };
     let data_start = opts.load_addr as usize + zxplsz + zxdtsz;
 
-    // Player sectors (rounded up to 256-byte boundary)
-    let pl_sectors = ((zxplsz + 255) / 256) as u8;
-    // Data sectors
-    let data_sectors = ((pt3.len() + 255) / 256) as u8;
+    // Sector counts as usize to avoid u8 truncation.  SCL's Sect field is 1
+    // byte, so bail if either count exceeds 255.  In practice players and PT3
+    // files are well under this limit, but we guard explicitly so that a
+    // malformed or enormous input never silently produces a corrupt image.
+    let pl_sectors = (zxplsz + 255) / 256;
+    let data_sectors = (pt3.len() + 255) / 256;
+    if pl_sectors > 255 {
+        bail!(
+            "Player code ({} bytes, {} sectors) too large for SCL: \
+             sector count exceeds 255",
+            zxplsz, pl_sectors
+        );
+    }
+    if data_sectors > 255 {
+        bail!(
+            "PT3 data ({} bytes, {} sectors) too large for SCL: \
+             sector count exceeds 255",
+            pt3.len(),
+            data_sectors
+        );
+    }
 
     // ── SCL header (37 bytes) ─────────────────────────────────────────────────
     // Format: "SINCLAIR" (8) + NBlk (1) + entry1 (17) + entry2 (17) = 43 bytes
@@ -497,9 +546,9 @@ fn build_scl(
     hdr[19] = (opts.load_addr >> 8) as u8;
     hdr[20] = zxplsz as u8;
     hdr[21] = (zxplsz >> 8) as u8;
-    hdr[22] = pl_sectors;
+    hdr[22] = pl_sectors as u8;
     // Entry 2: PT3 data
-    let data_name_bytes = player_name.as_bytes();
+    let data_name_bytes = data_name.as_bytes();
     let dlen = data_name_bytes.len().min(8);
     hdr[23..23 + dlen].copy_from_slice(&data_name_bytes[..dlen]);
     hdr[23 + dlen..31].fill(b' ');
@@ -508,7 +557,7 @@ fn build_scl(
     hdr[33] = (data_start >> 8) as u8;
     hdr[34] = pt3.len() as u8;
     hdr[35] = (pt3.len() >> 8) as u8;
-    hdr[36] = data_sectors;
+    hdr[36] = data_sectors as u8;
 
     // ── Running checksum (32-bit sum of all bytes) ────────────────────────────
     let mut checksum: u32 = hdr.iter().map(|&b| b as u32).sum();
@@ -517,7 +566,7 @@ fn build_scl(
     out.extend_from_slice(&hdr);
 
     // Player code (sector-padded)
-    let pl_padded_len = pl_sectors as usize * 256;
+    let pl_padded_len = pl_sectors * 256;
     out.extend_from_slice(player);
     out.resize(out.len() + (pl_padded_len - zxplsz), 0);
     for &b in player {
@@ -525,7 +574,7 @@ fn build_scl(
     }
 
     // PT3 data (sector-padded)
-    let data_padded_len = data_sectors as usize * 256;
+    let data_padded_len = data_sectors * 256;
     out.extend_from_slice(pt3);
     out.resize(out.len() + (data_padded_len - pt3.len()), 0);
     for &b in pt3 {
@@ -606,4 +655,178 @@ fn build_tap(
     write_tap_block(&mut out, 0xFF, pt3);
 
     Ok(out)
+}
+
+// ── Unit tests ────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── Helper: build a minimal synthetic raw player binary ───────────────────
+    //
+    // Layout:
+    //   [0..1]  zxplsz (LE u16)
+    //   [2..3]  zxdtsz (LE u16)
+    //   [4..4+plsz-1]  player code (all zeros)
+    //   relocation tables:
+    //     section 1 sentinel  (2 bytes)
+    //     section 2 sentinel  (2 bytes)
+    //     section 3 entries… then sentinel (2 bytes each)
+    fn make_raw_player(
+        plsz: u16,
+        sec3_entries: &[(u16, u16)], // (offset_in_player, base)
+    ) -> Vec<u8> {
+        let mut raw: Vec<u8> = Vec::new();
+        raw.extend_from_slice(&plsz.to_le_bytes());
+        raw.extend_from_slice(&0u16.to_le_bytes()); // zxdtsz = 0
+        raw.resize(4 + plsz as usize, 0);           // zero player code
+
+        // Section 1: empty — sentinel = plsz-1 (>= plsz-1 fires immediately)
+        raw.extend_from_slice(&(plsz.saturating_sub(1)).to_le_bytes());
+        // Section 2: empty — sentinel = plsz (>= plsz fires immediately)
+        raw.extend_from_slice(&plsz.to_le_bytes());
+        // Section 3: entries then sentinel
+        for &(off, base) in sec3_entries {
+            raw.extend_from_slice(&off.to_le_bytes());
+            raw.extend_from_slice(&base.to_le_bytes());
+        }
+        // Section 3 sentinel
+        raw.extend_from_slice(&plsz.to_le_bytes());
+        raw
+    }
+
+    // ── Bug 3: section-3 relocation last-entry correctness ───────────────────
+    //
+    // Verifies that the last hi-byte entry in section 3 is applied even when it
+    // is the very last data before the sentinel.  The old guard
+    // `if p + 3 >= raw.len()` would have fired one iteration too early here
+    // (since only 2 bytes of sentinel follow the last entry, not 4).
+
+    #[test]
+    fn relocation_section3_single_entry_at_offset_0() {
+        // One hi-byte entry: offset=0, base=0x0000 → pl[0] = (0+0xC000)>>8 = 0xC0
+        let raw = make_raw_player(4, &[(0, 0x0000)]);
+        let pl = apply_relocations(&raw, 0xC000, false).expect("relocation must succeed");
+        assert_eq!(pl[0], 0xC0, "hi-byte patch at offset 0 must give 0xC0");
+    }
+
+    #[test]
+    fn relocation_section3_multiple_entries() {
+        // Two entries: offset 0 and offset 2, different bases.
+        // pl[0] = (0x0100 + 0xC000) >> 8 = 0xC1
+        // pl[2] = (0x0200 + 0xC000) >> 8 = 0xC2
+        let raw = make_raw_player(4, &[(0, 0x0100), (2, 0x0200)]);
+        let pl = apply_relocations(&raw, 0xC000, false).expect("relocation must succeed");
+        assert_eq!(pl[0], 0xC1, "hi-byte patch at offset 0 must give 0xC1");
+        assert_eq!(pl[2], 0xC2, "hi-byte patch at offset 2 must give 0xC2");
+    }
+
+    #[test]
+    fn relocation_section3_empty_section_terminates_cleanly() {
+        // No section-3 entries: sentinel immediately.
+        let raw = make_raw_player(4, &[]);
+        let pl = apply_relocations(&raw, 0xC000, false).expect("relocation must succeed");
+        assert_eq!(pl.len(), 4);
+        // All bytes should remain zero (no patches applied).
+        assert!(pl.iter().all(|&b| b == 0));
+    }
+
+    // ── Bug 2: Hobeta SectLeng overflow ──────────────────────────────────────
+    //
+    // Pascal aborts with Mes_HobetaSizeTooBig when SectLeng == 0, which occurs
+    // for any content > 65280 bytes (since (65281+255)&!255 = 65536, and
+    // 65536 as u16 == 0).
+
+    #[test]
+    fn hobeta_mem_rejects_content_larger_than_65280() {
+        let opts = ZxExportOptions::default();
+        let large = vec![0u8; 65281];
+        let result = build_hobeta_mem(&large, 65281, &opts);
+        assert!(result.is_err(), "must fail for content > 65280 bytes");
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("too large"), "error must mention size: {msg}");
+    }
+
+    #[test]
+    fn hobeta_mem_accepts_content_at_exactly_65280() {
+        let opts = ZxExportOptions::default();
+        let max = vec![0u8; 65280];
+        let result = build_hobeta_mem(&max, 65280, &opts);
+        assert!(result.is_ok(), "must succeed for exactly 65280 bytes");
+        let out = result.unwrap();
+        // SectLeng is at bytes 13-14 of the Hobeta header (LE u16).
+        let sect_len = u16::from_le_bytes([out[13], out[14]]);
+        assert_eq!(sect_len, 65280, "SectLeng must be 65280");
+    }
+
+    #[test]
+    fn hobeta_code_rejects_content_larger_than_65280() {
+        let opts = ZxExportOptions::default();
+        // player (1 byte) + zxdtsz (0) + pt3 (65280 bytes) = 65281 > 65280
+        let player = vec![0u8; 1];
+        let pt3 = vec![0u8; 65280];
+        let result = build_hobeta_code(&player, &pt3, 0, &opts);
+        assert!(result.is_err(), "must fail when total > 65280 bytes");
+    }
+
+    // ── Bug 4: SCL sector-count overflow ─────────────────────────────────────
+    //
+    // The old `as u8` cast truncated sector counts >= 256 silently, making
+    // pl_padded_len < zxplsz and causing a subtraction underflow (panic in
+    // debug, corrupt output in release).
+
+    #[test]
+    fn scl_rejects_player_with_too_many_sectors() {
+        let opts = ZxExportOptions::default();
+        // 65281 bytes = 256 sectors (> 255 max for u8 Sect field).
+        let large_player = vec![0u8; 65281];
+        let pt3 = vec![0u8; 256];
+        let result = build_scl(&large_player, &pt3, 65281, 0, &opts);
+        assert!(result.is_err(), "must fail when player > 255 sectors");
+    }
+
+    #[test]
+    fn scl_rejects_pt3_with_too_many_sectors() {
+        let opts = ZxExportOptions::default();
+        let player = vec![0u8; 256];
+        let large_pt3 = vec![0u8; 65281];
+        let result = build_scl(&player, &large_pt3, 256, 0, &opts);
+        assert!(result.is_err(), "must fail when PT3 data > 255 sectors");
+    }
+
+    #[test]
+    fn scl_accepts_player_at_exactly_255_sectors() {
+        let opts = ZxExportOptions { name: "test".to_string(), ..ZxExportOptions::default() };
+        let player = vec![0u8; 255 * 256]; // exactly 255 sectors
+        let pt3 = vec![0u8; 256];
+        let result = build_scl(&player, &pt3, 255 * 256, 0, &opts);
+        assert!(result.is_ok(), "must succeed for exactly 255 sectors");
+        let out = result.unwrap();
+        // Sect1 is at hdr[22]
+        assert_eq!(out[22], 255u8, "Sect1 must be 255");
+    }
+
+    // ── Naming: SCL data entry must not default to "vtplayer" ────────────────
+    //
+    // Entry 1 is always "vtplayer" (player code).  Entry 2 is the PT3 data.
+    // When opts.name is empty the data entry must use a different default to
+    // avoid a TR-DOS naming collision.
+
+    #[test]
+    fn scl_data_entry_name_does_not_collide_with_player_entry_when_name_empty() {
+        let opts = ZxExportOptions { name: "".to_string(), ..ZxExportOptions::default() };
+        let player = vec![0u8; 256];
+        let pt3 = vec![0u8; 256];
+        let result = build_scl(&player, &pt3, 256, 0, &opts);
+        let out = result.expect("SCL build must succeed");
+        // Entry 1 name: hdr[9..17]
+        let name1 = &out[9..17];
+        // Entry 2 name: hdr[23..31]
+        let name2 = &out[23..31];
+        assert_ne!(
+            name1, name2,
+            "player and data entry names must differ (collision would break TR-DOS)"
+        );
+    }
 }
