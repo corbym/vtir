@@ -2301,6 +2301,78 @@ fn zx_export_ay_file_block_offsets_are_correct() {
     );
 }
 
+/// Parity test: AY file `SongLength` must equal `get_module_time(module)`
+/// clamped to 65535, matching the Pascal expression
+/// `if j > 65535 then SongLength := 65535 else SongLength := SwapW(j)`.
+///
+/// `get_module_time` returns interrupt ticks, which is exactly `TotInts` in
+/// the original Pascal code.  `make_simple_module()` has `initial_delay=6`
+/// and a single pattern with 2 rows and no delay-change commands, so the
+/// expected tick count is 2 × 6 = 12.
+#[test]
+fn zx_export_ay_file_song_length_matches_get_module_time() {
+    use vti_core::formats::zx_export::{export_zx, ZxExportOptions, ZxFormat};
+    use vti_core::playback::get_module_time;
+
+    let m = make_simple_module();
+    // Pascal equivalent: `j := CW.TotInts` → same as get_module_time.
+    let expected_ticks = get_module_time(&m).min(65535) as u16;
+    assert_eq!(expected_ticks, 12, "fixture sanity: 2 rows × delay 6 = 12 ticks");
+
+    let opts = ZxExportOptions {
+        format: ZxFormat::AyFile,
+        load_addr: 0xC000,
+        looping: false,
+        name: "demo".to_string(),
+        title: m.title.clone(),
+        author: m.author.clone(),
+    };
+    let data = export_zx(&m, &opts).expect("AY export must succeed");
+
+    // TSongData starts at offset 24.  SongLength is a BE u16 at offset 28
+    // (4 bytes for ChanA/B/C/Noise, then SongLength).
+    let song_length = u16::from_be_bytes([data[28], data[29]]);
+    assert_eq!(
+        song_length, expected_ticks,
+        "AY SongLength field must equal get_module_time (Pascal TotInts)"
+    );
+}
+
+/// Parity test: AY `SongLength` must be clamped to 65535 for very long songs.
+/// Pascal: `if j > 65535 then SongLength := 65535`.
+#[test]
+fn zx_export_ay_file_song_length_clamped_to_65535() {
+    use vti_core::formats::zx_export::{export_zx, ZxExportOptions, ZxFormat};
+
+    // Build a module that is long enough to overflow u16.  We use a large
+    // initial_delay and many positions.  With initial_delay=255 and a pattern
+    // of 64 rows, each position contributes 64×255 = 16,320 ticks.  Four
+    // positions already exceed 65535 (4×16,320 = 65,280), so filling all
+    // available positions (up to 256) is well past the clamp point.
+    let mut m = vti_core::Module::default();
+    m.initial_delay = 255;
+    let mut pat = vti_core::Pattern::default();
+    pat.length = 64;
+    m.patterns[0] = Some(Box::new(pat));
+    // Use all available position slots (typically 256); any count ≥ 5 would
+    // suffice for the clamp, but filling all slots makes the test robust to
+    // changes in DEFAULT_POS_COUNT.
+    let pos_count = m.positions.value.len();
+    m.positions.length = pos_count;
+    for i in 0..pos_count {
+        m.positions.value[i] = 0;
+    }
+
+    let opts = ZxExportOptions {
+        format: ZxFormat::AyFile,
+        load_addr: 0xC000,
+        ..ZxExportOptions::default()
+    };
+    let data = export_zx(&m, &opts).expect("AY export must succeed");
+    let song_length = u16::from_be_bytes([data[28], data[29]]);
+    assert_eq!(song_length, 65535, "SongLength must be clamped to 65535 for very long songs");
+}
+
 #[test]
 fn zx_export_hobeta_mem_no_player() {
     use vti_core::formats::zx_export::{export_zx, ZxExportOptions, ZxFormat};
