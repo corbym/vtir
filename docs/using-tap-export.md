@@ -66,13 +66,13 @@ principles are identical for every emulator.
 
 ---
 
-### Step 1 — Start the emulator in 48K mode
+### Step 1 — Start the emulator in 128K mode (AY-capable)
 
-Open FUSE.  From the menu choose **Machine → Spectrum 48K** (or select
-**48K** in the *Machine* toolbar).
+Open the emulator and select a machine that has the AY chip
+(for example **Spectrum 128K**, **+2**, or **+2A/+3**).
 
-> 128K mode works too, but the ROM BASIC and `LOAD` behaviour differ
-> slightly between the two.  48K is simpler for this walkthrough.
+> A stock 48K Spectrum has no built-in AY PSG, so the player can run but you
+> will not hear music unless an external AY interface is emulated.
 
 ---
 
@@ -165,60 +165,33 @@ pattern pointer, etc.) and returns immediately.
 
 ---
 
-### Step 7 — Wire the interrupt and start playback
+### Step 7 — Start playback safely (BASIC loop)
 
 The VTII player has two entry points:
 
 | Offset from `load_addr` | Purpose |
 |-------------------------|---------|
 | `+0` (i.e. `0xC000`) | **Init** — call once; sets up player state, then returns |
-| `+5` (i.e. `0xC005`) | **Play** — call once per 50 Hz frame; updates AY registers |
+| `+5` (i.e. `0xC005`) | **Play** — call repeatedly; updates AY registers |
 
-The Play entry point (`load_addr + 5`) must be called 50 times per second
-(once per TV frame on a 50 Hz Spectrum).  The simplest way is to redirect
-the Z80 Mode 1 interrupt to call it.
-
-The standard technique in ZX Spectrum BASIC is:
+For emulator use (including ZEsarUX), the most reliable method is a simple
+BASIC loop that calls Play repeatedly:
 
 ```basic
-10  RANDOMIZE USR 49152
-20  POKE 23672, 255: POKE 23673, 255: POKE 23674, 255
-30  OUT 254, 0
-40  GOTO 40
+10 RANDOMIZE USR 49152
+20 RANDOMIZE USR 49157
+30 PAUSE 1
+40 GO TO 20
 ```
 
-> **How to type the keywords in the listing above:**
-> - `RANDOMIZE`, `POKE`, and `GOTO` are ordinary Spectrum BASIC keywords and can be entered in normal keyword mode.
-> - `USR` and `OUT` are best entered using the **keyboard legend / emulator on-screen keyboard**, because the exact key positions are easy to misremember.
-> - In an emulator, the easiest option is usually to type the full line from your host keyboard instead of trying to enter each Spectrum keyword manually.
+This avoids fragile interrupt-hook tricks and prevents the "frozen" behaviour
+caused by a tight loop that never yields.
 
-However, the *cleanest* self-contained approach is to write a short machine-
-code trampoline that redirects the interrupt.  A minimal example that works
-on a 48K Spectrum:
+> `PAUSE 1` yields one frame so BASIC remains responsive. If playback is too
+> slow on your emulator, try removing line 30.
 
-```z80
-; At address 65280 (0xFF00) — set up IM 2 interrupt vector table
-; The table occupies 257 bytes at 0xFF00; all entries point to 0xFFFF.
-; At 0xFFFF put a JP to the player's play entry.
-
-LD HL, 65280     ; 0xFF00
-LD B, 0          ; 256 times
-FILL_LOOP:
-  LD (HL), 255   ; table entries all = 0xFF
-  INC HL
-  DJNZ FILL_LOOP
-LD (HL), 255     ; byte 257 also = 0xFF
-; Now write the JP at 0xFFFF
-LD HL, 49157     ; load_addr + 5 = 0xC005, the play entry
-LD (65535), 0xC3 ; JP opcode
-LD (65536), L    ; lo byte of play address (can't directly address 65536,
-LD (65535+1), L  ; use: LD (65536) is done via LD A; LD (65535),A etc.)
-```
-
-> In practice, most people type the opcodes directly with `POKE` statements
-> or use a short BASIC + machine-code loader.  Ready-made interrupt-wiring
-> routines are available in the ZX Spectrum community (search for
-> "IM 2 interrupt setup ZX Spectrum BASIC").
+> For a production-quality real-hardware loader you can install a proper IM 2
+> interrupt routine in machine code, but that is optional for verifying export.
 
 **Simpler option**: some music players and demo-tools for the Spectrum
 provide a BASIC stub that does all of this.  The `.ay` export format (see
@@ -241,7 +214,7 @@ audio — you should hear your song playing.
 
 ### What you need
 
-- A ZX Spectrum 48K or 128K (any variant: rubber key, toastrack, +2, +2A, +3)
+- A ZX Spectrum with AY hardware (128K, +2, +2A, +3, or 48K with external AY interface)
 - A cassette-tape interface cable (**EAR** socket on the Spectrum)
 - A computer or phone with software that can play back `.tap` files as audio
 - OR a cassette tape duplicated from the `.tap` audio, played on a real tape deck
@@ -319,8 +292,9 @@ compatibility.
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
 | `R Tape loading error` on load | Volume too high/low, cable problem, or corrupt `.tap` | Adjust volume; verify the `.tap` with the VTIR test suite |
-| Music plays for one frame then stops | Play entry (`USR 49157`) is not being called by the interrupt | Set up the IM 2 vector as described in Step 7 |
-| Silence after `RANDOMIZE USR 49152` | Only Init was called; Play has not run | Add the interrupt wiring (Step 7) |
+| Music plays for one frame then stops | Play entry (`USR 49157`) is only called once | Use the Step 7 loop so Play runs continuously |
+| Silence after `RANDOMIZE USR 49152` | Only Init was called; Play has not run | Run Step 7 so `USR 49157` is called repeatedly |
+| Emulator appears frozen after start | Tight BASIC loop does not yield | Add `PAUSE 1` in the playback loop (Step 7) |
 | Wrong pitch / garbled sound | Player was loaded at a different address than the PT3 expects | Re-export; the default `0xC000` is safest |
 | `L` error after `RANDOMIZE USR` | The player init crashed (jumped to an invalid address) | Re-export and check that the load address does not overlap other RAM |
 
