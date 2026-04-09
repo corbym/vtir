@@ -1098,6 +1098,52 @@ fn read_fixture(name: &str) -> Vec<u8> {
     std::fs::read(&path).unwrap_or_else(|e| panic!("Cannot read fixture {}: {}", path, e))
 }
 
+#[test]
+fn pt3_02ts_bundle_loads_both_turbosound_chips() {
+    let bytes = read_fixture("Scalesmann - in utero we live (2017) (Chaos Constructions 2017, 5).pt3");
+    let mut modules = vti_core::formats::load_modules(
+        &bytes,
+        "Scalesmann - in utero we live (2017) (Chaos Constructions 2017, 5).pt3",
+    )
+    .expect("02TS PT3 bundle should parse");
+
+    assert_eq!(modules.len(), 2, "expected both TurboSound chips to be loaded");
+
+    // Legacy parity: the same title/author is duplicated into both chips.
+    assert_eq!(modules[0].title.trim(), modules[1].title.trim());
+    assert_eq!(modules[0].author.trim(), modules[1].author.trim());
+
+    // The second chip has distinct pattern/order content.
+    assert_ne!(
+        modules[0].positions.value[2],
+        modules[1].positions.value[2],
+        "chip 2 position list should differ from chip 1 in this fixture"
+    );
+
+    // Smoke playback on each chip to ensure both modules are usable by the player.
+    for module in modules.iter_mut().take(2) {
+        let mut vars = PlayVars::default();
+        init_tracker_parameters(module, &mut vars, true);
+        vars.delay = module.initial_delay as i8;
+        vars.delay_counter = 1;
+        vars.current_pattern = module.positions.value[0] as i32;
+        vars.current_line = 0;
+
+        let mut had_sound = false;
+        let mut regs = vti_core::AyRegisters::default();
+        for _ in 0..96 {
+            regs = vti_core::AyRegisters::default();
+            let mut engine = Engine { module, vars: &mut vars };
+            let _ = engine.module_play_current_line(&mut regs);
+            if regs.amplitude_a > 0 || regs.amplitude_b > 0 || regs.amplitude_c > 0 {
+                had_sound = true;
+                break;
+            }
+        }
+        assert!(had_sound, "loaded TurboSound module should produce non-zero AY amplitude");
+    }
+}
+
 /// Smoke-test: the minimal_roundtrip.pt3 fixture parses without error.
 #[test]
 fn pt3_smoke_parse_minimal() {

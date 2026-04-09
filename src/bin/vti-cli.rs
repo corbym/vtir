@@ -169,8 +169,9 @@ impl CliTracker {
             .unwrap_or("module")
             .to_string();
 
-        let mut module = formats::load(&bytes, &file_name)
+        let mut parsed_modules = formats::load_modules(&bytes, &file_name)
             .with_context(|| format!("cannot parse {}", path.display()))?;
+        let mut module = parsed_modules.remove(0);
 
         let mut vars = PlayVars::default();
         init_tracker_parameters(&mut module, &mut vars, true);
@@ -189,8 +190,9 @@ impl CliTracker {
                 .and_then(|s| s.to_str())
                 .unwrap_or("module2")
                 .to_string();
-            let mut module2 = formats::load(&bytes2, &file_name2)
+            let mut loaded2 = formats::load_modules(&bytes2, &file_name2)
                 .with_context(|| format!("cannot parse {}", p2.display()))?;
+            let mut module2 = loaded2.remove(0);
             let mut vars2 = PlayVars::default();
             init_tracker_parameters(&mut module2, &mut vars2, true);
             vars2.delay = module2.initial_delay as i8;
@@ -200,6 +202,17 @@ impl CliTracker {
                 vars2.current_pattern = module2.positions.value[0] as i32;
             }
             (Some(file_name2), Some(module2), Some(vars2))
+        } else if !parsed_modules.is_empty() {
+            let mut module2 = parsed_modules.remove(0);
+            let mut vars2 = PlayVars::default();
+            init_tracker_parameters(&mut module2, &mut vars2, true);
+            vars2.delay = module2.initial_delay as i8;
+            vars2.delay_counter = 1;
+            if module2.positions.length > 0 {
+                vars2.current_position = 0;
+                vars2.current_pattern = module2.positions.value[0] as i32;
+            }
+            (Some(format!("{} (chip 2)", file_name)), Some(module2), Some(vars2))
         } else {
             (None, None, None)
         };

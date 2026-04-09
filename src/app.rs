@@ -344,6 +344,33 @@ impl VortexTrackerApp {
         self.rebuild_synth_for_modules();
     }
 
+    fn install_loaded_modules(&mut self, target: OpenTarget, mut modules: Vec<Module>, filename: String) {
+        if modules.is_empty() {
+            self.set_error("Parse error: no module data found");
+            return;
+        }
+
+        if target == OpenTarget::Primary && modules.len() >= 2 {
+            let primary = modules.remove(0);
+            let secondary = modules.remove(0);
+
+            self.playback_state = PlaybackState::Stopped;
+            self.last_tick_time = 0.0;
+            self.modules = vec![primary, secondary];
+            self.module_filenames = vec![
+                Some(format!("{} (chip 1)", filename)),
+                Some(format!("{} (chip 2)", filename)),
+            ];
+            self.active_module = 0;
+            self.reset_playback_for_all_modules();
+            self.rebuild_synth_for_modules();
+            self.status = format!("Loaded TurboSound: {}", filename);
+            return;
+        }
+
+        self.install_loaded_module(target, modules.remove(0), filename);
+    }
+
     fn disable_secondary_chip(&mut self) {
         if !self.turbo_sound_enabled() {
             return;
@@ -425,9 +452,9 @@ impl VortexTrackerApp {
                     .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or("file");
-                match formats::load(&bytes, filename) {
-                    Ok(module) => {
-                        self.install_loaded_module(target, module, filename.to_string());
+                match formats::load_modules(&bytes, filename) {
+                    Ok(modules) => {
+                        self.install_loaded_modules(target, modules, filename.to_string());
                     }
                     Err(e) => {
                         self.set_error(format!("Parse error: {e}"));
@@ -707,9 +734,9 @@ impl VortexTrackerApp {
     #[cfg(target_arch = "wasm32")]
     fn poll_wasm_file_ops(&mut self) {
         if let Some(pf) = pending_file::take_pending_open() {
-            match formats::load(&pf.bytes, &pf.name) {
-                Ok(module) => {
-                    self.install_loaded_module(pf.target, module, pf.name);
+            match formats::load_modules(&pf.bytes, &pf.name) {
+                Ok(modules) => {
+                    self.install_loaded_modules(pf.target, modules, pf.name);
                 }
                 Err(e) => {
                     self.set_error(format!("Parse error: {e}"));

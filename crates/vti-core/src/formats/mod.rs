@@ -32,7 +32,98 @@ pub mod vtm;
 pub mod zx_export;
 
 use crate::types::Module;
-use anyhow::{bail, Result};
+use anyhow::{bail, ensure, Result};
+
+const TS_TRAILER_SIZE: usize = 16;
+
+#[derive(Debug, Clone, Copy)]
+struct TsTrailer {
+    type1: [u8; 4],
+    size1: usize,
+    type2: [u8; 4],
+    size2: usize,
+}
+
+fn parse_ts_trailer(data: &[u8]) -> Option<TsTrailer> {
+    if data.len() <= TS_TRAILER_SIZE {
+        return None;
+    }
+    let t = &data[data.len() - TS_TRAILER_SIZE..];
+    if &t[12..16] != b"02TS" {
+        return None;
+    }
+    Some(TsTrailer {
+        type1: [t[0], t[1], t[2], t[3]],
+        size1: u16::from_le_bytes([t[4], t[5]]) as usize,
+        type2: [t[6], t[7], t[8], t[9]],
+        size2: u16::from_le_bytes([t[10], t[11]]) as usize,
+    })
+}
+
+fn ext_from_ts_type(ts_type: [u8; 4]) -> Option<&'static str> {
+    match &ts_type {
+        b"STC!" => Some("stc"),
+        b"ASC!" => Some("asc"),
+        b"STP!" => Some("stp"),
+        b"FLS!" => Some("fls"),
+        b"PT1!" => Some("pt1"),
+        b"PT2!" => Some("pt2"),
+        b"PT3!" => Some("pt3"),
+        b"SQT!" => Some("sqt"),
+        b"GTR!" => Some("gtr"),
+        _ => None,
+    }
+}
+
+fn load_by_ext(data: &[u8], ext: &str) -> Result<Module> {
+    match ext {
+        "vtm" => {
+            let text = std::str::from_utf8(data)
+                .map_err(|e| anyhow::anyhow!("VTM file is not valid UTF-8: {}", e))?;
+            vtm::parse(text)
+        }
+        "pt3" => pt3::parse(data),
+        "pt2" => pt2::parse(data),
+        "pt1" => pt1::parse(data),
+        "stc" => stc::parse(data),
+        "stp" => stp::parse(data),
+        "ay" => ay::parse(data, 0),
+        "sqt" => sqt::parse(data),
+        "asc" => asc::parse(data),
+        "as0" => asc::parse_asc0(data),
+        "gtr" => gtr::parse(data),
+        "fls" => fls::parse(data),
+        _ => bail!("Unsupported file format: .{}", ext),
+    }
+}
+
+/// Load one or two modules from a file.
+///
+/// Legacy VT2 supported a TurboSound trailer (`02TS`) that appends a second
+/// tracker module to the same file. When that trailer is present and both
+/// embedded module types are supported by this Rust port, this function returns
+/// both modules (`chip 1`, `chip 2`) in order.
+pub fn load_modules(data: &[u8], filename: &str) -> Result<Vec<Module>> {
+    if let Some(ts) = parse_ts_trailer(data) {
+        let Some(ext1) = ext_from_ts_type(ts.type1) else {
+            return Ok(vec![load(data, filename)?]);
+        };
+        let Some(ext2) = ext_from_ts_type(ts.type2) else {
+            return Ok(vec![load(data, filename)?]);
+        };
+
+        ensure!(
+            ts.size1 + ts.size2 + TS_TRAILER_SIZE <= data.len(),
+            "TurboSound trailer sizes exceed file length"
+        );
+
+        let first = load_by_ext(&data[..ts.size1], ext1)?;
+        let second = load_by_ext(&data[ts.size1..ts.size1 + ts.size2], ext2)?;
+        return Ok(vec![first, second]);
+    }
+
+    Ok(vec![load(data, filename)?])
+}
 
 /// Detect the file format from the filename extension (case-insensitive) and
 /// parse the bytes into a [`Module`].
@@ -52,25 +143,7 @@ use anyhow::{bail, Result};
 /// - `.fls` — Flying Ledger Sound binary
 pub fn load(data: &[u8], filename: &str) -> Result<Module> {
     let ext = filename.rsplit('.').next().unwrap_or("").to_lowercase();
-    match ext.as_str() {
-        "vtm" => {
-            let text = std::str::from_utf8(data)
-                .map_err(|e| anyhow::anyhow!("VTM file is not valid UTF-8: {}", e))?;
-            vtm::parse(text)
-        }
-        "pt3" => pt3::parse(data),
-        "pt2" => pt2::parse(data),
-        "pt1" => pt1::parse(data),
-        "stc" => stc::parse(data),
-        "stp" => stp::parse(data),
-        "ay" => ay::parse(data, 0),
-        "sqt" => sqt::parse(data),
-        "asc" => asc::parse(data),
-        "as0" => asc::parse_asc0(data),
-        "gtr" => gtr::parse(data),
-        "fls" => fls::parse(data),
-        _ => bail!("Unsupported file format: .{}", ext),
-    }
+    load_by_ext(data, ext.as_str())
 }
 
 /// Serialise a [`Module`] to a VTM text string suitable for writing to a `.vtm`

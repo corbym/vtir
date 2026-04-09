@@ -150,7 +150,7 @@ cargo build --release
 cargo run --release
 
 # Build CLI binary
-cargo build --bin vti-cli
+cargo build --bin vti-cli --features="cli"
 
 # Run CLI directly from build output (debug)
 target/debug/vti-cli crates/vti-core/tests/fixtures/tunes/madness_descent.pt3
