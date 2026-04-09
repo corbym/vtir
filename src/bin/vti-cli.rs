@@ -1,7 +1,7 @@
 use std::env;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::{bail, Context, Result};
 use crossterm::cursor::{Hide, MoveTo, Show};
@@ -219,7 +219,7 @@ impl CliTracker {
 
         let cfg = AyConfig::default();
         let sample_rate = cfg.sample_rate;
-        let samples_per_tick = cfg.ay_tiks_in_interrupt();
+        let samples_per_tick = cfg.sample_tiks_in_interrupt();
         let num_chips = if ts2_module.is_some() { 2 } else { 1 };
         if active_chip == 1 && ts2_module.is_none() {
             bail!("--active-chip 2 requires --ts2 <module-file>");
@@ -378,7 +378,7 @@ impl CliTracker {
         self.last_regs_ts2 = regs_ts2.clone();
 
         self.synth.apply_registers(0, &regs);
-        self.synth.render_frame(self.samples_per_tick);
+        self.synth.render_frame_quality();
         let pcm = self.synth.drain(self.samples_per_tick as usize);
         self.last_pcm_nonzero = pcm
             .iter()
@@ -464,14 +464,30 @@ impl CliTracker {
             fmt_ticks(elapsed),
             fmt_ticks(total_ticks),
         ));
-        let audio_state = if self.audio.is_some() {
-            "on".to_string()
+        let (audio_state, audio_diag_line) = if let Some(audio) = &self.audio {
+            let fill = audio.fill_level();
+            let d = audio.diagnostics_snapshot();
+            (
+                "on".to_string(),
+                format!(
+                    "audio_diag fill={:.0}% cb={} push={} pop={} underrun={}",
+                    fill * 100.0,
+                    d.callback_count,
+                    d.pushed_samples,
+                    d.popped_samples,
+                    d.underrun_frames
+                ),
+            )
         } else if let Some(err) = &self.audio_error {
-            format!("off ({err})")
+            (
+                format!("off ({err})"),
+                "audio_diag unavailable".to_string(),
+            )
         } else {
-            "off".to_string()
+            ("off".to_string(), "audio_diag unavailable".to_string())
         };
         lines.push(format!("audio={audio_state}"));
+        lines.push(audio_diag_line);
         lines.push(format!("regs: A={:02X} B={:02X} C={:02X} mix={:02X} noise={:02X} env={:04X}/{:02X} pcm_nonzero={}",
             self.last_regs.amplitude_a,
             self.last_regs.amplitude_b,
@@ -602,6 +618,9 @@ fn run_interactive(mut tracker: CliTracker) -> Result<()> {
     let mut out = io::stdout();
     let _guard = TerminalGuard::enter(&mut out)?;
     let mut dirty = true;
+    let tick_interval = Duration::from_millis(TICK_MS);
+    let mut last_tick_time: Option<Instant> = None;
+    const MAX_CATCH_UP_TICKS: usize = 4;
 
     loop {
         if dirty {
@@ -609,11 +628,39 @@ fn run_interactive(mut tracker: CliTracker) -> Result<()> {
             dirty = false;
         }
 
-        if event::poll(Duration::from_millis(TICK_MS))? {
+        let poll_timeout = if tracker.playing {
+            let now = Instant::now();
+            match last_tick_time {
+                Some(last) => {
+                    let next = last + tick_interval;
+                    if next > now {
+                        next.duration_since(now)
+                    } else {
+                        Duration::from_millis(0)
+                    }
+                }
+                None => Duration::from_millis(0),
+            }
+        } else {
+            Duration::from_millis(50)
+        };
+
+        if event::poll(poll_timeout)? {
             if let Event::Key(key) = event::read()? {
                 if let Some(cmd) = command_from_key(key) {
                     if tracker.apply_command(cmd) {
                         break;
+                    }
+                    if cmd == Command::TogglePlay {
+                        if tracker.playing {
+                            last_tick_time = Some(Instant::now());
+                            // Prime a small amount of audio so the output callback
+                            // doesn't start from an empty ring buffer.
+                            tracker.tick_once();
+                            tracker.tick_once();
+                        } else {
+                            last_tick_time = None;
+                        }
                     }
                     dirty = true;
                 }
@@ -621,8 +668,27 @@ fn run_interactive(mut tracker: CliTracker) -> Result<()> {
         }
 
         if tracker.playing {
-            tracker.tick_once();
-            dirty = true;
+            let now = Instant::now();
+            if last_tick_time.is_none() {
+                last_tick_time = Some(now);
+            }
+
+            let mut ticks_done = 0usize;
+            while ticks_done < MAX_CATCH_UP_TICKS
+                && last_tick_time.expect("tick timestamp set") + tick_interval <= now
+            {
+                tracker.tick_once();
+                last_tick_time = Some(last_tick_time.expect("tick timestamp set") + tick_interval);
+                ticks_done += 1;
+                dirty = true;
+            }
+
+            // If we fell too far behind, drop backlog to keep real-time cadence.
+            if ticks_done == MAX_CATCH_UP_TICKS
+                && last_tick_time.expect("tick timestamp set") + tick_interval <= now
+            {
+                last_tick_time = Some(now);
+            }
         }
     }
 
@@ -712,7 +778,7 @@ mod tests {
         vars.current_pattern = module.positions.value[0] as i32;
 
         let cfg = AyConfig::default();
-        let samples_per_tick = cfg.ay_tiks_in_interrupt();
+        let samples_per_tick = cfg.sample_tiks_in_interrupt();
         let synth = Synthesizer::new(cfg, 1, ChipType::AY);
 
         CliTracker {
