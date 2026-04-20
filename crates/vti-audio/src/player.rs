@@ -11,7 +11,7 @@
 //! # Status
 //! Core cpal stream setup and the ring buffer are implemented.
 //! The render thread integration with the tracker engine is **TODO** — see
-//! PLAN.md §4.
+//! STORY-049.
 
 use anyhow::{Context, Result};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};

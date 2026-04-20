@@ -1,0 +1,41 @@
+name: Backlog Agent
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  update-backlog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Install backlog-mcp
+        id: install
+        uses: ./.github/actions/install
+
+      - name: Run backlog agent
+        env:
+          BACKLOG_MCP_BIN: ${{ steps.install.outputs.binary-path }}
+          BACKLOG_ROOT: requirements
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BRANCH: ${{ github.head_ref }}
+          PR_ACTION: ${{ github.event.action }}
+        run: python3 .github/scripts/backlog_agent.py
+
+      - name: Commit backlog changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add requirements/
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: backlog agent update for PR #${{ github.event.pull_request.number }}"
+          git push

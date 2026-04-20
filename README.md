@@ -98,7 +98,7 @@ VTM and PT3 — all other formats were strictly read-only imports.
 ## Project Status
 
 This is an **active work-in-progress** conversion from the original Delphi/Pascal
-source. See [`PLAN.md`](PLAN.md) for a detailed, checked-off task list.
+source. See [`requirements/requirements-index.md`](requirements/requirements-index.md) for the full backlog.
 
 ### What works today
 - ✅ All core data structures (Module, Pattern, Sample, Ornament, …)

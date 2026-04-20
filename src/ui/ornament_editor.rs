@@ -1,7 +1,7 @@
 //! Ornament editor panel.
 //!
 //! Displays and edits one PT3 ornament (arpeggio sequence).
-//! Full editing is TODO — PLAN.md §5.
+//! Full editing is TODO — STORY-055.
 
 use eframe::egui;
 use vti_core::Module;
@@ -42,6 +42,6 @@ impl OrnamentEditor {
         });
 
         ui.label(format!("Length: {}  Loop: {}", len, ornament.loop_pos));
-        ui.label("TODO: editable ornament steps — PLAN.md §5");
+        ui.label("TODO: editable ornament steps — STORY-055");
     }
 }

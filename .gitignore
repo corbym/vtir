@@ -13,3 +13,5 @@
 .DS_Store
 Thumbs.db
 node_modules/
+/.claude/settings.json
+/requirements/.backlog-mcp.lock

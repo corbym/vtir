@@ -1,7 +1,7 @@
 //! Sample editor panel.
 //!
 //! Displays and edits one PT3 sample (instrument).
-//! Full editing (hex drag-values for each tick field) is TODO — PLAN.md §5.
+//! Full editing (hex drag-values for each tick field) is TODO — STORY-054.
 
 use eframe::egui;
 use vti_core::Module;
@@ -73,6 +73,6 @@ impl SampleEditor {
                     });
             });
 
-        ui.label("TODO: editable tick fields — PLAN.md §5");
+        ui.label("TODO: editable tick fields — STORY-054");
     }
 }

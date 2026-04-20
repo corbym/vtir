@@ -16,7 +16,7 @@
 //! - `fls`  — Flying Ledger Sound binary (parse only)
 //!
 //! # Not yet implemented (deferred — complex formats)
-//! - `ftc`, `psc`, `psm`, `fxm` — see PLAN.md §2.5
+//! - `ftc` (STORY-036), `psc` (STORY-038), `psm` (STORY-039), `fxm` (STORY-040)
 
 pub mod asc;
 pub mod ay;

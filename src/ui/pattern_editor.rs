@@ -55,7 +55,7 @@
 //! desktop keyboards and most mobile browsers) and `Event::Text` (fallback
 //! for browsers that fire `key = "Unidentified"` in `keydown`).
 //!
-//! An on-screen piano keyboard widget (PLAN.md §5.5) is not yet implemented.
+//! An on-screen piano keyboard widget (STORY-053) is not yet implemented.
 
 use eframe::egui;
 use vti_core::editor::{compute_note, hex_digit_entry, piano_key_to_semitone_offset};

@@ -247,7 +247,7 @@ fn extract_embedded_module(payload: &[u8]) -> Result<Module> {
     // returns a module that "plays" as random noise.  Until a proper Z80 emulator
     // is integrated (rustzx-z80), those formats are not supported inside EMUL.
     //
-    // See PLAN.md §2.5.16 "Post-port future feature — EMUL Z80 playback" for the
+    // See STORY-041 "Post-port future feature — EMUL Z80 playback" for the
     // planned implementation using `rustzx-z80`.
 
     // PT3 / Vortex Tracker II

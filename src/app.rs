@@ -413,7 +413,7 @@ impl VortexTrackerApp {
     /// Supported extensions: `.vtm`, `.pt3`, `.pt2`, `.pt1`, `.stc`, `.stp`,
     /// `.ay` (ZXAY), `.sqt`, `.asc`, `.as0`, `.gtr`, `.fls`.
     /// On WASM this is a no-op (file access is handled separately via the
-    /// browser `<input type="file">` element — see PLAN.md §8).
+    /// browser `<input type="file">` element — see STORY-066).
     #[cfg(not(target_arch = "wasm32"))]
     fn open_module_dialog(&mut self, _ctx: &egui::Context, target: OpenTarget) {
         let path = rfd::FileDialog::new()
@@ -951,7 +951,7 @@ impl eframe::App for VortexTrackerApp {
                 });
                 ui.menu_button("Help", |ui| {
                     if ui.button("About").clicked() {
-                        // TODO: about dialog (PLAN.md §5.1)
+                        // TODO: about dialog (STORY-051)
                         self.status = "Vortex Tracker II — Rust port. Original by Sergey Bulba.".to_string();
                         ui.close_menu();
                     }

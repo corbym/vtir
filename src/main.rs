@@ -3,7 +3,7 @@
 //! Original Delphi/Pascal application by Sergey Bulba (c) 2000-2009
 //! <vorobey@mail.khstu.ru> — http://bulba.untergrund.net/
 //!
-//! This Rust port is a work in progress. See PLAN.md for the full backlog.
+//! This Rust port is a work in progress. See `requirements/requirements-index.md` for the full backlog.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 

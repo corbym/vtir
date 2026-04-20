@@ -2,8 +2,8 @@
 
 ## Read This First
 
-**Always read [`PLAN.md`](PLAN.md) before implementing anything.**  
-It is the authoritative task list for this project. Understand what is already done, what is in progress, and what is next before writing a single line of code.
+**Always check the backlog using the `backlog-mcp` tool before implementing anything.**  
+Use `get_index_summary` for a high-level overview, then `list_stories` filtered by epic or status to understand what is already done, what is in progress, and what is next before writing a single line of code. The backlog (under `requirements/`) is the authoritative task list for this project.
 
 ---
 
@@ -133,7 +133,7 @@ The following categories of Pascal code require baselines (highest priority firs
 | **Reverse note lookup** | `legacy/trfuncs.pas` → `GetNoteByEnvelope2`, `GetNoteByEnvelope` | Floating-point rounding; used in envelope editor |
 | **Format parsers** (when ported) | `legacy/trfuncs.pas` → `PT32VTM`, `STC2VTM`, `SQT2VTM`, … | Binary → Module round-trip; wrong field decode is silent |
 
-> Functions already covered: `NoiseGenerator`, all 8 envelope shapes, `PT3_Vol` table, all 5 note tables, `Pattern_PlayCurrentLine` (basic, envelope, and 3-channel arpeggio + noise drum variants), `GetModuleTime` / `GetPositionTime` / `GetPositionTimeEx` / `GetTimeParams`. See `PLAN.md §9` for the full status table.
+> Functions already covered: `NoiseGenerator`, all 8 envelope shapes, `PT3_Vol` table, all 5 note tables, `Pattern_PlayCurrentLine` (basic, envelope, and 3-channel arpeggio + noise drum variants), `GetModuleTime` / `GetPositionTime` / `GetPositionTimeEx` / `GetTimeParams`. See EPIC-009 stories in the backlog for the full status table.
 
 ### How to add a new baseline
 
@@ -268,7 +268,7 @@ Whenever a new UX feature, interaction, or piece of functionality is added to th
 
 Before starting any new task:
 
-1. [ ] Read `PLAN.md` to understand what is already done and what is next.
+1. [ ] Check the backlog (`backlog-mcp` → `get_index_summary`, then `list_stories`) to understand what is already done and what is next.
 2. [ ] Identify the single smallest vertical stripe you can deliver.
 3. [ ] Write a failing test that describes the expected behaviour.
 4. [ ] If porting a Pascal function that produces computed output, **add a Pascal baseline fixture** first (see §Pascal Approval Tests above).
@@ -277,7 +277,7 @@ Before starting any new task:
 7. [ ] If you added or changed WASM JS (`src/*.js`): run `npm test` — all Jest tests must be green.
 8. [ ] Run `cargo build` — must compile cleanly.
 8. [ ] Commit only green, passing code.
-9. [ ] Update `PLAN.md` to tick off completed items and add any new ones discovered.
-10. [ ] Update `README.md` "What works today" / "Still in progress" sections to match `PLAN.md`.
+9. [ ] Update the backlog: use `complete_story` (or `set_story_status`) to mark completed items done, and `create_story` for any new work discovered.
+10. [ ] Update `README.md` "What works today" / "Still in progress" sections to match the backlog.
 11. [ ] **If you added or changed GUI (`src/ui/`) UX or functionality: update `src/bin/vti-cli.rs` to match.** This is mandatory — see §CLI Diagnostics Tool above.
 12. [ ] Update `Agents.md` with any new architecture decisions, conventions, or key contracts that future agents need to know.
