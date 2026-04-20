@@ -29,6 +29,7 @@ const
   MaxOrnLen    = 255;
   MaxPatNum    = 84;
   MidChan      = 1;
+  DefPatLen    = 64;
 
 { ═══════════════════════════════════════════════════════════════════════════
   Type declarations (mirroring trfuncs.pas exactly)
@@ -177,6 +178,137 @@ type
     PT3Noise              : Byte;
     IntCnt                : Integer;
   end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
+  ZX Spectrum module container  (subset of TSpeccyModule from trfuncs.pas)
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+type
+  { Minimal subset of Available_Types needed for PrepareZXModule }
+  Available_Types = (
+    Unknown, VTMFile, STCFile, STPFile, STFFile, PTCFile, PT3File, PT2File,
+    PT1File, STXFile, ASCFile, ASCOFile, PSCFile, FLSFile, GTRFile, AYFile,
+    ST1File, STCEFile, ST3File, FTCFile, PSMFile, SQTFile, FXMFile
+  );
+
+  { Variant record matching the memory layout in trfuncs.pas.
+    Only variants 5 (SQT) and 9 (FLS) are used by PrepareZXModule in this
+    harness; all others are included to keep the ordinals correct. }
+  PSpeccyModule = ^TSpeccyModule;
+  TSpeccyModule = packed record
+    case integer of
+      0: (Index: array[0..65535] of byte);
+      5: (SQT_Size, SQT_SamplesPointer, SQT_OrnamentsPointer,
+          SQT_PatternsPointer, SQT_PositionsPointer, SQT_LoopPointer: word);
+      9: (FLS_PositionsPointer: word;
+          FLS_OrnamentsPointer: word;
+          FLS_SamplesPointer: word;
+          FLS_PatternsPointers: array[1..(65536 - 6) div 6] of packed record
+            PatternA, PatternB, PatternC: word;
+          end);
+  end;
+
+{ ─── PrepareZXModule — exact port from trfuncs.pas ─────────────────────── }
+procedure PrepareZXModule(ZXP: PSpeccyModule; var FType: Available_Types;
+                          Length: integer);
+var
+  i, j, k, i1, i2: integer;
+  pwrd: PWord;
+  p1, p2: pointer;
+begin
+  case FType of
+    FLSFile:
+      begin
+        i := ZXP^.FLS_OrnamentsPointer - 16;
+        if i >= 0 then
+          repeat
+            i2 := ZXP^.FLS_SamplesPointer + 2 - i;
+            if (i2 >= 8) and (i2 < Length) then
+            begin
+              pwrd := @ZXP^.Index[i2];
+              i1 := pwrd^ - i;
+              if (i1 >= 8) and (i1 < Length) then
+              begin
+                pwrd := @ZXP^.Index[i2 - 4];
+                i2 := pwrd^ - i;
+                if (i2 >= 6) and (i2 < Length) then
+                  if i1 - i2 = $20 then
+                  begin
+                    i2 := ZXP^.FLS_PatternsPointers[1].PatternB - i;
+                    if (i2 > 21) and (i2 < Length) then
+                    begin
+                      i1 := ZXP^.FLS_PatternsPointers[1].PatternA - i;
+                      if (i1 > 20) and (i1 < Length) then
+                        if ZXP^.Index[i1 - 1] = 0 then
+                        begin
+                          while (i1 < Length) and (ZXP^.Index[i1] <> 255) do
+                          begin
+                            repeat
+                              case ZXP^.Index[i1] of
+                                0..$5f, $80, $81:
+                                begin
+                                  Inc(i1);
+                                  break;
+                                end;
+                                $82..$8e:
+                                  Inc(i1)
+                              end;
+                              Inc(i1);
+                            until i1 >= Length;
+                          end;
+                          if i1 + 1 = i2 then
+                            break;
+                        end;
+                    end;
+                  end;
+              end;
+            end;
+            Dec(i)
+          until i < 0;
+        if i < 0 then
+          FType := Unknown
+        else
+        begin
+          pwrd := pointer(ZXP);
+          p1 := @pbyte(pwrd)[ZXP^.FLS_SamplesPointer - i];
+          p2 := @pbyte(pwrd)[ZXP^.FLS_PositionsPointer - i + 2];
+          repeat
+            Dec(pwrd^, i);
+            Inc(pwrd);
+          until p1 = pwrd;
+          Inc(pwrd);
+          repeat
+            Dec(pwrd^, i);
+            Inc(pwrd, 2);
+          until p2 = pwrd;
+        end;
+      end;
+    SQTFile:
+      begin
+        i := ZXP^.SQT_SamplesPointer - 10;
+        j := 0;
+        k := ZXP^.SQT_PositionsPointer - i;
+        while ZXP^.Index[k] <> 0 do
+        begin
+          if j < ZXP^.Index[k] and $7f then
+            j := ZXP^.Index[k] and $7f;
+          Inc(k, 2);
+          if j < ZXP^.Index[k] and $7f then
+            j := ZXP^.Index[k] and $7f;
+          Inc(k, 2);
+          if j < ZXP^.Index[k] and $7f then
+            j := ZXP^.Index[k] and $7f;
+          Inc(k, 3);
+        end;
+        pwrd := @ZXP^.SQT_SamplesPointer;
+        for k := 1 to (ZXP^.SQT_PatternsPointer - i + j shl 1) div 2 do
+        begin
+          Dec(pwrd^, i);
+          Inc(pwrd);
+        end;
+      end;
+  end;
+end;
 
 { ═══════════════════════════════════════════════════════════════════════════
   Note tables and volume table  (verbatim from trfuncs.pas constants)
@@ -1675,6 +1807,208 @@ begin
   end;
 end;
 
+{ ═══════════════════════════════════════════════════════════════════════════
+  PrepareZXModule test runners
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+procedure SetW(ZXP: PSpeccyModule; Offset: integer; Value: word); inline;
+{ Write a 16-bit value as two little-endian bytes into the module byte array. }
+begin
+  ZXP^.Index[Offset]     := Value and $FF;
+  ZXP^.Index[Offset + 1] := (Value shr 8) and $FF;
+end;
+
+procedure RunPrepareZXSQT;
+{ Constructs a minimal SQT binary with ZX-absolute pointer values (load base
+  BASE = 0x8000), calls PrepareZXModule, and emits the rebased word values as
+  a JSON fixture.
+
+  File layout (64 bytes total):
+    offset  0- 1  SQT_Size              = 0x0000
+    offset  2- 3  SQT_SamplesPointer    = BASE+10  (→ file-rel 10 after rebase)
+    offset  4- 5  SQT_OrnamentsPointer  = BASE+50  (→ 50)
+    offset  6- 7  SQT_PatternsPointer   = BASE+22  (→ 22)
+    offset  8- 9  SQT_PositionsPointer  = BASE+30  (→ 30)
+    offset 10-11  SQT_LoopPointer       = BASE+30  (→ 30)
+    offset 12-21  "sample" pointer table (5 entries × 2 bytes, each BASE+$500 → 0x0500=1280)
+    offset 22-29  pattern pointer table (j+1=4 entries; BASE+$100..BASE+$400 → $100..$400)
+    offset 30-37  position entry (chan C=2, chan B=1, chan A=3, delay=6) + terminator
+
+  j = max(2,1,3) = 3 → rebase count = (22 + 3*2)/2 = 14 words starting at offset 2.
+  Expected words_after[0..14] = [0, 10, 50, 22, 30, 30, 1280, 1280, 1280, 1280, 1280, 256, 512, 768, 1024]
+}
+var
+  ZXP: PSpeccyModule;
+  FType: Available_Types;
+  BASE: word;
+  i: integer;
+begin
+  BASE := $8000;
+  New(ZXP);
+  FillChar(ZXP^, SizeOf(ZXP^), 0);
+
+  { SQT header — use SetW so each 16-bit ZX-absolute value is stored correctly }
+  SetW(ZXP,  0, 0);               { SQT_Size (not a pointer, left as 0) }
+  SetW(ZXP,  2, BASE + 10);       { SQT_SamplesPointer  → i = BASE+10-10 = BASE }
+  SetW(ZXP,  4, BASE + 50);       { SQT_OrnamentsPointer }
+  SetW(ZXP,  6, BASE + 22);       { SQT_PatternsPointer }
+  SetW(ZXP,  8, BASE + 30);       { SQT_PositionsPointer }
+  SetW(ZXP, 10, BASE + 30);       { SQT_LoopPointer }
+
+  { "sample" pointer table at offsets 12-21 (5 entries × 2 bytes) }
+  for i := 0 to 4 do
+    SetW(ZXP, 12 + i * 2, BASE + $0500);
+
+  { Pattern pointer table at offsets 22-29 (4 entries for PatChan 0..3) }
+  SetW(ZXP, 22, BASE + $0100);
+  SetW(ZXP, 24, BASE + $0200);
+  SetW(ZXP, 26, BASE + $0300);
+  SetW(ZXP, 28, BASE + $0400);
+
+  { Position entry at offset 30: chan_C=2, chan_B=1, chan_A=3, delay=6 + terminator }
+  ZXP^.Index[30] := $02; ZXP^.Index[31] := $00;  { chan C PatChanNumber=2 }
+  ZXP^.Index[32] := $01; ZXP^.Index[33] := $10;  { chan B PatChanNumber=1 }
+  ZXP^.Index[34] := $03; ZXP^.Index[35] := $20;  { chan A PatChanNumber=3 }
+  ZXP^.Index[36] := $06;                           { delay }
+  ZXP^.Index[37] := $00;                           { terminator }
+
+  FType := SQTFile;
+  PrepareZXModule(ZXP, FType, 64);
+
+  WriteLn('{');
+  WriteLn('  "generator": "vt_pascal_harness",');
+  WriteLn('  "test": "prepare_zx_sqt",');
+  WriteLn('  "load_base": ', BASE, ',');
+  if FType = SQTFile then WriteLn('  "ftype_unchanged": true,')
+                     else WriteLn('  "ftype_unchanged": false,');
+  Write(  '  "words_after": [');
+  { words at offsets 0, 2, 4, ..., 28 (15 words) }
+  for i := 0 to 14 do
+  begin
+    if i > 0 then Write(', ');
+    Write(PWord(@ZXP^.Index[i * 2])^);
+  end;
+  WriteLn(']');
+  WriteLn('}');
+
+  Dispose(ZXP);
+end;
+
+procedure RunPrepareZXFLS;
+{ Constructs a minimal FLS binary with ZX-absolute pointer values (load base
+  BASE = 0x8000), calls PrepareZXModule, and emits the rebased word values as
+  a JSON fixture.
+
+  File layout (80 bytes total):
+    offset  0- 1  FLS_PositionsPointer            = BASE+28  (→ 28)
+    offset  2- 3  FLS_OrnamentsPointer             = BASE+16  (→ 16)  [i = BASE+16-16 = BASE]
+    offset  4- 5  FLS_SamplesPointer               = BASE+20  (→ 20)
+    offset  6- 7  FLS_PatternsPointers[1].PatternA = BASE+31  (→ 31)
+    offset  8- 9  FLS_PatternsPointers[1].PatternB = BASE+33  (→ 33)
+    offset 10-11  FLS_PatternsPointers[1].PatternC = BASE+40  (→ 40)
+    offset 12-13  (arbitrary pointer)              = BASE+80  (→ 80)
+    offset 14-15  (arbitrary pointer)              = BASE+90  (→ 90)
+    offset 16-17  orn_data ptr 1                   = BASE+44  (→ 44)
+    offset 18-19  orn_data ptr 2                   = BASE+28  (→ 28)  [i1-i2=32 check]
+    offset 20-21  sample 1 loop/extra bytes        = 0x0000   (skipped by rebase)
+    offset 22-23  sample 1 tick_ptr                = BASE+60  (→ 60)  [i1=60]
+    offset 24-25  sample 2 loop/extra bytes        = 0x0000   (skipped)
+    offset 26-27  sample 2 tick_ptr                = BASE+64  (→ 64)
+    offset 28     initial_delay = 2                           (positions data, unchanged)
+    offset 29     pattern entry = 1
+    offset 30     terminator = 0  [byte-before-patA validation check]
+    offset 31     0x01  (pattern A: one note byte, in 0..$5F)
+    offset 32     0xFF  (pattern A: terminator)
+    offset 33     0xFF  (pattern B: terminator)
+    offset 40     0xFF  (pattern C: terminator)
+    offsets 44-75 ornament 1 data (32 zero bytes)
+
+  Validation with i = BASE:
+    i2 = FLS_SamplesPointer+2-BASE = 22;  word@22=BASE+60 → i1=60 ✓
+    word@(i2-4=18)=BASE+28 → i2_new=28;  i1-i2_new=32 ✓
+    patA-BASE=31>20, patB-BASE=33>21, Index[30]=0
+    pattern walk from 31: Index[31]=$01 (note→Inc), Index[32]=$FF → i1=32; 32+1=33=patB ✓
+
+  First rebase loop:  words at offsets 0,2,4,6,8,10,12,14,16,18  (p1 = @Index[20])
+  Inc(pwrd) skips loop/extra word at 20-21.
+  Second rebase loop: words at offsets 22, 26  (p2 = @Index[30])
+
+  Expected words_after[0..14] = [28,16,20,31,33,40,80,90,44,28, 0,60, 0,64, 258]
+    (offset 28 word = delay<<0 | pattern<<8 = 2 | (1<<8) = 258, unchanged)
+}
+var
+  ZXP: PSpeccyModule;
+  FType: Available_Types;
+  BASE: word;
+  i: integer;
+begin
+  BASE := $8000;
+  New(ZXP);
+  FillChar(ZXP^, SizeOf(ZXP^), 0);
+
+  { FLS header — use SetW for each ZX-absolute pointer word }
+  SetW(ZXP,  0, BASE + 28);   { FLS_PositionsPointer }
+  SetW(ZXP,  2, BASE + 16);   { FLS_OrnamentsPointer → i = BASE+16-16 = BASE }
+  SetW(ZXP,  4, BASE + 20);   { FLS_SamplesPointer }
+
+  { Pattern 1 pointer triplet }
+  SetW(ZXP,  6, BASE + 31);   { PatternA }
+  SetW(ZXP,  8, BASE + 33);   { PatternB }
+  SetW(ZXP, 10, BASE + 40);   { PatternC }
+
+  { Arbitrary filler pointers (in the first rebase-loop range) }
+  SetW(ZXP, 12, BASE + 80);
+  SetW(ZXP, 14, BASE + 90);
+
+  { Ornament pointer table starting at offset 16 }
+  SetW(ZXP, 16, BASE + 44);   { orn data ptr 1 }
+  SetW(ZXP, 18, BASE + 28);   { orn data ptr 2 — used for i1-i2=32 validation }
+
+  { Sample table: 2 entries × 4 bytes (loop/extra + tick_ptr) }
+  ZXP^.Index[20] := 0; ZXP^.Index[21] := 0;  { sample 1 loop, extra (not a pointer) }
+  SetW(ZXP, 22, BASE + 60);   { sample 1 tick_ptr }
+  ZXP^.Index[24] := 0; ZXP^.Index[25] := 0;  { sample 2 loop, extra (not a pointer) }
+  SetW(ZXP, 26, BASE + 64);   { sample 2 tick_ptr }
+
+  { Positions data (offset 28) }
+  ZXP^.Index[28] := 2;    { initial_delay }
+  ZXP^.Index[29] := 1;    { position entry (pattern index 1) }
+  ZXP^.Index[30] := 0;    { terminator — also the byte-before-patA check in validation }
+
+  { Pattern A data (offset 31) }
+  ZXP^.Index[31] := $01;  { one note byte (in range 0..$5F) }
+  ZXP^.Index[32] := $FF;  { terminator }
+
+  { Pattern B data (offset 33) }
+  ZXP^.Index[33] := $FF;  { terminator }
+
+  { Pattern C data (offset 40) }
+  ZXP^.Index[40] := $FF;  { terminator }
+
+  { Ornament 1 data at offset 44 (32 bytes, already zeroed by FillChar) }
+
+  FType := FLSFile;
+  PrepareZXModule(ZXP, FType, 80);
+
+  WriteLn('{');
+  WriteLn('  "generator": "vt_pascal_harness",');
+  WriteLn('  "test": "prepare_zx_fls",');
+  WriteLn('  "load_base": ', BASE, ',');
+  if FType = FLSFile then WriteLn('  "ftype_unchanged": true,')
+                     else WriteLn('  "ftype_unchanged": false,');
+  Write(  '  "words_after": [');
+  { words at offsets 0, 2, 4, ..., 28 (15 words) }
+  for i := 0 to 14 do
+  begin
+    if i > 0 then Write(', ');
+    Write(PWord(@ZXP^.Index[i * 2])^);
+  end;
+  WriteLn(']');
+  WriteLn('}');
+
+  Dispose(ZXP);
+end;
+
 { ── Test runner ──────────────────────────────────────────────────── }
 
 procedure RunSongTiming;
@@ -1753,19 +2087,6 @@ begin
 
   { ── get_time_params ──────────────────────────────────────────────── }
   WriteLn('  "time_params": [');
-  begin
-    { Emit each case as a JSON object }
-    procedure EmitTimeParamsCase(T: integer; IsLast: boolean);
-    var ResPos, ResLine: integer; Found: boolean;
-    begin
-      GetTimeParams(@M, T, ResPos, ResLine);
-      Found := ResPos <> -1;
-      Write('    { "time": ', T, ', "found": ');
-      if Found then Write('true') else Write('false');
-      Write(', "pos": ', ResPos, ', "line": ', ResLine, ' }');
-      if IsLast then WriteLn else WriteLn(',');
-    end;
-  end;
   { Manual inlining since FPC doesn't support nested procedures easily }
   GetTimeParams(@M, 0,  Pos, Line); Write('    { "time": 0,  "found": '); if Pos<>-1 then Write('true') else Write('false'); WriteLn(', "pos": ', Pos, ', "line": ', Line, ' },');
   GetTimeParams(@M, 3,  Pos, Line); Write('    { "time": 3,  "found": '); if Pos<>-1 then Write('true') else Write('false'); WriteLn(', "pos": ', Pos, ', "line": ', Line, ' },');
@@ -1792,7 +2113,8 @@ begin
     WriteLn(StdErr, 'Usage: vt_harness <test>');
     WriteLn(StdErr, 'Tests: noise_lfsr | envelopes | pt3_vol | note_tables |');
     WriteLn(StdErr, '       pattern_basic | pattern_envelope | pattern_arpeggio |');
-    WriteLn(StdErr, '       level_tables | song_timing');
+    WriteLn(StdErr, '       level_tables | song_timing |');
+    WriteLn(StdErr, '       prepare_zx_sqt | prepare_zx_fls');
     Halt(1);
   end;
 
@@ -1807,6 +2129,8 @@ begin
   else if Cmd = 'pattern_arpeggio'  then RunPatternArpeggio
   else if Cmd = 'level_tables'      then RunLevelTables
   else if Cmd = 'song_timing'       then RunSongTiming
+  else if Cmd = 'prepare_zx_sqt'   then RunPrepareZXSQT
+  else if Cmd = 'prepare_zx_fls'   then RunPrepareZXFLS
   else
   begin
     WriteLn(StdErr, 'Unknown test: ', Cmd);

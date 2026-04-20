@@ -665,3 +665,134 @@ fn song_timing_matches_pascal_baseline() {
         }
     }
 }
+
+// ─── PrepareZXModule — SQT ────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct PrepareZxFixture {
+    load_base: u32,
+    ftype_unchanged: bool,
+    words_after: Vec<u16>,
+}
+
+/// Build the same test binary that `RunPrepareZXSQT` in the Pascal harness
+/// uses: a 64-byte SQT file with ZX-absolute pointer values (base = 0x8000).
+fn build_sqt_zx_binary() -> Vec<u8> {
+    const BASE: u16 = 0x8000;
+    let mut data = vec![0u8; 64];
+    let set = |buf: &mut Vec<u8>, off: usize, v: u16| {
+        buf[off]     = v as u8;
+        buf[off + 1] = (v >> 8) as u8;
+    };
+    set(&mut data,  0, 0);              // SQT_Size
+    set(&mut data,  2, BASE + 10);      // SQT_SamplesPointer
+    set(&mut data,  4, BASE + 50);      // SQT_OrnamentsPointer
+    set(&mut data,  6, BASE + 22);      // SQT_PatternsPointer
+    set(&mut data,  8, BASE + 30);      // SQT_PositionsPointer
+    set(&mut data, 10, BASE + 30);      // SQT_LoopPointer
+    for i in 0..5usize {                // "sample" pointer table at 12-21
+        set(&mut data, 12 + i * 2, BASE + 0x0500);
+    }
+    set(&mut data, 22, BASE + 0x0100);  // pattern ptr 0
+    set(&mut data, 24, BASE + 0x0200);  // pattern ptr 1
+    set(&mut data, 26, BASE + 0x0300);  // pattern ptr 2
+    set(&mut data, 28, BASE + 0x0400);  // pattern ptr 3
+    // position entry: chan_C=2, chan_B=1, chan_A=3, delay=6, terminator
+    data[30] = 0x02; data[31] = 0x00;
+    data[32] = 0x01; data[33] = 0x10;
+    data[34] = 0x03; data[35] = 0x20;
+    data[36] = 0x06;
+    data[37] = 0x00;
+    data
+}
+
+/// Build the same test binary that `RunPrepareZXFLS` in the Pascal harness
+/// uses: an 80-byte FLS file with ZX-absolute pointer values (base = 0x8000).
+fn build_fls_zx_binary() -> Vec<u8> {
+    const BASE: u16 = 0x8000;
+    let mut data = vec![0u8; 80];
+    let set = |buf: &mut Vec<u8>, off: usize, v: u16| {
+        buf[off]     = v as u8;
+        buf[off + 1] = (v >> 8) as u8;
+    };
+    set(&mut data,  0, BASE + 28);  // FLS_PositionsPointer
+    set(&mut data,  2, BASE + 16);  // FLS_OrnamentsPointer
+    set(&mut data,  4, BASE + 20);  // FLS_SamplesPointer
+    set(&mut data,  6, BASE + 31);  // PatternA
+    set(&mut data,  8, BASE + 33);  // PatternB
+    set(&mut data, 10, BASE + 40);  // PatternC
+    set(&mut data, 12, BASE + 80);  // filler pointer
+    set(&mut data, 14, BASE + 90);  // filler pointer
+    set(&mut data, 16, BASE + 44);  // orn data ptr 1
+    set(&mut data, 18, BASE + 28);  // orn data ptr 2 (i1-i2=32 check)
+    // sample 1: loop/extra = 0, tick_ptr = BASE+60
+    set(&mut data, 22, BASE + 60);
+    // sample 2: loop/extra = 0, tick_ptr = BASE+64
+    set(&mut data, 26, BASE + 64);
+    // positions
+    data[28] = 2;    // initial_delay
+    data[29] = 1;    // position entry
+    data[30] = 0;    // terminator / byte-before-patA
+    // pattern A
+    data[31] = 0x01; // note byte (0..=0x5F)
+    data[32] = 0xFF; // terminator
+    // pattern B
+    data[33] = 0xFF;
+    // pattern C
+    data[40] = 0xFF;
+    data
+}
+
+#[test]
+fn prepare_zx_sqt_matches_pascal_baseline() {
+    let raw = load_core_fixture("prepare_zx_sqt");
+    let fixture: PrepareZxFixture =
+        serde_json::from_str(&raw).expect("parse prepare_zx_sqt.json");
+
+    assert_eq!(fixture.load_base, 0x8000, "load_base");
+    assert!(fixture.ftype_unchanged, "ftype should be unchanged (SQTFile)");
+
+    let input = build_sqt_zx_binary();
+    let result = vti_core::formats::prepare_zx_module_sqt(&input);
+    let result_bytes = result.as_ref();
+
+    // Read the words at offsets 0, 2, 4, …, 28 (15 words) from the result.
+    let words_got: Vec<u16> = (0..15)
+        .map(|i| {
+            let off = i * 2;
+            u16::from_le_bytes([result_bytes[off], result_bytes[off + 1]])
+        })
+        .collect();
+
+    assert_eq!(
+        words_got, fixture.words_after,
+        "rebased words must match Pascal baseline"
+    );
+}
+
+#[test]
+fn prepare_zx_fls_matches_pascal_baseline() {
+    let raw = load_core_fixture("prepare_zx_fls");
+    let fixture: PrepareZxFixture =
+        serde_json::from_str(&raw).expect("parse prepare_zx_fls.json");
+
+    assert_eq!(fixture.load_base, 0x8000, "load_base");
+    assert!(fixture.ftype_unchanged, "ftype should be unchanged (FLSFile)");
+
+    let input = build_fls_zx_binary();
+    let result = vti_core::formats::prepare_zx_module_fls(&input)
+        .expect("prepare_zx_module_fls should return Some");
+    let result_bytes = result.as_ref();
+
+    let words_got: Vec<u16> = (0..15)
+        .map(|i| {
+            let off = i * 2;
+            u16::from_le_bytes([result_bytes[off], result_bytes[off + 1]])
+        })
+        .collect();
+
+    assert_eq!(
+        words_got, fixture.words_after,
+        "rebased words must match Pascal baseline"
+    );
+}
