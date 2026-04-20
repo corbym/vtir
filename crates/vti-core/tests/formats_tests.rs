@@ -48,10 +48,32 @@ fn load_and_detect_errors_on_unknown_format() {
 }
 
 #[test]
+fn load_and_detect_errors_on_real_junk() {
+    // A file full of random-looking non-zero bytes that match no known magic.
+    let junk: Vec<u8> = (0u8..=127).chain(128u8..=255).collect();
+    assert!(
+        load_and_detect(&junk).is_err(),
+        "junk bytes should not match any format"
+    );
+}
+
+#[test]
 fn load_and_detect_parses_vtm() {
     // A minimal but valid VTM module text.
     let vtm = "[Module]\nTitle=\nAuthor=\nNoteTable=1\nSpeed=3\nPlayOrder=L0\n\
                [Position0]\nPattern=0\n[Pattern0]\n[End]\n";
     let module = load_and_detect(vtm.as_bytes()).expect("should parse VTM");
     assert_eq!(module.title, "");
+}
+
+#[test]
+fn load_and_detect_loads_real_vtm_file_without_extension() {
+    // madness_descent_no_ext is a copy of madness_descent.vtm with the
+    // extension removed.  load_and_detect must detect it as VTM from content.
+    let bytes = include_bytes!(
+        "fixtures/tunes/madness_descent_no_ext"
+    );
+    let module = load_and_detect(bytes).expect("should detect and parse VTM");
+    assert_eq!(module.title, "Descent Into Madness");
+    assert_eq!(module.author, "VTIR Test Fixture");
 }
