@@ -238,12 +238,13 @@ pub fn prepare_zx_module_fls(data: &[u8]) -> Option<Cow<'_, [u8]>> {
         let mut walk = i1_pat;
         while walk < length && data[walk] != 0xff {
             // inner repeat
+            // Pascal: case ZXP^.Index[i1] of 0..$5f, $80, $81: (Inc+break); $82..$8e: (Inc); else (Inc+break)
             loop {
                 if walk >= length { break; }
                 match data[walk] {
                     0x00..=0x5f | 0x80 | 0x81 => { walk += 1; break; }
                     0x82..=0x8e              => { walk += 1; }
-                    _                        => { walk += 1; break; }
+                    _                        => { walk += 1; break; }  // else branch
                 }
             }
         }

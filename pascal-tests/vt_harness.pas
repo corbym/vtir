@@ -184,7 +184,9 @@ type
   ═══════════════════════════════════════════════════════════════════════════ }
 
 type
-  { Minimal subset of Available_Types needed for PrepareZXModule }
+  { All Available_Types values from trfuncs.pas — kept complete so that
+    ordinal values match the original and the PrepareZXModule case statements
+    (which use FLSFile and SQTFile) compile correctly. }
   Available_Types = (
     Unknown, VTMFile, STCFile, STPFile, STFFile, PTCFile, PT3File, PT2File,
     PT1File, STXFile, ASCFile, ASCOFile, PSCFile, FLSFile, GTRFile, AYFile,

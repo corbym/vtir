@@ -1,4 +1,5 @@
-//! Unit tests for format detection and the `load_and_detect` / `load_and_detect` API.
+//! Unit tests for `detect_format_from_bytes`, `load_and_detect`, and related
+//! format-detection / loading helpers.
 
 use vti_core::formats::{detect_format_from_bytes, load_and_detect};
 
