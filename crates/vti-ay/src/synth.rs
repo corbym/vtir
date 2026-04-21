@@ -253,23 +253,33 @@ impl Synthesizer {
         let cl = self.levels.cl;
         let cr = self.levels.cr;
 
+        let mono = self.cfg.num_channels == 1;
+
         for _ in 0..n_samples {
             let mut lev_l = 0i32;
             let mut lev_r = 0i32;
 
             for c in 0..self.num_chips {
                 self.chips[c].synthesizer_logic_q();
-                self.chips[c].synthesizer_mixer_q(
-                    &al, &ar, &bl, &br, &cl, &cr,
-                    &mut lev_l, &mut lev_r,
-                );
+                if mono {
+                    self.chips[c].synthesizer_mixer_q_mono(&al, &bl, &cl, &mut lev_l);
+                } else {
+                    self.chips[c].synthesizer_mixer_q(
+                        &al, &ar, &bl, &br, &cl, &cr,
+                        &mut lev_l, &mut lev_r,
+                    );
+                }
             }
 
             // FIR low-pass filter (quality mode)
             if self.cfg.is_filt {
                 lev_l = self.apply_filter(lev_l, true);
-                lev_r = self.apply_filter(lev_r, false);
+                if !mono {
+                    lev_r = self.apply_filter(lev_r, false);
+                }
             }
+
+            if mono { lev_r = lev_l; }
 
             self.output_buf.push(StereoSample {
                 left:  lev_l.clamp(-32768, 32767) as i16,
@@ -315,6 +325,8 @@ impl Synthesizer {
         let cl = self.levels.cl;
         let cr = self.levels.cr;
 
+        let mono = self.cfg.num_channels == 1;
+
         let n_ay = self.chips[0].ay_tiks_in_interrupt;
         let delay = self.cfg.delay_in_tiks() as i32; // Delay_In_Tiks = 302460
 
@@ -354,17 +366,25 @@ impl Synthesizer {
             let mut lev_r = 0i32;
             for c in 0..self.num_chips {
                 self.chips[c].synthesizer_logic_q();
-                self.chips[c].synthesizer_mixer_q(
-                    &al, &ar, &bl, &br, &cl, &cr,
-                    &mut lev_l, &mut lev_r,
-                );
+                if mono {
+                    self.chips[c].synthesizer_mixer_q_mono(&al, &bl, &cl, &mut lev_l);
+                } else {
+                    self.chips[c].synthesizer_mixer_q(
+                        &al, &ar, &bl, &br, &cl, &cr,
+                        &mut lev_l, &mut lev_r,
+                    );
+                }
             }
 
             // ── FIR anti-aliasing filter (runs at AY clock rate) ─────────────
             if self.cfg.is_filt {
                 lev_l = self.apply_filter(lev_l, true);
-                lev_r = self.apply_filter(lev_r, false);
+                if !mono {
+                    lev_r = self.apply_filter(lev_r, false);
+                }
             }
+
+            if mono { lev_r = lev_l; }
 
             // Pascal: PrevLeft := Left_Chan; Left_Chan := LevelL;
             // Shift current → prev before storing new current.
