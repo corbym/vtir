@@ -380,6 +380,61 @@ impl SoundChip {
         }
     }
 
+    /// Compute mono mix contribution for quality mode, accumulate into `level`.
+    ///
+    /// Direct port of `TSoundChip.Synthesizer_Mixer_Q_Mono` from `AY.pas`.
+    /// Only the left-channel tables (`level_al`, `level_bl`, `level_cl`) are
+    /// used; the result is a single mono sample accumulation.
+    #[inline]
+    pub fn synthesizer_mixer_q_mono(
+        &self,
+        level_al: &[i32; 32],
+        level_bl: &[i32; 32],
+        level_cl: &[i32; 32],
+        level: &mut i32,
+    ) {
+        let ampl = self.envelope_step.clamp(0, 31) as usize;
+
+        // Channel A
+        let mut k = 1i32;
+        if self.ton_en_a { k = self.ton_a; }
+        if self.noise_en_a { k &= self.noise_val as i32; }
+        if k != 0 {
+            let idx = if self.envelope_en_a {
+                ampl
+            } else {
+                (self.registers.amplitude_a as usize * 2 + 1).min(31)
+            };
+            *level += level_al[idx];
+        }
+
+        // Channel B
+        let mut k = 1i32;
+        if self.ton_en_b { k = self.ton_b; }
+        if self.noise_en_b { k &= self.noise_val as i32; }
+        if k != 0 {
+            let idx = if self.envelope_en_b {
+                ampl
+            } else {
+                (self.registers.amplitude_b as usize * 2 + 1).min(31)
+            };
+            *level += level_bl[idx];
+        }
+
+        // Channel C
+        let mut k = 1i32;
+        if self.ton_en_c { k = self.ton_c; }
+        if self.noise_en_c { k &= self.noise_val as i32; }
+        if k != 0 {
+            let idx = if self.envelope_en_c {
+                ampl
+            } else {
+                (self.registers.amplitude_c as usize * 2 + 1).min(31)
+            };
+            *level += level_cl[idx];
+        }
+    }
+
     /// Compute stereo mix contribution for quality mode, accumulate into `lev_l`/`lev_r`.
     #[inline]
     pub fn synthesizer_mixer_q(

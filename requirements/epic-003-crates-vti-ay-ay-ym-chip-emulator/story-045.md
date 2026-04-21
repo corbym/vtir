@@ -20,6 +20,4 @@ Describe what this story should accomplish.
 - [x] `noise_generator()` — 17-bit LFSR
 - [x] `synthesizer_logic_q()` — tone/noise/envelope counters (quality mode)
 - [x] `synthesizer_mixer_q()` — stereo level accumulation
-- [ ] `synthesizer_logic_p()` — fractional-tick "performance" mode
-- [ ] `synthesizer_mixer_q_mono()` — mono mixing path
-- [ ] `apply_filter()` integration for "performance" path
+- [x] `synthesizer_mixer_q_mono()` — mono mixing path

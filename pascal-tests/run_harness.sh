@@ -43,6 +43,7 @@ echo "Generating AY fixtures ..."
 ./vt_harness noise_lfsr      > "$AY_FIXTURES/noise_lfsr.json"
 ./vt_harness envelopes        > "$AY_FIXTURES/envelope_shapes.json"
 ./vt_harness level_tables     > "$AY_FIXTURES/level_tables.json"
+./vt_harness mixer_mono       > "$AY_FIXTURES/mixer_mono.json"
 
 echo "Generating core fixtures ..."
 ./vt_harness pt3_vol          > "$CORE_FIXTURES/pt3_vol.json"
