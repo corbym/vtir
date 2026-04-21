@@ -1,22 +1,22 @@
 name: Install backlog-mcp
-description: Build the backlog-mcp binary from source and expose its path
+description: Install the backlog-mcp binary and expose its path
 
 outputs:
   binary-path:
-    description: Absolute path to the built backlog-mcp binary
-    value: ${{ steps.build.outputs.binary-path }}
+    description: Absolute path to the installed backlog-mcp binary
+    value: ${{ steps.install.outputs.binary-path }}
 
 runs:
   using: composite
   steps:
     - uses: actions/setup-go@v5
       with:
-        go-version-file: go.mod
-        cache: true
+        go-version: '1.23'
+        cache: false
 
-    - name: Build binary
-      id: build
+    - name: Install binary
+      id: install
       shell: bash
       run: |
-        go build -o "$RUNNER_TEMP/backlog-mcp" .
-        echo "binary-path=$RUNNER_TEMP/backlog-mcp" >> "$GITHUB_OUTPUT"
+        go install github.com/corbym/backlog-mcp@v1.0.3
+        echo "binary-path=$(go env GOPATH)/bin/backlog-mcp" >> "$GITHUB_OUTPUT"
