@@ -21,3 +21,8 @@ Describe what this story should accomplish.
 - [x] `synthesizer_logic_q()` — tone/noise/envelope counters (quality mode)
 - [x] `synthesizer_mixer_q()` — stereo level accumulation
 - [x] `synthesizer_mixer_q_mono()` — mono mixing path
+
+## Notes
+
+<!-- backlog-mcp: 2026-04-21T22:08:36Z -->
+PR #51: feat(vti-ay): implement synthesizer_mixer_q_mono with Pascal baseline
