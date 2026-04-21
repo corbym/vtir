@@ -1,0 +1,7 @@
+{
+  "generator": "vt_pascal_harness",
+  "test": "prepare_zx_sqt",
+  "load_base": 32768,
+  "ftype_unchanged": true,
+  "words_after": [0, 10, 50, 22, 30, 30, 1280, 1280, 1280, 1280, 1280, 256, 512, 768, 1024]
+}

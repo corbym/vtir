@@ -1,5 +1,5 @@
 name: Install backlog-mcp
-description: Install the backlog-mcp binary from github.com/corbym/backlog-mcp and expose its path
+description: Install the backlog-mcp binary and expose its path
 
 outputs:
   binary-path:
@@ -11,12 +11,12 @@ runs:
   steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: stable
+        go-version: '1.23'
         cache: false
 
     - name: Install binary
       id: install
       shell: bash
       run: |
-        go install github.com/corbym/backlog-mcp@latest
+        go install github.com/corbym/backlog-mcp@v1.0.3
         echo "binary-path=$(go env GOPATH)/bin/backlog-mcp" >> "$GITHUB_OUTPUT"
