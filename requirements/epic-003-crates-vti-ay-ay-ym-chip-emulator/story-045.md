@@ -26,3 +26,6 @@ Describe what this story should accomplish.
 
 <!-- backlog-mcp: 2026-04-21T22:08:36Z -->
 PR #51: feat(vti-ay): implement synthesizer_mixer_q_mono with Pascal baseline
+
+<!-- backlog-mcp: 2026-04-22T04:24:34Z -->
+PR #51: feat(vti-ay): implement synthesizer_mixer_q_mono with Pascal baseline
