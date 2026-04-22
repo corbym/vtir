@@ -8,7 +8,7 @@ use vti_ay::synth::Synthesizer;
 use vti_core::playback::{Engine, PlayVars, init_tracker_parameters, PlayResult,
     get_module_time, get_position_time, get_position_time_ex};
 use vti_audio::AudioPlayer;
-use vti_ay::config::SAMPLE_RATE_DEF;
+use vti_ay::config::{SAMPLE_RATE_DEF, NUMBER_OF_CHANNELS_DEF};
 use vti_core::formats;
 use crate::pending_file::OpenTarget;
 
@@ -54,6 +54,10 @@ pub struct VortexTrackerApp {
     /// If `Some`, an egui modal error dialog is shown with this message.
     /// Mirrors the Delphi `MessageBox(…, MB_ICONEXCLAMATION)` on load failure.
     pub error_dialog: Option<String>,
+
+    /// Number of output channels: 1 = mono, 2 = stereo (default).
+    /// Mirrors `VTOptions.NumberOfChannels` from the original Delphi app.
+    pub num_channels: u8,
 
     /// Per-chip filenames (base name only, no directory), matching `modules`.
     /// `None` for new / unsaved modules.
@@ -273,6 +277,7 @@ impl VortexTrackerApp {
             last_tick_time: 0.0,
             status: "Ready".to_string(),
             error_dialog: None,
+            num_channels: NUMBER_OF_CHANNELS_DEF,
             module_filenames,
         }
     }
@@ -707,7 +712,8 @@ impl VortexTrackerApp {
 
     fn rebuild_synth_for_modules(&mut self) {
         let chips = self.modules.len().clamp(1, 2);
-        self.synth = Synthesizer::new(AyConfig::default(), chips, ChipType::AY);
+        let cfg = AyConfig { num_channels: self.num_channels, ..AyConfig::default() };
+        self.synth = Synthesizer::new(cfg, chips, ChipType::AY);
     }
 
     fn reset_playback_for_all_modules(&mut self) {
@@ -946,6 +952,24 @@ impl eframe::App for VortexTrackerApp {
                     );
                     if chip2_button.clicked() {
                         self.set_active_module_slot(1);
+                        ui.close_menu();
+                    }
+                });
+                ui.menu_button("Options", |ui| {
+                    let mut mono = self.num_channels == 1;
+                    let was_mono = mono;
+                    ui.radio_value(&mut mono, false, "Stereo");
+                    ui.radio_value(&mut mono, true,  "Mono");
+                    if mono != was_mono {
+                        self.num_channels = if mono { 1 } else { 2 };
+                        self.playback_state = PlaybackState::Stopped;
+                        self.last_tick_time = 0.0;
+                        self.rebuild_synth_for_modules();
+                        self.status = if mono {
+                            "Mono output".to_string()
+                        } else {
+                            "Stereo output".to_string()
+                        };
                         ui.close_menu();
                     }
                 });

@@ -244,3 +244,94 @@ fn level_tables_match_pascal_baseline() {
         check(&t.cr, &case.cr, "cr");
     }
 }
+
+// ─── Mono mixer ──────────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct MixerMonoFixture {
+    cases: Vec<MixerMonoCase>,
+}
+
+#[derive(Deserialize)]
+struct MixerMonoCase {
+    name: String,
+    level: i32,
+    ampl_a: u8,
+    ampl_b: u8,
+    ampl_c: u8,
+    ampl_env: i32,
+    ton_en_a: bool,
+    ton_en_b: bool,
+    ton_en_c: bool,
+    noise_en_a: bool,
+    noise_en_b: bool,
+    noise_en_c: bool,
+    ton_a: i32,
+    ton_b: i32,
+    ton_c: i32,
+    noise_val: u32,
+    env_en_a: bool,
+    env_en_b: bool,
+    env_en_c: bool,
+}
+
+/// Verify that `synthesizer_mixer_q_mono` produces bit-identical output to the
+/// Pascal `TSoundChip.Synthesizer_Mixer_Q_Mono` across 6 representative chip states.
+///
+/// The fixture uses the default AY stereo panning (A=255/13, B=170/170, C=13/255)
+/// to build the level tables, and tests: single-channel fixed, multi-channel fixed,
+/// envelope mode, tone-zero silence, noise-AND-gate silence, and noise passthrough.
+#[test]
+fn mixer_mono_matches_pascal_baseline() {
+    let raw = load_ay_fixture("mixer_mono");
+    let fixture: MixerMonoFixture =
+        serde_json::from_str(&raw).expect("parse mixer_mono.json");
+
+    let cfg = AyConfig {
+        index_al: 255,
+        index_ar: 13,
+        index_bl: 170,
+        index_br: 170,
+        index_cl: 13,
+        index_cr: 255,
+        global_volume: 1.0,
+        global_volume_max: 1.0,
+        ..AyConfig::default()
+    };
+    let t = calculate_level_tables(&cfg, ChipType::AY);
+
+    for case in &fixture.cases {
+        let mut chip = SoundChip::default();
+        // Amplitude registers: set_ampl_* derives envelope_en flag
+        chip.set_ampl_a(case.ampl_a);
+        chip.set_ampl_b(case.ampl_b);
+        chip.set_ampl_c(case.ampl_c);
+        // Override envelope_en flags to match fixture (fixture uses inverted convention)
+        chip.envelope_en_a = case.env_en_a;
+        chip.envelope_en_b = case.env_en_b;
+        chip.envelope_en_c = case.env_en_c;
+        // Tone / noise mixer gates
+        chip.ton_en_a   = case.ton_en_a;
+        chip.ton_en_b   = case.ton_en_b;
+        chip.ton_en_c   = case.ton_en_c;
+        chip.noise_en_a = case.noise_en_a;
+        chip.noise_en_b = case.noise_en_b;
+        chip.noise_en_c = case.noise_en_c;
+        // Tone square-wave outputs and noise LFSR output
+        chip.ton_a    = case.ton_a;
+        chip.ton_b    = case.ton_b;
+        chip.ton_c    = case.ton_c;
+        chip.noise_val = case.noise_val;
+        // Envelope amplitude step
+        chip.envelope_step = case.ampl_env;
+
+        let mut level = 0i32;
+        chip.synthesizer_mixer_q_mono(&t.al, &t.bl, &t.cl, &mut level);
+
+        assert_eq!(
+            level, case.level,
+            "case '{}': level mismatch (got {}, want {})",
+            case.name, level, case.level
+        );
+    }
+}

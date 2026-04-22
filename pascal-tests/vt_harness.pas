@@ -1545,6 +1545,162 @@ begin
 end;
 
 { ═══════════════════════════════════════════════════════════════════════════
+  Test: Synthesizer_Mixer_Q_Mono — mono mixing path
+
+  Exercises TSoundChip.Synthesizer_Mixer_Q_Mono from AY.pas across 6
+  representative chip states using the default AY stereo panning tables
+  (A=255/13, B=170/170, C=13/255).  The _L tables are the ones used by
+  the mono mixer; the formula is identical to RunLevelTables.
+  ═══════════════════════════════════════════════════════════════════════════ }
+
+procedure RunMixerMono;
+const
+  Amplitudes_AY: array[0..15] of LongWord = (
+    0, 836, 1212, 1773, 2619, 3875, 5397, 8823, 10392, 16706, 23339,
+    29292, 36969, 46421, 55195, 65535);
+  { Default stereo panning — identical to level_tables fixture }
+  Index_AL = 255; Index_BL = 170; Index_CL = 13;
+  R = 32767;
+  { Denominator: max(sum_L, sum_R)*2 = (255+170+13)*2 = 876 }
+  L_val = 876;
+  NumCases = 6;
+var
+  AL, BL, CL: array[0..31] of Integer;
+  i, b, c, Level, k: Integer;
+  TonEnA, TonEnB, TonEnC: Boolean;
+  NoiseEnA, NoiseEnB, NoiseEnC: Boolean;
+  TonA, TonB, TonC: Integer;
+  NoiseVal: Integer;
+  EnvEnA, EnvEnB, EnvEnC: Boolean;
+  Ampl: Integer;
+  AmplA, AmplB, AmplC: Byte;
+  CaseName: string;
+begin
+  { Build per-channel left level tables using AY amplitude table }
+  for i := 0 to 15 do
+  begin
+    b := Trunc(Index_AL / L_val * Amplitudes_AY[i] / 65535.0 * R + 0.5);
+    AL[i * 2] := b; AL[i * 2 + 1] := b;
+    b := Trunc(Index_BL / L_val * Amplitudes_AY[i] / 65535.0 * R + 0.5);
+    BL[i * 2] := b; BL[i * 2 + 1] := b;
+    b := Trunc(Index_CL / L_val * Amplitudes_AY[i] / 65535.0 * R + 0.5);
+    CL[i * 2] := b; CL[i * 2 + 1] := b;
+  end;
+
+  WriteLn('{');
+  WriteLn('  "generator": "vt_pascal_harness",');
+  WriteLn('  "test": "mixer_mono",');
+  WriteLn('  "comment": "Synthesizer_Mixer_Q_Mono with default AY stereo panning (A=255/13, B=170/170, C=13/255).",');
+  WriteLn('  "cases": [');
+
+  for c := 0 to NumCases - 1 do
+  begin
+    Level := 0;
+    case c of
+      0: begin
+        { Channel A tone only, fixed amplitude 7 }
+        CaseName   := 'chan_a_tone_fixed7';
+        TonEnA := True;  TonEnB := False; TonEnC := False;
+        NoiseEnA := False; NoiseEnB := False; NoiseEnC := False;
+        TonA := 1; TonB := 0; TonC := 0; NoiseVal := 0;
+        EnvEnA := False; EnvEnB := False; EnvEnC := False;
+        Ampl := 0; AmplA := 7; AmplB := 0; AmplC := 0;
+      end;
+      1: begin
+        { All three channels, tones active, fixed amplitudes A=5 B=7 C=3 }
+        CaseName   := 'all_chans_fixed';
+        TonEnA := True; TonEnB := True; TonEnC := True;
+        NoiseEnA := False; NoiseEnB := False; NoiseEnC := False;
+        TonA := 1; TonB := 1; TonC := 1; NoiseVal := 0;
+        EnvEnA := False; EnvEnB := False; EnvEnC := False;
+        Ampl := 0; AmplA := 5; AmplB := 7; AmplC := 3;
+      end;
+      2: begin
+        { Channel A envelope mode, envelope amplitude = 20 }
+        CaseName   := 'chan_a_envelope_ampl20';
+        TonEnA := True;  TonEnB := False; TonEnC := False;
+        NoiseEnA := False; NoiseEnB := False; NoiseEnC := False;
+        TonA := 1; TonB := 0; TonC := 0; NoiseVal := 0;
+        EnvEnA := True; EnvEnB := False; EnvEnC := False;
+        Ampl := 20; AmplA := 0; AmplB := 0; AmplC := 0;
+      end;
+      3: begin
+        { Channel A tone output = 0: channel silenced }
+        CaseName   := 'chan_a_tone_zero';
+        TonEnA := True;  TonEnB := False; TonEnC := False;
+        NoiseEnA := False; NoiseEnB := False; NoiseEnC := False;
+        TonA := 0; TonB := 0; TonC := 0; NoiseVal := 0;
+        EnvEnA := False; EnvEnB := False; EnvEnC := False;
+        Ampl := 0; AmplA := 15; AmplB := 0; AmplC := 0;
+      end;
+      4: begin
+        { Channel A: tone=1 AND noise=0 gates level to zero }
+        CaseName   := 'noise_silences_a';
+        TonEnA := True;  TonEnB := False; TonEnC := False;
+        NoiseEnA := True; NoiseEnB := False; NoiseEnC := False;
+        TonA := 1; TonB := 0; TonC := 0; NoiseVal := 0;
+        EnvEnA := False; EnvEnB := False; EnvEnC := False;
+        Ampl := 0; AmplA := 15; AmplB := 0; AmplC := 0;
+      end;
+      5: begin
+        { Channel B: tone=1 AND noise=1 passes through }
+        CaseName   := 'noise_b_passes';
+        TonEnA := False; TonEnB := True;  TonEnC := False;
+        NoiseEnA := False; NoiseEnB := True; NoiseEnC := False;
+        TonA := 0; TonB := 1; TonC := 0; NoiseVal := 1;
+        EnvEnA := False; EnvEnB := False; EnvEnC := False;
+        Ampl := 0; AmplA := 0; AmplB := 10; AmplC := 0;
+      end;
+    end;
+
+    { Compute mono level — direct port of TSoundChip.Synthesizer_Mixer_Q_Mono }
+    { Channel A }
+    k := 1;
+    if TonEnA then k := TonA;
+    if NoiseEnA then k := k and NoiseVal;
+    if k <> 0 then
+      if EnvEnA then Inc(Level, AL[Ampl])
+      else Inc(Level, AL[AmplA * 2 + 1]);
+    { Channel B }
+    k := 1;
+    if TonEnB then k := TonB;
+    if NoiseEnB then k := k and NoiseVal;
+    if k <> 0 then
+      if EnvEnB then Inc(Level, BL[Ampl])
+      else Inc(Level, BL[AmplB * 2 + 1]);
+    { Channel C }
+    k := 1;
+    if TonEnC then k := TonC;
+    if NoiseEnC then k := k and NoiseVal;
+    if k <> 0 then
+      if EnvEnC then Inc(Level, CL[Ampl])
+      else Inc(Level, CL[AmplC * 2 + 1]);
+
+    Write('    {');
+    Write('"name":"', CaseName, '"');
+    Write(',"level":', Level);
+    Write(',"ampl_a":', AmplA, ',"ampl_b":', AmplB, ',"ampl_c":', AmplC);
+    Write(',"ampl_env":', Ampl);
+    Write(',"ton_en_a":', JBoolStr(TonEnA));
+    Write(',"ton_en_b":', JBoolStr(TonEnB));
+    Write(',"ton_en_c":', JBoolStr(TonEnC));
+    Write(',"noise_en_a":', JBoolStr(NoiseEnA));
+    Write(',"noise_en_b":', JBoolStr(NoiseEnB));
+    Write(',"noise_en_c":', JBoolStr(NoiseEnC));
+    Write(',"ton_a":', TonA, ',"ton_b":', TonB, ',"ton_c":', TonC);
+    Write(',"noise_val":', NoiseVal);
+    Write(',"env_en_a":', JBoolStr(EnvEnA));
+    Write(',"env_en_b":', JBoolStr(EnvEnB));
+    Write(',"env_en_c":', JBoolStr(EnvEnC));
+    Write('}');
+    if c < NumCases - 1 then WriteLn(',') else WriteLn;
+  end;
+
+  WriteLn('  ]');
+  WriteLn('}');
+end;
+
+{ ═══════════════════════════════════════════════════════════════════════════
   Test: Calculate_Level_Tables (from digsoundbuf.pas)
 
   Computes stereo AY and YM level tables for the default panning preset
@@ -2115,7 +2271,7 @@ begin
     WriteLn(StdErr, 'Usage: vt_harness <test>');
     WriteLn(StdErr, 'Tests: noise_lfsr | envelopes | pt3_vol | note_tables |');
     WriteLn(StdErr, '       pattern_basic | pattern_envelope | pattern_arpeggio |');
-    WriteLn(StdErr, '       level_tables | song_timing |');
+    WriteLn(StdErr, '       level_tables | song_timing | mixer_mono |');
     WriteLn(StdErr, '       prepare_zx_sqt | prepare_zx_fls');
     Halt(1);
   end;
@@ -2131,6 +2287,7 @@ begin
   else if Cmd = 'pattern_arpeggio'  then RunPatternArpeggio
   else if Cmd = 'level_tables'      then RunLevelTables
   else if Cmd = 'song_timing'       then RunSongTiming
+  else if Cmd = 'mixer_mono'        then RunMixerMono
   else if Cmd = 'prepare_zx_sqt'   then RunPrepareZXSQT
   else if Cmd = 'prepare_zx_fls'   then RunPrepareZXFLS
   else

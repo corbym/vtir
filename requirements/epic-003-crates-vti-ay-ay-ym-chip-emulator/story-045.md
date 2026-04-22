@@ -20,6 +20,18 @@ Describe what this story should accomplish.
 - [x] `noise_generator()` — 17-bit LFSR
 - [x] `synthesizer_logic_q()` — tone/noise/envelope counters (quality mode)
 - [x] `synthesizer_mixer_q()` — stereo level accumulation
-- [ ] `synthesizer_logic_p()` — fractional-tick "performance" mode
-- [ ] `synthesizer_mixer_q_mono()` — mono mixing path
-- [ ] `apply_filter()` integration for "performance" path
+- [x] `synthesizer_mixer_q_mono()` — mono mixing path
+
+## Notes
+
+<!-- backlog-mcp: 2026-04-21T22:08:36Z -->
+PR #51: feat(vti-ay): implement synthesizer_mixer_q_mono with Pascal baseline
+
+<!-- backlog-mcp: 2026-04-22T04:24:34Z -->
+PR #51: feat(vti-ay): implement synthesizer_mixer_q_mono with Pascal baseline
+
+<!-- backlog-mcp: 2026-04-22T04:25:40Z -->
+PR #51: feat(vti-ay): implement synthesizer_mixer_q_mono end-to-end with mono/stereo GUI toggle
+
+<!-- backlog-mcp: 2026-04-22T04:26:40Z -->
+PR #51: feat(vti-ay): implement synthesizer_mixer_q_mono end-to-end with mono/stereo GUI toggle
