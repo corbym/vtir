@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Vortex Tracker II</title>
+    <style>
+        html, body {
+            margin: 0;
+            overflow: hidden;
+            background: #1c1c1c;
+            /* On mobile, fill-available prevents the body from extending behind
+               the browser's address/navigation bar. */
+            height: 100vh;
+            height: -webkit-fill-available;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            /* 100dvh (dynamic viewport height) tracks the real visible area on
+               mobile as the browser toolbar shows/hides, so the bottom status
+               bar and timers are never clipped.  100vh is the fallback for
+               browsers that do not yet support dvh units. */
+            height: 100vh;
+            height: 100dvh;
+        }
+    </style>
+<link rel="modulepreload" href="/vtir/pr-previews/52/vortex-tracker-2ce487cfa661521.js" crossorigin="anonymous" integrity="sha384-Er+DbBYL+Wx/M/putLOZKU2JvWuvlVfDUQ+lFlsvYU/GAfn/GDR3S1dSS9EGW3jE"><link rel="preload" href="/vtir/pr-previews/52/vortex-tracker-2ce487cfa661521_bg.wasm" crossorigin="anonymous" integrity="sha384-AJKvbB1aFdhZn4UKcfkyEYmJGqiX2ygtckdxsyNS67F3OHkGvp9FBjDvGDP92cVA" as="fetch" type="application/wasm"></head>
+<body>
+    <!-- Mobile virtual-keyboard fix.
+         See src/keyboard_fix.js for the full explanation and test suite. -->
+    <script src="keyboard_fix.js"></script>
+    <!-- trunk injects the WASM loader script here -->
+    <canvas id="the_canvas_id"></canvas>
+
+<script type="module">
+import init, * as bindings from '/vtir/pr-previews/52/vortex-tracker-2ce487cfa661521.js';
+const wasm = await init({ module_or_path: '/vtir/pr-previews/52/vortex-tracker-2ce487cfa661521_bg.wasm' });
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script></body>
+</html>
