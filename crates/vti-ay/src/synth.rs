@@ -158,6 +158,9 @@ pub struct Synthesizer {
     pub num_chips: usize,
     pub levels: LevelTables,
     pub cfg: AyConfig,
+    /// Currently active chip model (AY or YM).
+    /// Mirrors `VTOptions.ChipType` in the Pascal original.
+    pub chip_type: ChipType,
 
     // Current AY register snapshots per chip (set by the tracker engine each interrupt)
     pub pending_regs: [Option<AyRegisters>; MAX_CHIPS],
@@ -190,6 +193,7 @@ impl Synthesizer {
             num_chips: num_chips.min(MAX_CHIPS),
             levels,
             cfg: cfg.clone(),
+            chip_type,
             pending_regs: std::array::from_fn(|_| None),
             output_buf: Vec::new(),
             filt_x_l: vec![0; filt_m + 1],
@@ -229,6 +233,16 @@ impl Synthesizer {
         if regs.env_type != chip.registers.env_type {
             chip.set_envelope_register(regs.env_type);
         }
+    }
+
+    /// Change the emulated chip model and rebuild the amplitude level tables.
+    ///
+    /// Mirrors `TMainForm.SetEmulatingChip` in `main.pas`: updates the chip type
+    /// and calls `PlaybackBufferMaker.Calculate_Level_Tables` so the change takes
+    /// audible effect immediately.
+    pub fn set_chip_type(&mut self, chip_type: ChipType) {
+        self.chip_type = chip_type;
+        self.levels = calculate_level_tables(&self.cfg, chip_type);
     }
 
     // ─── Performance-mode render loop ────────────────────────────────────────

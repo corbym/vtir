@@ -12,6 +12,9 @@ env:
 jobs:
   test:
     name: Test (${{ matrix.os }})
+    # Native builds are expensive — only run on pushes to master, not on PRs.
+    # Web (WASM) and JS checks below still run on every PR.
+    if: github.event_name == 'push'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

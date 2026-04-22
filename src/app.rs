@@ -62,6 +62,11 @@ pub struct VortexTrackerApp {
     /// Per-chip filenames (base name only, no directory), matching `modules`.
     /// `None` for new / unsaved modules.
     pub module_filenames: Vec<Option<String>>,
+
+    /// Currently emulated chip model — applies to all chips in this session.
+    /// Mirrors `VTOptions.ChipType` from the Pascal original (`TChipTypes`).
+    /// Default: `ChipType::AY`.
+    pub chip_type: ChipType,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -279,6 +284,7 @@ impl VortexTrackerApp {
             error_dialog: None,
             num_channels: NUMBER_OF_CHANNELS_DEF,
             module_filenames,
+            chip_type: ChipType::AY,
         }
     }
 
@@ -713,7 +719,18 @@ impl VortexTrackerApp {
     fn rebuild_synth_for_modules(&mut self) {
         let chips = self.modules.len().clamp(1, 2);
         let cfg = AyConfig { num_channels: self.num_channels, ..AyConfig::default() };
-        self.synth = Synthesizer::new(cfg, chips, ChipType::AY);
+        self.synth = Synthesizer::new(cfg, chips, self.chip_type);
+    }
+
+    /// Change the emulated chip model and rebuild the level tables.
+    ///
+    /// Mirrors `TMainForm.SetEmulatingChip(aChipType)` from `main.pas`:
+    /// updates `VTOptions.ChipType` and calls
+    /// `PlaybackBufferMaker.Calculate_Level_Tables` so the change is immediately
+    /// audible without restarting playback.
+    pub fn set_emulating_chip(&mut self, chip_type: ChipType) {
+        self.chip_type = chip_type;
+        self.synth.set_chip_type(chip_type);
     }
 
     fn reset_playback_for_all_modules(&mut self) {
@@ -972,6 +989,27 @@ impl eframe::App for VortexTrackerApp {
                         };
                         ui.close_menu();
                     }
+
+                    ui.separator();
+
+                    // Chip type selection — mirrors TOptionsDlg.ChipSelClick in options.pas.
+                    // ItemIndex 0 → AY_Chip, ItemIndex 1 → YM_Chip.
+                    ui.label("Chip type:");
+                    let current = self.chip_type;
+                    if ui.radio_value(&mut self.chip_type, ChipType::AY, "AY-3-8910").changed()
+                        && current != ChipType::AY
+                    {
+                        self.set_emulating_chip(ChipType::AY);
+                        self.status = "Chip: AY-3-8910".to_string();
+                        ui.close_menu();
+                    }
+                    if ui.radio_value(&mut self.chip_type, ChipType::YM, "YM2149F").changed()
+                        && current != ChipType::YM
+                    {
+                        self.set_emulating_chip(ChipType::YM);
+                        self.status = "Chip: YM2149F".to_string();
+                        ui.close_menu();
+                    }
                 });
                 ui.menu_button("Help", |ui| {
                     if ui.button("About").clicked() {
@@ -986,6 +1024,7 @@ impl eframe::App for VortexTrackerApp {
         // ── Toolbar ────────────────────────────────────────────────────────
         egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
             let prev_state = self.playback_state;
+            let prev_chip_type = self.chip_type;
             let chip_labels: Vec<String> = (0..self.modules.len())
                 .map(|idx| self.module_slot_label(idx))
                 .collect();
@@ -996,7 +1035,20 @@ impl eframe::App for VortexTrackerApp {
                 &mut self.status,
                 &mut self.active_module,
                 &chip_labels,
+                &mut self.chip_type,
             );
+
+            // If the toolbar toggle changed the chip type, apply it via set_emulating_chip.
+            // Mirrors ToggleChipExecute → SetEmulatingChip in main.pas.
+            if self.chip_type != prev_chip_type {
+                let new_chip = self.chip_type;
+                self.synth.set_chip_type(new_chip);
+                self.status = match new_chip {
+                    ChipType::AY   => "Chip: AY-3-8910".to_string(),
+                    ChipType::YM   => "Chip: YM2149F".to_string(),
+                    ChipType::None => unreachable!("chip_type must never be None in the UI"),
+                };
+            }
 
             match (prev_state, self.playback_state) {
                 // Stopped → Playing: reset position and start audio from the beginning.
@@ -1045,6 +1097,15 @@ impl eframe::App for VortexTrackerApp {
         // ── Status bar ─────────────────────────────────────────────────────
         egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
+                // Chip type label — mirrors ToggleChip.Caption in main.pas.
+                let chip_label = match self.chip_type {
+                    ChipType::AY   => "AY",
+                    ChipType::YM   => "YM",
+                    ChipType::None => unreachable!("chip_type must never be None in the UI"),
+                };
+                ui.label(chip_label);
+                ui.separator();
+
                 // When playing or paused, show position and timing in the status bar.
                 if self.playback_state != PlaybackState::Stopped {
                     let module = &self.modules[self.active_module];

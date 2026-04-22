@@ -1,6 +1,7 @@
 //! Toolbar: transport controls, play mode, channel allocation button.
 
 use eframe::egui;
+use vti_ay::chip::ChipType;
 use crate::app::{PlayMode, PlaybackState};
 
 #[derive(Default)]
@@ -15,6 +16,7 @@ impl Toolbar {
         status: &mut String,
         active_module: &mut usize,
         module_labels: &[String],
+        chip_type: &mut ChipType,
     ) {
         ui.horizontal(|ui| {
             // Transport buttons
@@ -43,6 +45,23 @@ impl Toolbar {
             ui.selectable_value(play_mode, PlayMode::Module,  "Module");
             ui.selectable_value(play_mode, PlayMode::Pattern, "Pattern");
             ui.selectable_value(play_mode, PlayMode::Line,    "Line");
+
+            ui.separator();
+
+            // Chip-type toggle button — mirrors TBChip / ToggleChipExecute in main.pas.
+            // Label shows the *current* chip so clicking it cycles to the other.
+            let chip_label = match *chip_type {
+                ChipType::AY   => "AY",
+                ChipType::YM   => "YM",
+                ChipType::None => unreachable!("chip_type must never be None in the UI"),
+            };
+            if ui.button(chip_label).clicked() {
+                *chip_type = match *chip_type {
+                    ChipType::AY   => ChipType::YM,
+                    ChipType::YM   => ChipType::AY,
+                    ChipType::None => unreachable!("chip_type must never be None in the UI"),
+                };
+            }
 
             ui.separator();
 
