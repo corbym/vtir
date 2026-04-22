@@ -32,3 +32,6 @@ PR #51: feat(vti-ay): implement synthesizer_mixer_q_mono with Pascal baseline
 
 <!-- backlog-mcp: 2026-04-22T04:25:40Z -->
 PR #51: feat(vti-ay): implement synthesizer_mixer_q_mono end-to-end with mono/stereo GUI toggle
+
+<!-- backlog-mcp: 2026-04-22T04:26:40Z -->
+PR #51: feat(vti-ay): implement synthesizer_mixer_q_mono end-to-end with mono/stereo GUI toggle
