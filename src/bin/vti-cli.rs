@@ -41,6 +41,7 @@ enum Command {
     GoBottom,
     ToggleFollow,
     ToggleMono,
+    ToggleChipType,
 }
 
 #[derive(Debug)]
@@ -51,6 +52,7 @@ struct CliArgs {
     play: bool,
     active_chip: usize,
     mono: bool,
+    chip_type: ChipType,
 }
 
 impl CliArgs {
@@ -61,6 +63,7 @@ impl CliArgs {
         let mut play = false;
         let mut active_chip = 0;
         let mut mono = false;
+        let mut chip_type = ChipType::AY;
 
         let mut args = env::args().skip(1);
         while let Some(arg) = args.next() {
@@ -101,10 +104,20 @@ impl CliArgs {
                 "--stereo" => {
                     mono = false;
                 }
+                "--chip-type" => {
+                    let Some(v) = args.next() else {
+                        bail!("--chip-type expects ay or ym");
+                    };
+                    chip_type = parse_chip_type_flag(&v)?;
+                }
                 _ if arg.starts_with("--play=") => {
                     let value = arg.trim_start_matches("--play=");
                     play = parse_bool_flag(value)
                         .with_context(|| format!("invalid --play value: {value}"))?;
+                }
+                _ if arg.starts_with("--chip-type=") => {
+                    let value = arg.trim_start_matches("--chip-type=");
+                    chip_type = parse_chip_type_flag(value)?;
                 }
                 _ if arg.starts_with('-') => {
                     bail!("unknown option: {arg}");
@@ -123,7 +136,7 @@ impl CliArgs {
             bail!("missing module file path");
         };
 
-        Ok(Self { module_path, ts2_module_path, ticks, play, active_chip, mono })
+        Ok(Self { module_path, ts2_module_path, ticks, play, active_chip, mono, chip_type })
     }
 }
 
@@ -143,6 +156,14 @@ fn parse_chip_flag(s: &str) -> Result<usize> {
     }
 }
 
+fn parse_chip_type_flag(s: &str) -> Result<ChipType> {
+    match s.to_ascii_lowercase().as_str() {
+        "ay" => Ok(ChipType::AY),
+        "ym" => Ok(ChipType::YM),
+        _ => bail!("expected ay or ym"),
+    }
+}
+
 struct CliTracker {
     file_name: String,
     module: Module,
@@ -159,6 +180,7 @@ struct CliTracker {
     follow_playhead: bool,
     playing: bool,
     mono: bool,
+    chip_type: ChipType,
     audio: Option<AudioPlayer>,
     audio_error: Option<String>,
     tick_count: u64,
@@ -170,7 +192,7 @@ struct CliTracker {
 }
 
 impl CliTracker {
-    fn load(path: &Path, ts2_path: Option<&Path>, start_playing: bool, active_chip: usize, mono: bool) -> Result<Self> {
+    fn load(path: &Path, ts2_path: Option<&Path>, start_playing: bool, active_chip: usize, mono: bool, chip_type: ChipType) -> Result<Self> {
         let bytes = std::fs::read(path)
             .with_context(|| format!("cannot read file: {}", path.display()))?;
         let file_name = path
