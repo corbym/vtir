@@ -91,3 +91,30 @@ jobs:
 
       - name: Run Jest tests
         run: npm test
+
+  # ── Playwright E2E tests ─────────────────────────────────────────────────────
+  # Real-browser tests for the mobile keyboard fix using Chromium.
+  # jsdom cannot reproduce iOS/Android gesture restrictions on input.focus(),
+  # so these tests verify the actual focus/keyboard behaviour in Chromium.
+  # No WASM build required — tests inject HTML via page.setContent().
+  test-e2e:
+    name: Playwright E2E (Chromium)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium browser
+        run: npx playwright install chromium --with-deps
+
+      - name: Run Playwright E2E tests
+        run: npm run test:e2e
+

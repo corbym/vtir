@@ -8,11 +8,14 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "test:e2e": "playwright test --config=playwright.config.js"
   },
   "jest": {
     "testEnvironment": "jest-environment-jsdom",
-    "testMatch": ["**/src/**/*.test.js"]
+    "testMatch": [
+      "**/src/**/*.test.js"
+    ]
   },
   "repository": {
     "type": "git",
@@ -27,6 +30,7 @@
   },
   "homepage": "https://github.com/corbym/vtir#readme",
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0"
   }

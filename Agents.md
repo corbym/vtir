@@ -186,6 +186,15 @@ These two modules are compiled in only for `cfg(target_arch = "wasm32")`.  Nativ
 Any new WASM-specific JavaScript functionality **must** have Jest tests in `src/keyboard_fix.test.js`
 (or a new `src/*.test.js` file if the feature is distinct).
 
+**Two test levels for keyboard_fix.js:**
+
+| Level | Tool | When to use |
+|-------|------|-------------|
+| Unit (synchronous logic) | Jest + jsdom (`npm test`) | Focus/blur event sequencing, keep window state, MutationObserver, attribute hardening |
+| End-to-end (real browser) | Playwright (`npm run test:e2e`) | Mobile gesture restrictions, `TouchEvent` in real Chromium, real `setTimeout` expiry |
+
+**jsdom cannot** reproduce browser gesture restrictions on `input.focus()` or real `TouchEvent` behaviour. Use Playwright (`src/keyboard_fix.e2e.js`) for those scenarios.
+
 **Rules for Jest tests:**
 
 - **Behaviour only, not values.** Test that the keyboard appears (input is `activeElement`),
@@ -205,6 +214,23 @@ Any new WASM-specific JavaScript functionality **must** have Jest tests in `src/
 - **MutationObserver tests:** use `async/await` + `await Promise.resolve()` to yield to the
   microtask queue.  Do **not** use the `done` callback pattern with `setTimeout` — errors
   thrown inside `setTimeout` are not caught by Jest and cause a timeout instead of a failure.
+
+**Rules for Playwright E2E tests (`src/keyboard_fix.e2e.js`):**
+
+- Run via `npm run test:e2e` (Playwright + Chromium).
+- Tests use `page.setContent()` to inject a minimal HTML page — **no WASM build or `trunk serve` required**.
+- Mobile scenarios run on `chromium-mobile` project (`hasTouch: true`, iPhone 12 viewport); desktop scenarios run on `chromium-desktop`.
+- Use `test.skip(!isMobile, ...)` / `test.skip(!!isMobile, ...)` to scope scenarios correctly.
+- `npm run test:e2e` must stay green whenever `src/keyboard_fix.js` or `src/keyboard_fix.e2e.js` is changed.
+- Chromium must be installed: `npx playwright install chromium` (done once per dev environment; CI must run this step before `test:e2e`).
+
+**Key architecture facts for keyboard_fix.js:**
+
+- **`focusOnTouch` is enabled automatically for touch devices** at the runtime entry point:
+  `var isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);`
+  This is the fix for iOS Safari where `input.focus()` from `requestAnimationFrame` is ignored (not a user gesture).
+- **`touchstart` pre-arms the keep window** — fires before `touchend` and before any focus/blur events, eliminating the race where `canvas.focus()` from eframe's rAF arrives before the input's `focus` event opens the keep window.
+- **Input attributes** (`autocomplete=off`, `inputmode=text`, etc.) are set in `attach()` to prevent mobile browsers from treating the hidden text agent as a read-only or password-manager field.
 
 ### Error dialog
 

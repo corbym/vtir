@@ -1,7 +1,7 @@
 use std::env;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
 use crossterm::cursor::{Hide, MoveTo, Show};
@@ -40,8 +40,6 @@ enum Command {
     GoTop,
     GoBottom,
     ToggleFollow,
-    ToggleMono,
-    ToggleChipType,
 }
 
 #[derive(Debug)]
@@ -51,8 +49,6 @@ struct CliArgs {
     ticks: Option<usize>,
     play: bool,
     active_chip: usize,
-    mono: bool,
-    chip_type: ChipType,
 }
 
 impl CliArgs {
@@ -62,8 +58,6 @@ impl CliArgs {
         let mut ticks: Option<usize> = None;
         let mut play = false;
         let mut active_chip = 0;
-        let mut mono = false;
-        let mut chip_type = ChipType::AY;
 
         let mut args = env::args().skip(1);
         while let Some(arg) = args.next() {
@@ -98,26 +92,10 @@ impl CliArgs {
                 "--no-play" => {
                     play = false;
                 }
-                "--mono" => {
-                    mono = true;
-                }
-                "--stereo" => {
-                    mono = false;
-                }
-                "--chip-type" => {
-                    let Some(v) = args.next() else {
-                        bail!("--chip-type expects ay or ym");
-                    };
-                    chip_type = parse_chip_type_flag(&v)?;
-                }
                 _ if arg.starts_with("--play=") => {
                     let value = arg.trim_start_matches("--play=");
                     play = parse_bool_flag(value)
                         .with_context(|| format!("invalid --play value: {value}"))?;
-                }
-                _ if arg.starts_with("--chip-type=") => {
-                    let value = arg.trim_start_matches("--chip-type=");
-                    chip_type = parse_chip_type_flag(value)?;
                 }
                 _ if arg.starts_with('-') => {
                     bail!("unknown option: {arg}");
@@ -136,7 +114,7 @@ impl CliArgs {
             bail!("missing module file path");
         };
 
-        Ok(Self { module_path, ts2_module_path, ticks, play, active_chip, mono, chip_type })
+        Ok(Self { module_path, ts2_module_path, ticks, play, active_chip })
     }
 }
 
@@ -156,14 +134,6 @@ fn parse_chip_flag(s: &str) -> Result<usize> {
     }
 }
 
-fn parse_chip_type_flag(s: &str) -> Result<ChipType> {
-    match s.to_ascii_lowercase().as_str() {
-        "ay" => Ok(ChipType::AY),
-        "ym" => Ok(ChipType::YM),
-        _ => bail!("expected ay or ym"),
-    }
-}
-
 struct CliTracker {
     file_name: String,
     module: Module,
@@ -179,8 +149,6 @@ struct CliTracker {
     active_chip: usize,
     follow_playhead: bool,
     playing: bool,
-    mono: bool,
-    chip_type: ChipType,
     audio: Option<AudioPlayer>,
     audio_error: Option<String>,
     tick_count: u64,
@@ -192,7 +160,7 @@ struct CliTracker {
 }
 
 impl CliTracker {
-    fn load(path: &Path, ts2_path: Option<&Path>, start_playing: bool, active_chip: usize, mono: bool, chip_type: ChipType) -> Result<Self> {
+    fn load(path: &Path, ts2_path: Option<&Path>, start_playing: bool, active_chip: usize) -> Result<Self> {
         let bytes = std::fs::read(path)
             .with_context(|| format!("cannot read file: {}", path.display()))?;
         let file_name = path
@@ -249,17 +217,14 @@ impl CliTracker {
             (None, None, None)
         };
 
-        let cfg = AyConfig {
-            num_channels: if mono { 1 } else { 2 },
-            ..AyConfig::default()
-        };
+        let cfg = AyConfig::default();
         let sample_rate = cfg.sample_rate;
         let samples_per_tick = cfg.sample_tiks_in_interrupt();
         let num_chips = if ts2_module.is_some() { 2 } else { 1 };
         if active_chip == 1 && ts2_module.is_none() {
             bail!("--active-chip 2 requires --ts2 <module-file>");
         }
-        let synth = Synthesizer::new(cfg, num_chips, chip_type);
+        let synth = Synthesizer::new(cfg, num_chips, ChipType::AY);
 
         let (audio, audio_error) = match AudioPlayer::start(sample_rate) {
             Ok(player) => (Some(player), None),
@@ -281,8 +246,6 @@ impl CliTracker {
             active_chip,
             follow_playhead: true,
             playing: start_playing,
-            mono,
-            chip_type,
             audio,
             audio_error,
             tick_count: 0,
@@ -339,32 +302,8 @@ impl CliTracker {
                 self.selected_row = self.current_pattern_length().saturating_sub(1);
             }
             Command::ToggleFollow => self.follow_playhead = !self.follow_playhead,
-            Command::ToggleMono => self.toggle_mono(),
-            Command::ToggleChipType => self.toggle_chip_type(),
         }
         false
-    }
-
-    fn toggle_chip_type(&mut self) {
-        // Mirrors ToggleChipExecute in main.pas: cycles AY ↔ YM, then calls
-        // Calculate_Level_Tables via set_chip_type.
-        self.chip_type = match self.chip_type {
-            ChipType::AY   => ChipType::YM,
-            ChipType::YM   => ChipType::AY,
-            ChipType::None => unreachable!("chip_type must never be None in the CLI"),
-        };
-        self.synth.set_chip_type(self.chip_type);
-    }
-
-    fn toggle_mono(&mut self) {
-        self.mono = !self.mono;
-        let num_chips = self.chip_count();
-        let cfg = AyConfig {
-            num_channels: if self.mono { 1 } else { 2 },
-            ..AyConfig::default()
-        };
-        self.samples_per_tick = cfg.sample_tiks_in_interrupt();
-        self.synth = Synthesizer::new(cfg, num_chips, self.chip_type);
     }
 
     fn chip_count(&self) -> usize {
@@ -511,11 +450,9 @@ impl CliTracker {
         } else {
             lines.push("turbosound=off".to_string());
         }
-        lines.push(format!("play={}  follow={}  mono={}  chip_type={}  active_chip={}/{}  tick={}  pos={}/{}  pat={}  row={}  ch={}  time={}/{}",
+        lines.push(format!("play={}  follow={}  active_chip={}/{}  tick={}  pos={}/{}  pat={}  row={}  ch={}  time={}/{}",
             if self.playing { "on" } else { "off" },
             if self.follow_playhead { "on" } else { "off" },
-            if self.mono { "on" } else { "off" },
-            match self.chip_type { ChipType::AY => "AY", ChipType::YM => "YM", ChipType::None => unreachable!("chip_type must never be None in the CLI") },
             self.active_chip + 1,
             self.chip_count(),
             self.tick_count,
@@ -527,30 +464,14 @@ impl CliTracker {
             fmt_ticks(elapsed),
             fmt_ticks(total_ticks),
         ));
-        let (audio_state, audio_diag_line) = if let Some(audio) = &self.audio {
-            let fill = audio.fill_level();
-            let d = audio.diagnostics_snapshot();
-            (
-                "on".to_string(),
-                format!(
-                    "audio_diag fill={:.0}% cb={} push={} pop={} underrun={}",
-                    fill * 100.0,
-                    d.callback_count,
-                    d.pushed_samples,
-                    d.popped_samples,
-                    d.underrun_frames
-                ),
-            )
+        let audio_state = if self.audio.is_some() {
+            "on".to_string()
         } else if let Some(err) = &self.audio_error {
-            (
-                format!("off ({err})"),
-                "audio_diag unavailable".to_string(),
-            )
+            format!("off ({err})")
         } else {
-            ("off".to_string(), "audio_diag unavailable".to_string())
+            "off".to_string()
         };
         lines.push(format!("audio={audio_state}"));
-        lines.push(audio_diag_line);
         lines.push(format!("regs: A={:02X} B={:02X} C={:02X} mix={:02X} noise={:02X} env={:04X}/{:02X} pcm_nonzero={}",
             self.last_regs.amplitude_a,
             self.last_regs.amplitude_b,
@@ -565,7 +486,7 @@ impl CliTracker {
             lines.push(format!("regs2: A={:02X} B={:02X} C={:02X} mix={:02X} noise={:02X} env={:04X}/{:02X}",
                 r2.amplitude_a, r2.amplitude_b, r2.amplitude_c, r2.mixer, r2.noise, r2.envelope, r2.env_type));
         }
-        lines.push("keys: 1/2 chip  arrows move  PgUp/PgDn position  Space play/pause  s step  f follow  m mono  c chip-type  Home/End  q quit".to_string());
+        lines.push("keys: 1/2 chip  arrows move  PgUp/PgDn position  Space play/pause  s step  f follow  Home/End  q quit".to_string());
         lines.push(String::new());
 
         let pat_idx = self.current_pattern_index();
@@ -644,8 +565,6 @@ fn command_from_key(key: KeyEvent) -> Option<Command> {
         KeyCode::Char(' ') => Some(Command::TogglePlay),
         KeyCode::Char('s') => Some(Command::Step),
         KeyCode::Char('f') => Some(Command::ToggleFollow),
-        KeyCode::Char('m') => Some(Command::ToggleMono),
-        KeyCode::Char('c') => Some(Command::ToggleChipType),
         KeyCode::Char('1') => Some(Command::SelectChip1),
         KeyCode::Char('2') => Some(Command::SelectChip2),
         KeyCode::Up => Some(Command::MoveUp),
@@ -683,9 +602,6 @@ fn run_interactive(mut tracker: CliTracker) -> Result<()> {
     let mut out = io::stdout();
     let _guard = TerminalGuard::enter(&mut out)?;
     let mut dirty = true;
-    let tick_interval = Duration::from_millis(TICK_MS);
-    let mut last_tick_time: Option<Instant> = None;
-    const MAX_CATCH_UP_TICKS: usize = 4;
 
     loop {
         if dirty {
@@ -693,39 +609,11 @@ fn run_interactive(mut tracker: CliTracker) -> Result<()> {
             dirty = false;
         }
 
-        let poll_timeout = if tracker.playing {
-            let now = Instant::now();
-            match last_tick_time {
-                Some(last) => {
-                    let next = last + tick_interval;
-                    if next > now {
-                        next.duration_since(now)
-                    } else {
-                        Duration::from_millis(0)
-                    }
-                }
-                None => Duration::from_millis(0),
-            }
-        } else {
-            Duration::from_millis(50)
-        };
-
-        if event::poll(poll_timeout)? {
+        if event::poll(Duration::from_millis(TICK_MS))? {
             if let Event::Key(key) = event::read()? {
                 if let Some(cmd) = command_from_key(key) {
                     if tracker.apply_command(cmd) {
                         break;
-                    }
-                    if cmd == Command::TogglePlay {
-                        if tracker.playing {
-                            last_tick_time = Some(Instant::now());
-                            // Prime a small amount of audio so the output callback
-                            // doesn't start from an empty ring buffer.
-                            tracker.tick_once();
-                            tracker.tick_once();
-                        } else {
-                            last_tick_time = None;
-                        }
                     }
                     dirty = true;
                 }
@@ -733,27 +621,8 @@ fn run_interactive(mut tracker: CliTracker) -> Result<()> {
         }
 
         if tracker.playing {
-            let now = Instant::now();
-            if last_tick_time.is_none() {
-                last_tick_time = Some(now);
-            }
-
-            let mut ticks_done = 0usize;
-            while ticks_done < MAX_CATCH_UP_TICKS
-                && last_tick_time.expect("tick timestamp set") + tick_interval <= now
-            {
-                tracker.tick_once();
-                last_tick_time = Some(last_tick_time.expect("tick timestamp set") + tick_interval);
-                ticks_done += 1;
-                dirty = true;
-            }
-
-            // If we fell too far behind, drop backlog to keep real-time cadence.
-            if ticks_done == MAX_CATCH_UP_TICKS
-                && last_tick_time.expect("tick timestamp set") + tick_interval <= now
-            {
-                last_tick_time = Some(now);
-            }
+            tracker.tick_once();
+            dirty = true;
         }
     }
 
@@ -761,13 +630,11 @@ fn run_interactive(mut tracker: CliTracker) -> Result<()> {
 }
 
 fn print_usage() {
-    eprintln!("Usage: vti-cli <module-file> [--ts2 <module-file>] [--ticks N] [--play[=true|false]] [--active-chip 1|2] [--mono] [--chip-type ay|ym]");
+    eprintln!("Usage: vti-cli <module-file> [--ts2 <module-file>] [--ticks N] [--play[=true|false]] [--active-chip 1|2]");
     eprintln!("  no --ticks: interactive keyboard tracker view");
     eprintln!("  --ticks N: headless playback harness for N ticks (for diagnostics/tests)");
     eprintln!("  --play: start interactive mode with playback enabled (default: off)");
     eprintln!("  --active-chip 2: start the UI focused on the TurboSound second chip (requires --ts2)");
-    eprintln!("  --mono: enable mono audio output (default: stereo); interactive key: m");
-    eprintln!("  --chip-type ay|ym: select emulated chip model (default: ay); interactive key: c");
 }
 
 fn main() -> Result<()> {
@@ -778,19 +645,16 @@ fn main() -> Result<()> {
         args.ts2_module_path.as_deref(),
         args.play,
         args.active_chip,
-        args.mono,
-        args.chip_type,
     )?;
 
     if let Some(ticks) = args.ticks {
         tracker.run_headless_ticks(ticks);
         let active_vars = tracker.active_vars_ref();
         println!(
-            "ticks={} chips={} active_chip={} mono={} pcm_nonzero_last_tick={} pcm_nonzero_total={} total_ticks={} pos={} line={}",
+            "ticks={} chips={} active_chip={} pcm_nonzero_last_tick={} pcm_nonzero_total={} total_ticks={} pos={} line={}",
             ticks,
             tracker.chip_count(),
             tracker.active_chip + 1,
-            tracker.mono,
             tracker.last_pcm_nonzero,
             tracker.total_pcm_nonzero,
             tracker.tick_count,
@@ -866,7 +730,6 @@ mod tests {
             active_chip: 0,
             follow_playhead: false,
             playing: false,
-            mono: false,
             audio: None,
             audio_error: None,
             tick_count: 0,

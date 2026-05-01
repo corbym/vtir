@@ -370,4 +370,51 @@ describe('attach() — default mode (no global keyboard popup)', () => {
         expect(input.style.color).toBe('transparent');
         expect(input.style.getPropertyValue('-webkit-text-fill-color')).toBe('transparent');
     });
+
+    test('attach() sets autocomplete/autocorrect/inputmode attributes for mobile keyboard compatibility', () => {
+        const { canvas, input } = makeDOM();
+        attach(input, canvas, { keepMs: 100 });
+
+        expect(input.getAttribute('autocomplete')).toBe('off');
+        expect(input.getAttribute('autocorrect')).toBe('off');
+        expect(input.getAttribute('autocapitalize')).toBe('off');
+        expect(input.getAttribute('spellcheck')).toBe('false');
+        expect(input.getAttribute('inputmode')).toBe('text');
+    });
+});
+
+describe('attach() — touchstart pre-arms the keep window', () => {
+    test('canvas.focus() is blocked immediately after touchstart (before touchend fires)', () => {
+        const { canvas, input } = makeDOM();
+        attach(input, canvas, { keepMs: 500, focusOnTouch: false });
+
+        // Fire touchstart but NOT touchend — keep window should already be open.
+        canvas.dispatchEvent(new Event('touchstart', { bubbles: true }));
+
+        // Focus input to make it the active element, then have canvas try to reclaim.
+        input.focus();
+        canvas.focus(); // must be blocked — keep window was pre-armed on touchstart
+
+        expect(document.activeElement).toBe(input);
+    });
+
+    test('touchstart keep window expires so canvas.focus() works after keepMs', () => {
+        jest.useFakeTimers();
+        const { canvas, input } = makeDOM();
+        attach(input, canvas, { keepMs: 100, focusOnTouch: false });
+
+        // touchstart arms the keep window; immediately after it blocks canvas reclaim.
+        canvas.dispatchEvent(new Event('touchstart', { bubbles: true }));
+        input.focus();
+        canvas.focus();
+        expect(document.activeElement).toBe(input); // blocked while keep window open
+
+        // Advance past keepMs — keep window is now closed.
+        jest.advanceTimersByTime(200);
+
+        // canvas.focus() should now succeed without re-arming anything.
+        canvas.focus();
+        expect(document.activeElement).toBe(canvas);
+        jest.useRealTimers();
+    });
 });

@@ -77,6 +77,16 @@ function attach(input, canvas, options) {
     input.style.color = 'transparent';
     input.style.setProperty('-webkit-text-fill-color', 'transparent');
 
+    /* Harden attributes so mobile browsers treat this as a focusable text field.
+     * Without these, some browsers (especially iOS Safari) may refuse to open
+     * the keyboard for inputs that look like password managers or read-only fields. */
+    input.setAttribute('autocomplete', 'off');
+    input.setAttribute('autocorrect', 'off');
+    input.setAttribute('autocapitalize', 'off');
+    input.setAttribute('spellcheck', 'false');
+    input.setAttribute('inputmode', 'text');
+    input.removeAttribute('readonly');
+
     /* Patch canvas.focus() to a no-op while keep=true.
      * eframe calls canvas.focus() from handle_platform_output when ime=None.
      * Blocking it prevents the canvas from stealing focus from the text-agent
@@ -98,12 +108,21 @@ function attach(input, canvas, options) {
     input.addEventListener('focusin', openKeepWindow);
 
     // Optional compatibility mode: explicitly focus the text-agent on touch.
-    // Runtime keeps this disabled so keyboard opens only from editable widgets.
+    // Enabled automatically on touch-capable devices (see runtime entry point).
     if (focusOnTouch) {
         canvas.addEventListener('touchend', function () {
             input.focus();
         }, { passive: true });
     }
+
+    /* Pre-arm the keep window on touchstart — before any focus/blur events fire.
+     * This eliminates the race where canvas.focus() from eframe's rAF arrives
+     * before the 'focus' event on the input, causing the keyboard to flash then
+     * disappear.  touchstart always precedes touchend, so the window is already
+     * open by the time input.focus() is called from touchend. */
+    canvas.addEventListener('touchstart', function () {
+        openKeepWindow();
+    }, { passive: true });
 }
 
 /**
@@ -237,7 +256,15 @@ function init(body, canvasId, options) {
 
 /* -- Browser runtime entry point ----------------------------------------- */
 if (typeof module === 'undefined') {
-    init(document.body, 'the_canvas_id');
+    /* Enable focusOnTouch for touch-capable devices (phones, tablets).
+     * On these devices, eframe calls input.focus() from requestAnimationFrame —
+     * which iOS Safari does NOT treat as a user-gesture context, so the virtual
+     * keyboard never appears.  Calling input.focus() from the touchend handler
+     * IS a user-gesture context and does open the keyboard.
+     * On desktop (no touch), we leave focusOnTouch=false so that clicking the
+     * canvas does not force the keyboard to open. */
+    var isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    init(document.body, 'the_canvas_id', { focusOnTouch: isTouchDevice });
 } else {
     /* Node.js / Jest: export for testing. */
     module.exports = { attach: attach, init: init };
